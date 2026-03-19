@@ -3,10 +3,9 @@
  * Do not edit manually.
  * Api
  * Campus Social Network Admin API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 
-export type ZonePolygonItem = {
-  lat: number;
-  lng: number;
-};
+export interface VoteGameRequest {
+  playerName: string;
+}

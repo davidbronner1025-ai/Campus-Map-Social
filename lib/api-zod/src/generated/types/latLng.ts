@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export interface SuccessResponse {
-  success: boolean;
-  message?: string;
+export interface LatLng {
+  lat: number;
+  lng: number;
 }

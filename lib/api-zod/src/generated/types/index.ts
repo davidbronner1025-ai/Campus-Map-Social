@@ -3,16 +3,35 @@
  * Do not edit manually.
  * Api
  * Campus Social Network Admin API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 
+export * from "./announcement";
+export * from "./announcementPriority";
 export * from "./campus";
-export * from "./createZoneRequest";
-export * from "./createZoneRequestPolygonItem";
+export * from "./createAnnouncementRequest";
+export * from "./createAnnouncementRequestPriority";
+export * from "./createGameRequest";
+export * from "./createGameRequestSport";
+export * from "./createLocationRequest";
+export * from "./createMenuRequest";
+export * from "./createMenuRequestItemsItem";
+export * from "./createMenuRequestItemsItemCategory";
+export * from "./createScheduleEntryRequest";
+export * from "./dailyMenu";
+export * from "./dailyMenuItemsItem";
+export * from "./dailyMenuItemsItemCategory";
+export * from "./dayOfWeek";
 export * from "./errorResponse";
+export * from "./gameSession";
+export * from "./gameSessionSport";
+export * from "./gameSessionVotesItem";
 export * from "./healthStatus";
+export * from "./latLng";
+export * from "./location";
+export * from "./locationType";
+export * from "./rateMenuRequest";
+export * from "./scheduleEntry";
 export * from "./setCampusRequest";
 export * from "./successResponse";
-export * from "./zone";
-export * from "./zonePolygonItem";
-export * from "./zoneType";
+export * from "./voteGameRequest";

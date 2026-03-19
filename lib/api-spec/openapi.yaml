@@ -1,25 +1,26 @@
 openapi: 3.1.0
 info:
   title: Api
-  version: 0.1.0
+  version: 0.2.0
   description: Campus Social Network Admin API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
   - name: campus
-    description: Campus configuration
-  - name: zones
-    description: Campus zones/areas management
+  - name: locations
+  - name: announcements
+  - name: schedules
+  - name: menus
+  - name: sports
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -33,7 +34,6 @@ paths:
       operationId: getCampus
       tags: [campus]
       summary: Get campus configuration
-      description: Returns campus location and settings
       responses:
         "200":
           description: Campus configuration
@@ -42,7 +42,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Campus"
         "404":
-          description: No campus configured yet
+          description: Not found
           content:
             application/json:
               schema:
@@ -50,8 +50,7 @@ paths:
     post:
       operationId: setCampus
       tags: [campus]
-      summary: Set or update campus configuration
-      description: Set the campus name, location, and map settings
+      summary: Set or update campus
       requestBody:
         required: true
         content:
@@ -60,76 +59,74 @@ paths:
               $ref: "#/components/schemas/SetCampusRequest"
       responses:
         "200":
-          description: Campus configuration saved
+          description: Saved
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Campus"
 
-  /campus/zones:
+  /locations:
     get:
-      operationId: getZones
-      tags: [zones]
-      summary: Get all campus zones
-      description: Returns all defined zones/areas on the campus map
+      operationId: getLocations
+      tags: [locations]
+      summary: Get all campus locations
       responses:
         "200":
-          description: List of zones
+          description: Locations list
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Zone"
+                  $ref: "#/components/schemas/Location"
     post:
-      operationId: createZone
-      tags: [zones]
-      summary: Create a new zone
-      description: Define a new area/zone on the campus map
+      operationId: createLocation
+      tags: [locations]
+      summary: Create a new location
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateZoneRequest"
+              $ref: "#/components/schemas/CreateLocationRequest"
       responses:
         "201":
-          description: Zone created
+          description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Zone"
+                $ref: "#/components/schemas/Location"
 
-  /campus/zones/{zoneId}:
+  /locations/{locationId}:
     get:
-      operationId: getZone
-      tags: [zones]
-      summary: Get a specific zone
+      operationId: getLocation
+      tags: [locations]
+      summary: Get a single location
       parameters:
-        - name: zoneId
+        - name: locationId
           in: path
           required: true
           schema:
             type: integer
       responses:
         "200":
-          description: Zone details
+          description: Location
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Zone"
+                $ref: "#/components/schemas/Location"
         "404":
-          description: Zone not found
+          description: Not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
     put:
-      operationId: updateZone
-      tags: [zones]
-      summary: Update a zone
+      operationId: updateLocation
+      tags: [locations]
+      summary: Update a location
       parameters:
-        - name: zoneId
+        - name: locationId
           in: path
           required: true
           schema:
@@ -139,43 +136,320 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateZoneRequest"
+              $ref: "#/components/schemas/CreateLocationRequest"
       responses:
         "200":
-          description: Zone updated
+          description: Updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Zone"
+                $ref: "#/components/schemas/Location"
         "404":
-          description: Zone not found
+          description: Not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
     delete:
-      operationId: deleteZone
-      tags: [zones]
-      summary: Delete a zone
+      operationId: deleteLocation
+      tags: [locations]
+      summary: Delete a location
       parameters:
-        - name: zoneId
+        - name: locationId
           in: path
           required: true
           schema:
             type: integer
       responses:
         "200":
-          description: Zone deleted
+          description: Deleted
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
-        "404":
-          description: Zone not found
+
+  /locations/{locationId}/announcements:
+    get:
+      operationId: getAnnouncements
+      tags: [announcements]
+      summary: Get announcements for a location
+      parameters:
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Announcements
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                type: array
+                items:
+                  $ref: "#/components/schemas/Announcement"
+    post:
+      operationId: createAnnouncement
+      tags: [announcements]
+      summary: Create announcement
+      parameters:
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAnnouncementRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Announcement"
+
+  /announcements/{announcementId}:
+    delete:
+      operationId: deleteAnnouncement
+      tags: [announcements]
+      summary: Delete announcement
+      parameters:
+        - name: announcementId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /locations/{locationId}/schedules:
+    get:
+      operationId: getSchedules
+      tags: [schedules]
+      summary: Get schedules for a location (building)
+      parameters:
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Schedule entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScheduleEntry"
+    post:
+      operationId: createScheduleEntry
+      tags: [schedules]
+      summary: Create a schedule entry
+      parameters:
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScheduleEntryRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleEntry"
+
+  /schedules/{scheduleId}:
+    delete:
+      operationId: deleteScheduleEntry
+      tags: [schedules]
+      summary: Delete schedule entry
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /locations/{locationId}/menus:
+    get:
+      operationId: getMenus
+      tags: [menus]
+      summary: Get daily menus for a dining location
+      parameters:
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Menus
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DailyMenu"
+    post:
+      operationId: createMenu
+      tags: [menus]
+      summary: Create or update today's menu
+      parameters:
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMenuRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyMenu"
+
+  /menus/{menuId}/rate:
+    post:
+      operationId: rateMenu
+      tags: [menus]
+      summary: Rate today's menu
+      parameters:
+        - name: menuId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RateMenuRequest"
+      responses:
+        "200":
+          description: Rating saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /locations/{locationId}/games:
+    get:
+      operationId: getGames
+      tags: [sports]
+      summary: Get game sessions for a sports location
+      parameters:
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Game sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GameSession"
+    post:
+      operationId: createGame
+      tags: [sports]
+      summary: Create a game session
+      parameters:
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGameRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameSession"
+
+  /games/{gameId}:
+    delete:
+      operationId: deleteGame
+      tags: [sports]
+      summary: Delete a game session
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /games/{gameId}/vote:
+    post:
+      operationId: voteForGame
+      tags: [sports]
+      summary: Vote to join a game session
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoteGameRequest"
+      responses:
+        "200":
+          description: Vote recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
 
 components:
   schemas:
@@ -184,16 +458,14 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
     ErrorResponse:
       type: object
       properties:
         error:
           type: string
-      required:
-        - error
+      required: [error]
 
     SuccessResponse:
       type: object
@@ -202,8 +474,7 @@ components:
           type: boolean
         message:
           type: string
-      required:
-        - success
+      required: [success]
 
     Campus:
       type: object
@@ -212,68 +483,61 @@ components:
           type: integer
         name:
           type: string
-          description: Campus name
         lat:
           type: number
           format: double
-          description: Center latitude of campus
         lng:
           type: number
           format: double
-          description: Center longitude of campus
         defaultZoom:
           type: integer
-          description: Default map zoom level (1-20)
         createdAt:
           type: string
           format: date-time
         updatedAt:
           type: string
           format: date-time
-      required:
-        - id
-        - name
-        - lat
-        - lng
-        - defaultZoom
+      required: [id, name, lat, lng, defaultZoom]
 
     SetCampusRequest:
       type: object
       properties:
         name:
           type: string
-          description: Campus name
         lat:
           type: number
           format: double
-          description: Center latitude of campus
         lng:
           type: number
           format: double
-          description: Center longitude of campus
         defaultZoom:
           type: integer
-          description: Default map zoom level (1-20)
           default: 17
-      required:
-        - name
-        - lat
-        - lng
+      required: [name, lat, lng]
 
-    ZoneType:
+    LocationType:
       type: string
       enum:
-        - academic
-        - dining
-        - sports
-        - social
-        - admin
+        - building
+        - dining_hall
+        - sports_field
         - parking
         - green
         - other
-      description: The type/category of the zone
+      description: Type of location
 
-    Zone:
+    LatLng:
+      type: object
+      properties:
+        lat:
+          type: number
+          format: double
+        lng:
+          type: number
+          format: double
+      required: [lat, lng]
+
+    Location:
       type: object
       properties:
         id:
@@ -282,75 +546,252 @@ components:
           type: integer
         name:
           type: string
-          description: Zone display name
         description:
           type: string
-          description: Zone description
         type:
-          $ref: "#/components/schemas/ZoneType"
+          $ref: "#/components/schemas/LocationType"
         color:
           type: string
-          description: Hex color for map display
+        adminName:
+          type: string
+        lat:
+          type: number
+          format: double
+        lng:
+          type: number
+          format: double
         polygon:
           type: array
-          description: Array of lat/lng coordinates defining the zone polygon
           items:
-            type: object
-            properties:
-              lat:
-                type: number
-                format: double
-              lng:
-                type: number
-                format: double
-            required:
-              - lat
-              - lng
+            $ref: "#/components/schemas/LatLng"
+        osmName:
+          type: string
+          description: Building name detected from OpenStreetMap
         createdAt:
           type: string
           format: date-time
         updatedAt:
           type: string
           format: date-time
-      required:
-        - id
-        - campusId
-        - name
-        - type
-        - color
-        - polygon
+      required: [id, campusId, name, type, color, lat, lng, polygon]
 
-    CreateZoneRequest:
+    CreateLocationRequest:
       type: object
       properties:
         name:
           type: string
-          description: Zone display name
         description:
           type: string
-          description: Zone description
         type:
-          $ref: "#/components/schemas/ZoneType"
+          $ref: "#/components/schemas/LocationType"
         color:
           type: string
-          description: Hex color for map display
-          default: "#3B82F6"
+          default: "#6366f1"
+        adminName:
+          type: string
+        lat:
+          type: number
+          format: double
+        lng:
+          type: number
+          format: double
         polygon:
           type: array
-          description: Array of lat/lng coordinates defining the zone polygon
+          items:
+            $ref: "#/components/schemas/LatLng"
+        osmName:
+          type: string
+      required: [name, type, lat, lng, polygon]
+
+    Announcement:
+      type: object
+      properties:
+        id:
+          type: integer
+        locationId:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        priority:
+          type: string
+          enum: [normal, important, urgent]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, locationId, title, content, priority, createdAt]
+
+    CreateAnnouncementRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        priority:
+          type: string
+          enum: [normal, important, urgent]
+          default: normal
+      required: [title, content]
+
+    DayOfWeek:
+      type: string
+      enum: [sunday, monday, tuesday, wednesday, thursday, friday, saturday]
+
+    ScheduleEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        locationId:
+          type: integer
+        dayOfWeek:
+          $ref: "#/components/schemas/DayOfWeek"
+        startTime:
+          type: string
+          description: "HH:MM format"
+        endTime:
+          type: string
+          description: "HH:MM format"
+        label:
+          type: string
+          description: Course/event name
+        instructor:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, locationId, dayOfWeek, startTime, endTime, label]
+
+    CreateScheduleEntryRequest:
+      type: object
+      properties:
+        dayOfWeek:
+          $ref: "#/components/schemas/DayOfWeek"
+        startTime:
+          type: string
+        endTime:
+          type: string
+        label:
+          type: string
+        instructor:
+          type: string
+      required: [dayOfWeek, startTime, endTime, label]
+
+    DailyMenu:
+      type: object
+      properties:
+        id:
+          type: integer
+        locationId:
+          type: integer
+        date:
+          type: string
+          format: date
+        items:
+          type: array
           items:
             type: object
             properties:
-              lat:
-                type: number
-                format: double
-              lng:
-                type: number
-                format: double
-            required:
-              - lat
-              - lng
-      required:
-        - name
-        - type
-        - polygon
+              name:
+                type: string
+              category:
+                type: string
+                enum: [starter, main, side, dessert, drink]
+            required: [name, category]
+        averageRating:
+          type: number
+          format: float
+        ratingCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, locationId, date, items, averageRating, ratingCount]
+
+    CreateMenuRequest:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              category:
+                type: string
+                enum: [starter, main, side, dessert, drink]
+            required: [name, category]
+      required: [date, items]
+
+    RateMenuRequest:
+      type: object
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        raterName:
+          type: string
+      required: [rating]
+
+    GameSession:
+      type: object
+      properties:
+        id:
+          type: integer
+        locationId:
+          type: integer
+        sport:
+          type: string
+          enum: [football, basketball, volleyball, tennis, other]
+        scheduledAt:
+          type: string
+          format: date-time
+        description:
+          type: string
+        maxPlayers:
+          type: integer
+        votes:
+          type: array
+          items:
+            type: object
+            properties:
+              playerName:
+                type: string
+              votedAt:
+                type: string
+                format: date-time
+            required: [playerName, votedAt]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, locationId, sport, scheduledAt, votes]
+
+    CreateGameRequest:
+      type: object
+      properties:
+        sport:
+          type: string
+          enum: [football, basketball, volleyball, tennis, other]
+        scheduledAt:
+          type: string
+          format: date-time
+        description:
+          type: string
+        maxPlayers:
+          type: integer
+          default: 10
+      required: [sport, scheduledAt]
+
+    VoteGameRequest:
+      type: object
+      properties:
+        playerName:
+          type: string
+      required: [playerName]

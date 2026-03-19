@@ -3,12 +3,11 @@
  * Do not edit manually.
  * Api
  * Campus Social Network Admin API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 import * as zod from "zod";
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -16,228 +15,459 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
- * Returns campus location and settings
  * @summary Get campus configuration
  */
 export const GetCampusResponse = zod.object({
   id: zod.number(),
-  name: zod.string().describe("Campus name"),
-  lat: zod.number().describe("Center latitude of campus"),
-  lng: zod.number().describe("Center longitude of campus"),
-  defaultZoom: zod.number().describe("Default map zoom level (1-20)"),
+  name: zod.string(),
+  lat: zod.number(),
+  lng: zod.number(),
+  defaultZoom: zod.number(),
   createdAt: zod.date().optional(),
   updatedAt: zod.date().optional(),
 });
 
 /**
- * Set the campus name, location, and map settings
- * @summary Set or update campus configuration
+ * @summary Set or update campus
  */
 export const setCampusBodyDefaultZoomDefault = 17;
 
 export const SetCampusBody = zod.object({
-  name: zod.string().describe("Campus name"),
-  lat: zod.number().describe("Center latitude of campus"),
-  lng: zod.number().describe("Center longitude of campus"),
-  defaultZoom: zod
-    .number()
-    .default(setCampusBodyDefaultZoomDefault)
-    .describe("Default map zoom level (1-20)"),
+  name: zod.string(),
+  lat: zod.number(),
+  lng: zod.number(),
+  defaultZoom: zod.number().default(setCampusBodyDefaultZoomDefault),
 });
 
 export const SetCampusResponse = zod.object({
   id: zod.number(),
-  name: zod.string().describe("Campus name"),
-  lat: zod.number().describe("Center latitude of campus"),
-  lng: zod.number().describe("Center longitude of campus"),
-  defaultZoom: zod.number().describe("Default map zoom level (1-20)"),
+  name: zod.string(),
+  lat: zod.number(),
+  lng: zod.number(),
+  defaultZoom: zod.number(),
   createdAt: zod.date().optional(),
   updatedAt: zod.date().optional(),
 });
 
 /**
- * Returns all defined zones/areas on the campus map
- * @summary Get all campus zones
+ * @summary Get all campus locations
  */
-export const GetZonesResponseItem = zod.object({
+export const GetLocationsResponseItem = zod.object({
   id: zod.number(),
   campusId: zod.number(),
-  name: zod.string().describe("Zone display name"),
-  description: zod.string().optional().describe("Zone description"),
+  name: zod.string(),
+  description: zod.string().optional(),
   type: zod
     .enum([
-      "academic",
-      "dining",
-      "sports",
-      "social",
-      "admin",
+      "building",
+      "dining_hall",
+      "sports_field",
       "parking",
       "green",
       "other",
     ])
-    .describe("The type\/category of the zone"),
-  color: zod.string().describe("Hex color for map display"),
-  polygon: zod
-    .array(
-      zod.object({
-        lat: zod.number(),
-        lng: zod.number(),
-      }),
-    )
-    .describe("Array of lat\/lng coordinates defining the zone polygon"),
-  createdAt: zod.date().optional(),
-  updatedAt: zod.date().optional(),
-});
-export const GetZonesResponse = zod.array(GetZonesResponseItem);
-
-/**
- * Define a new area/zone on the campus map
- * @summary Create a new zone
- */
-export const createZoneBodyColorDefault = `#3B82F6`;
-
-export const CreateZoneBody = zod.object({
-  name: zod.string().describe("Zone display name"),
-  description: zod.string().optional().describe("Zone description"),
-  type: zod
-    .enum([
-      "academic",
-      "dining",
-      "sports",
-      "social",
-      "admin",
-      "parking",
-      "green",
-      "other",
-    ])
-    .describe("The type\/category of the zone"),
-  color: zod
+    .describe("Type of location"),
+  color: zod.string(),
+  adminName: zod.string().optional(),
+  lat: zod.number(),
+  lng: zod.number(),
+  polygon: zod.array(
+    zod.object({
+      lat: zod.number(),
+      lng: zod.number(),
+    }),
+  ),
+  osmName: zod
     .string()
-    .default(createZoneBodyColorDefault)
-    .describe("Hex color for map display"),
-  polygon: zod
-    .array(
-      zod.object({
-        lat: zod.number(),
-        lng: zod.number(),
-      }),
-    )
-    .describe("Array of lat\/lng coordinates defining the zone polygon"),
-});
-
-/**
- * @summary Get a specific zone
- */
-export const GetZoneParams = zod.object({
-  zoneId: zod.coerce.number(),
-});
-
-export const GetZoneResponse = zod.object({
-  id: zod.number(),
-  campusId: zod.number(),
-  name: zod.string().describe("Zone display name"),
-  description: zod.string().optional().describe("Zone description"),
-  type: zod
-    .enum([
-      "academic",
-      "dining",
-      "sports",
-      "social",
-      "admin",
-      "parking",
-      "green",
-      "other",
-    ])
-    .describe("The type\/category of the zone"),
-  color: zod.string().describe("Hex color for map display"),
-  polygon: zod
-    .array(
-      zod.object({
-        lat: zod.number(),
-        lng: zod.number(),
-      }),
-    )
-    .describe("Array of lat\/lng coordinates defining the zone polygon"),
+    .optional()
+    .describe("Building name detected from OpenStreetMap"),
   createdAt: zod.date().optional(),
   updatedAt: zod.date().optional(),
 });
+export const GetLocationsResponse = zod.array(GetLocationsResponseItem);
 
 /**
- * @summary Update a zone
+ * @summary Create a new location
  */
-export const UpdateZoneParams = zod.object({
-  zoneId: zod.coerce.number(),
-});
+export const createLocationBodyColorDefault = `#6366f1`;
 
-export const updateZoneBodyColorDefault = `#3B82F6`;
-
-export const UpdateZoneBody = zod.object({
-  name: zod.string().describe("Zone display name"),
-  description: zod.string().optional().describe("Zone description"),
+export const CreateLocationBody = zod.object({
+  name: zod.string(),
+  description: zod.string().optional(),
   type: zod
     .enum([
-      "academic",
-      "dining",
-      "sports",
-      "social",
-      "admin",
+      "building",
+      "dining_hall",
+      "sports_field",
       "parking",
       "green",
       "other",
     ])
-    .describe("The type\/category of the zone"),
-  color: zod
+    .describe("Type of location"),
+  color: zod.string().default(createLocationBodyColorDefault),
+  adminName: zod.string().optional(),
+  lat: zod.number(),
+  lng: zod.number(),
+  polygon: zod.array(
+    zod.object({
+      lat: zod.number(),
+      lng: zod.number(),
+    }),
+  ),
+  osmName: zod.string().optional(),
+});
+
+/**
+ * @summary Get a single location
+ */
+export const GetLocationParams = zod.object({
+  locationId: zod.coerce.number(),
+});
+
+export const GetLocationResponse = zod.object({
+  id: zod.number(),
+  campusId: zod.number(),
+  name: zod.string(),
+  description: zod.string().optional(),
+  type: zod
+    .enum([
+      "building",
+      "dining_hall",
+      "sports_field",
+      "parking",
+      "green",
+      "other",
+    ])
+    .describe("Type of location"),
+  color: zod.string(),
+  adminName: zod.string().optional(),
+  lat: zod.number(),
+  lng: zod.number(),
+  polygon: zod.array(
+    zod.object({
+      lat: zod.number(),
+      lng: zod.number(),
+    }),
+  ),
+  osmName: zod
     .string()
-    .default(updateZoneBodyColorDefault)
-    .describe("Hex color for map display"),
-  polygon: zod
-    .array(
-      zod.object({
-        lat: zod.number(),
-        lng: zod.number(),
-      }),
-    )
-    .describe("Array of lat\/lng coordinates defining the zone polygon"),
-});
-
-export const UpdateZoneResponse = zod.object({
-  id: zod.number(),
-  campusId: zod.number(),
-  name: zod.string().describe("Zone display name"),
-  description: zod.string().optional().describe("Zone description"),
-  type: zod
-    .enum([
-      "academic",
-      "dining",
-      "sports",
-      "social",
-      "admin",
-      "parking",
-      "green",
-      "other",
-    ])
-    .describe("The type\/category of the zone"),
-  color: zod.string().describe("Hex color for map display"),
-  polygon: zod
-    .array(
-      zod.object({
-        lat: zod.number(),
-        lng: zod.number(),
-      }),
-    )
-    .describe("Array of lat\/lng coordinates defining the zone polygon"),
+    .optional()
+    .describe("Building name detected from OpenStreetMap"),
   createdAt: zod.date().optional(),
   updatedAt: zod.date().optional(),
 });
 
 /**
- * @summary Delete a zone
+ * @summary Update a location
  */
-export const DeleteZoneParams = zod.object({
-  zoneId: zod.coerce.number(),
+export const UpdateLocationParams = zod.object({
+  locationId: zod.coerce.number(),
 });
 
-export const DeleteZoneResponse = zod.object({
+export const updateLocationBodyColorDefault = `#6366f1`;
+
+export const UpdateLocationBody = zod.object({
+  name: zod.string(),
+  description: zod.string().optional(),
+  type: zod
+    .enum([
+      "building",
+      "dining_hall",
+      "sports_field",
+      "parking",
+      "green",
+      "other",
+    ])
+    .describe("Type of location"),
+  color: zod.string().default(updateLocationBodyColorDefault),
+  adminName: zod.string().optional(),
+  lat: zod.number(),
+  lng: zod.number(),
+  polygon: zod.array(
+    zod.object({
+      lat: zod.number(),
+      lng: zod.number(),
+    }),
+  ),
+  osmName: zod.string().optional(),
+});
+
+export const UpdateLocationResponse = zod.object({
+  id: zod.number(),
+  campusId: zod.number(),
+  name: zod.string(),
+  description: zod.string().optional(),
+  type: zod
+    .enum([
+      "building",
+      "dining_hall",
+      "sports_field",
+      "parking",
+      "green",
+      "other",
+    ])
+    .describe("Type of location"),
+  color: zod.string(),
+  adminName: zod.string().optional(),
+  lat: zod.number(),
+  lng: zod.number(),
+  polygon: zod.array(
+    zod.object({
+      lat: zod.number(),
+      lng: zod.number(),
+    }),
+  ),
+  osmName: zod
+    .string()
+    .optional()
+    .describe("Building name detected from OpenStreetMap"),
+  createdAt: zod.date().optional(),
+  updatedAt: zod.date().optional(),
+});
+
+/**
+ * @summary Delete a location
+ */
+export const DeleteLocationParams = zod.object({
+  locationId: zod.coerce.number(),
+});
+
+export const DeleteLocationResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary Get announcements for a location
+ */
+export const GetAnnouncementsParams = zod.object({
+  locationId: zod.coerce.number(),
+});
+
+export const GetAnnouncementsResponseItem = zod.object({
+  id: zod.number(),
+  locationId: zod.number(),
+  title: zod.string(),
+  content: zod.string(),
+  priority: zod.enum(["normal", "important", "urgent"]),
+  createdAt: zod.date(),
+});
+export const GetAnnouncementsResponse = zod.array(GetAnnouncementsResponseItem);
+
+/**
+ * @summary Create announcement
+ */
+export const CreateAnnouncementParams = zod.object({
+  locationId: zod.coerce.number(),
+});
+
+export const createAnnouncementBodyPriorityDefault = `normal`;
+
+export const CreateAnnouncementBody = zod.object({
+  title: zod.string(),
+  content: zod.string(),
+  priority: zod
+    .enum(["normal", "important", "urgent"])
+    .default(createAnnouncementBodyPriorityDefault),
+});
+
+/**
+ * @summary Delete announcement
+ */
+export const DeleteAnnouncementParams = zod.object({
+  announcementId: zod.coerce.number(),
+});
+
+export const DeleteAnnouncementResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary Get schedules for a location (building)
+ */
+export const GetSchedulesParams = zod.object({
+  locationId: zod.coerce.number(),
+});
+
+export const GetSchedulesResponseItem = zod.object({
+  id: zod.number(),
+  locationId: zod.number(),
+  dayOfWeek: zod.enum([
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+  ]),
+  startTime: zod.string().describe("HH:MM format"),
+  endTime: zod.string().describe("HH:MM format"),
+  label: zod.string().describe("Course\/event name"),
+  instructor: zod.string().optional(),
+  createdAt: zod.date().optional(),
+});
+export const GetSchedulesResponse = zod.array(GetSchedulesResponseItem);
+
+/**
+ * @summary Create a schedule entry
+ */
+export const CreateScheduleEntryParams = zod.object({
+  locationId: zod.coerce.number(),
+});
+
+export const CreateScheduleEntryBody = zod.object({
+  dayOfWeek: zod.enum([
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+  ]),
+  startTime: zod.string(),
+  endTime: zod.string(),
+  label: zod.string(),
+  instructor: zod.string().optional(),
+});
+
+/**
+ * @summary Delete schedule entry
+ */
+export const DeleteScheduleEntryParams = zod.object({
+  scheduleId: zod.coerce.number(),
+});
+
+export const DeleteScheduleEntryResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary Get daily menus for a dining location
+ */
+export const GetMenusParams = zod.object({
+  locationId: zod.coerce.number(),
+});
+
+export const GetMenusResponseItem = zod.object({
+  id: zod.number(),
+  locationId: zod.number(),
+  date: zod.date(),
+  items: zod.array(
+    zod.object({
+      name: zod.string(),
+      category: zod.enum(["starter", "main", "side", "dessert", "drink"]),
+    }),
+  ),
+  averageRating: zod.number(),
+  ratingCount: zod.number(),
+  createdAt: zod.date().optional(),
+});
+export const GetMenusResponse = zod.array(GetMenusResponseItem);
+
+/**
+ * @summary Create or update today's menu
+ */
+export const CreateMenuParams = zod.object({
+  locationId: zod.coerce.number(),
+});
+
+export const CreateMenuBody = zod.object({
+  date: zod.date(),
+  items: zod.array(
+    zod.object({
+      name: zod.string(),
+      category: zod.enum(["starter", "main", "side", "dessert", "drink"]),
+    }),
+  ),
+});
+
+/**
+ * @summary Rate today's menu
+ */
+export const RateMenuParams = zod.object({
+  menuId: zod.coerce.number(),
+});
+
+export const rateMenuBodyRatingMax = 5;
+
+export const RateMenuBody = zod.object({
+  rating: zod.number().min(1).max(rateMenuBodyRatingMax),
+  raterName: zod.string().optional(),
+});
+
+export const RateMenuResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary Get game sessions for a sports location
+ */
+export const GetGamesParams = zod.object({
+  locationId: zod.coerce.number(),
+});
+
+export const GetGamesResponseItem = zod.object({
+  id: zod.number(),
+  locationId: zod.number(),
+  sport: zod.enum(["football", "basketball", "volleyball", "tennis", "other"]),
+  scheduledAt: zod.date(),
+  description: zod.string().optional(),
+  maxPlayers: zod.number().optional(),
+  votes: zod.array(
+    zod.object({
+      playerName: zod.string(),
+      votedAt: zod.date(),
+    }),
+  ),
+  createdAt: zod.date().optional(),
+});
+export const GetGamesResponse = zod.array(GetGamesResponseItem);
+
+/**
+ * @summary Create a game session
+ */
+export const CreateGameParams = zod.object({
+  locationId: zod.coerce.number(),
+});
+
+export const createGameBodyMaxPlayersDefault = 10;
+
+export const CreateGameBody = zod.object({
+  sport: zod.enum(["football", "basketball", "volleyball", "tennis", "other"]),
+  scheduledAt: zod.date(),
+  description: zod.string().optional(),
+  maxPlayers: zod.number().default(createGameBodyMaxPlayersDefault),
+});
+
+/**
+ * @summary Delete a game session
+ */
+export const DeleteGameParams = zod.object({
+  gameId: zod.coerce.number(),
+});
+
+export const DeleteGameResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary Vote to join a game session
+ */
+export const VoteForGameParams = zod.object({
+  gameId: zod.coerce.number(),
+});
+
+export const VoteForGameBody = zod.object({
+  playerName: zod.string(),
+});
+
+export const VoteForGameResponse = zod.object({
   success: zod.boolean(),
   message: zod.string().optional(),
 });

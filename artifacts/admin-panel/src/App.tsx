@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Layout } from "@/components/layout";
 import RootRedirect from "@/pages/root";
 import SetupPage from "@/pages/setup";
-import ZonesPage from "@/pages/zones";
+import LocationsPage from "@/pages/locations";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -19,9 +19,9 @@ function Router() {
           <SetupPage />
         </Layout>
       </Route>
-      <Route path="/zones">
+      <Route path="/locations">
         <Layout>
-          <ZonesPage />
+          <LocationsPage />
         </Layout>
       </Route>
       <Route component={NotFound} />

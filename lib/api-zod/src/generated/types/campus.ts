@@ -3,18 +3,14 @@
  * Do not edit manually.
  * Api
  * Campus Social Network Admin API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 
 export interface Campus {
   id: number;
-  /** Campus name */
   name: string;
-  /** Center latitude of campus */
   lat: number;
-  /** Center longitude of campus */
   lng: number;
-  /** Default map zoom level (1-20) */
   defaultZoom: number;
   createdAt?: Date;
   updatedAt?: Date;

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Campus Social Network Admin API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 export interface HealthStatus {
   status: string;
@@ -20,79 +20,237 @@ export interface SuccessResponse {
 
 export interface Campus {
   id: number;
-  /** Campus name */
   name: string;
-  /** Center latitude of campus */
   lat: number;
-  /** Center longitude of campus */
   lng: number;
-  /** Default map zoom level (1-20) */
   defaultZoom: number;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface SetCampusRequest {
-  /** Campus name */
   name: string;
-  /** Center latitude of campus */
   lat: number;
-  /** Center longitude of campus */
   lng: number;
-  /** Default map zoom level (1-20) */
   defaultZoom?: number;
 }
 
 /**
- * The type/category of the zone
+ * Type of location
  */
-export type ZoneType = (typeof ZoneType)[keyof typeof ZoneType];
+export type LocationType = (typeof LocationType)[keyof typeof LocationType];
 
-export const ZoneType = {
-  academic: "academic",
-  dining: "dining",
-  sports: "sports",
-  social: "social",
-  admin: "admin",
+export const LocationType = {
+  building: "building",
+  dining_hall: "dining_hall",
+  sports_field: "sports_field",
   parking: "parking",
   green: "green",
   other: "other",
 } as const;
 
-export type ZonePolygonItem = {
+export interface LatLng {
   lat: number;
   lng: number;
-};
+}
 
-export interface Zone {
+export interface Location {
   id: number;
   campusId: number;
-  /** Zone display name */
   name: string;
-  /** Zone description */
   description?: string;
-  type: ZoneType;
-  /** Hex color for map display */
+  type: LocationType;
   color: string;
-  /** Array of lat/lng coordinates defining the zone polygon */
-  polygon: ZonePolygonItem[];
+  adminName?: string;
+  lat: number;
+  lng: number;
+  polygon: LatLng[];
+  /** Building name detected from OpenStreetMap */
+  osmName?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
-export type CreateZoneRequestPolygonItem = {
+export interface CreateLocationRequest {
+  name: string;
+  description?: string;
+  type: LocationType;
+  color?: string;
+  adminName?: string;
   lat: number;
   lng: number;
+  polygon: LatLng[];
+  osmName?: string;
+}
+
+export type AnnouncementPriority =
+  (typeof AnnouncementPriority)[keyof typeof AnnouncementPriority];
+
+export const AnnouncementPriority = {
+  normal: "normal",
+  important: "important",
+  urgent: "urgent",
+} as const;
+
+export interface Announcement {
+  id: number;
+  locationId: number;
+  title: string;
+  content: string;
+  priority: AnnouncementPriority;
+  createdAt: string;
+}
+
+export type CreateAnnouncementRequestPriority =
+  (typeof CreateAnnouncementRequestPriority)[keyof typeof CreateAnnouncementRequestPriority];
+
+export const CreateAnnouncementRequestPriority = {
+  normal: "normal",
+  important: "important",
+  urgent: "urgent",
+} as const;
+
+export interface CreateAnnouncementRequest {
+  title: string;
+  content: string;
+  priority?: CreateAnnouncementRequestPriority;
+}
+
+export type DayOfWeek = (typeof DayOfWeek)[keyof typeof DayOfWeek];
+
+export const DayOfWeek = {
+  sunday: "sunday",
+  monday: "monday",
+  tuesday: "tuesday",
+  wednesday: "wednesday",
+  thursday: "thursday",
+  friday: "friday",
+  saturday: "saturday",
+} as const;
+
+export interface ScheduleEntry {
+  id: number;
+  locationId: number;
+  dayOfWeek: DayOfWeek;
+  /** HH:MM format */
+  startTime: string;
+  /** HH:MM format */
+  endTime: string;
+  /** Course/event name */
+  label: string;
+  instructor?: string;
+  createdAt?: string;
+}
+
+export interface CreateScheduleEntryRequest {
+  dayOfWeek: DayOfWeek;
+  startTime: string;
+  endTime: string;
+  label: string;
+  instructor?: string;
+}
+
+export type DailyMenuItemsItemCategory =
+  (typeof DailyMenuItemsItemCategory)[keyof typeof DailyMenuItemsItemCategory];
+
+export const DailyMenuItemsItemCategory = {
+  starter: "starter",
+  main: "main",
+  side: "side",
+  dessert: "dessert",
+  drink: "drink",
+} as const;
+
+export type DailyMenuItemsItem = {
+  name: string;
+  category: DailyMenuItemsItemCategory;
 };
 
-export interface CreateZoneRequest {
-  /** Zone display name */
+export interface DailyMenu {
+  id: number;
+  locationId: number;
+  date: string;
+  items: DailyMenuItemsItem[];
+  averageRating: number;
+  ratingCount: number;
+  createdAt?: string;
+}
+
+export type CreateMenuRequestItemsItemCategory =
+  (typeof CreateMenuRequestItemsItemCategory)[keyof typeof CreateMenuRequestItemsItemCategory];
+
+export const CreateMenuRequestItemsItemCategory = {
+  starter: "starter",
+  main: "main",
+  side: "side",
+  dessert: "dessert",
+  drink: "drink",
+} as const;
+
+export type CreateMenuRequestItemsItem = {
   name: string;
-  /** Zone description */
+  category: CreateMenuRequestItemsItemCategory;
+};
+
+export interface CreateMenuRequest {
+  date: string;
+  items: CreateMenuRequestItemsItem[];
+}
+
+export interface RateMenuRequest {
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  rating: number;
+  raterName?: string;
+}
+
+export type GameSessionSport =
+  (typeof GameSessionSport)[keyof typeof GameSessionSport];
+
+export const GameSessionSport = {
+  football: "football",
+  basketball: "basketball",
+  volleyball: "volleyball",
+  tennis: "tennis",
+  other: "other",
+} as const;
+
+export type GameSessionVotesItem = {
+  playerName: string;
+  votedAt: string;
+};
+
+export interface GameSession {
+  id: number;
+  locationId: number;
+  sport: GameSessionSport;
+  scheduledAt: string;
   description?: string;
-  type: ZoneType;
-  /** Hex color for map display */
-  color?: string;
-  /** Array of lat/lng coordinates defining the zone polygon */
-  polygon: CreateZoneRequestPolygonItem[];
+  maxPlayers?: number;
+  votes: GameSessionVotesItem[];
+  createdAt?: string;
+}
+
+export type CreateGameRequestSport =
+  (typeof CreateGameRequestSport)[keyof typeof CreateGameRequestSport];
+
+export const CreateGameRequestSport = {
+  football: "football",
+  basketball: "basketball",
+  volleyball: "volleyball",
+  tennis: "tennis",
+  other: "other",
+} as const;
+
+export interface CreateGameRequest {
+  sport: CreateGameRequestSport;
+  scheduledAt: string;
+  description?: string;
+  maxPlayers?: number;
+}
+
+export interface VoteGameRequest {
+  playerName: string;
 }

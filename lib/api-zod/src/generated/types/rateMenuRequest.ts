@@ -6,7 +6,11 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export interface SuccessResponse {
-  success: boolean;
-  message?: string;
+export interface RateMenuRequest {
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  rating: number;
+  raterName?: string;
 }
