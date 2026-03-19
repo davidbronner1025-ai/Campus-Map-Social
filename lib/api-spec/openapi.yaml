@@ -1,15 +1,18 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Campus Social Network Admin API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: campus
+    description: Campus configuration
+  - name: zones
+    description: Campus zones/areas management
 paths:
   /healthz:
     get:
@@ -24,6 +27,156 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /campus:
+    get:
+      operationId: getCampus
+      tags: [campus]
+      summary: Get campus configuration
+      description: Returns campus location and settings
+      responses:
+        "200":
+          description: Campus configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campus"
+        "404":
+          description: No campus configured yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: setCampus
+      tags: [campus]
+      summary: Set or update campus configuration
+      description: Set the campus name, location, and map settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetCampusRequest"
+      responses:
+        "200":
+          description: Campus configuration saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campus"
+
+  /campus/zones:
+    get:
+      operationId: getZones
+      tags: [zones]
+      summary: Get all campus zones
+      description: Returns all defined zones/areas on the campus map
+      responses:
+        "200":
+          description: List of zones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Zone"
+    post:
+      operationId: createZone
+      tags: [zones]
+      summary: Create a new zone
+      description: Define a new area/zone on the campus map
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateZoneRequest"
+      responses:
+        "201":
+          description: Zone created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Zone"
+
+  /campus/zones/{zoneId}:
+    get:
+      operationId: getZone
+      tags: [zones]
+      summary: Get a specific zone
+      parameters:
+        - name: zoneId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Zone details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Zone"
+        "404":
+          description: Zone not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateZone
+      tags: [zones]
+      summary: Update a zone
+      parameters:
+        - name: zoneId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateZoneRequest"
+      responses:
+        "200":
+          description: Zone updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Zone"
+        "404":
+          description: Zone not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteZone
+      tags: [zones]
+      summary: Delete a zone
+      parameters:
+        - name: zoneId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Zone deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "404":
+          description: Zone not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +187,170 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+
+    Campus:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          description: Campus name
+        lat:
+          type: number
+          format: double
+          description: Center latitude of campus
+        lng:
+          type: number
+          format: double
+          description: Center longitude of campus
+        defaultZoom:
+          type: integer
+          description: Default map zoom level (1-20)
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - lat
+        - lng
+        - defaultZoom
+
+    SetCampusRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Campus name
+        lat:
+          type: number
+          format: double
+          description: Center latitude of campus
+        lng:
+          type: number
+          format: double
+          description: Center longitude of campus
+        defaultZoom:
+          type: integer
+          description: Default map zoom level (1-20)
+          default: 17
+      required:
+        - name
+        - lat
+        - lng
+
+    ZoneType:
+      type: string
+      enum:
+        - academic
+        - dining
+        - sports
+        - social
+        - admin
+        - parking
+        - green
+        - other
+      description: The type/category of the zone
+
+    Zone:
+      type: object
+      properties:
+        id:
+          type: integer
+        campusId:
+          type: integer
+        name:
+          type: string
+          description: Zone display name
+        description:
+          type: string
+          description: Zone description
+        type:
+          $ref: "#/components/schemas/ZoneType"
+        color:
+          type: string
+          description: Hex color for map display
+        polygon:
+          type: array
+          description: Array of lat/lng coordinates defining the zone polygon
+          items:
+            type: object
+            properties:
+              lat:
+                type: number
+                format: double
+              lng:
+                type: number
+                format: double
+            required:
+              - lat
+              - lng
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - campusId
+        - name
+        - type
+        - color
+        - polygon
+
+    CreateZoneRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Zone display name
+        description:
+          type: string
+          description: Zone description
+        type:
+          $ref: "#/components/schemas/ZoneType"
+        color:
+          type: string
+          description: Hex color for map display
+          default: "#3B82F6"
+        polygon:
+          type: array
+          description: Array of lat/lng coordinates defining the zone polygon
+          items:
+            type: object
+            properties:
+              lat:
+                type: number
+                format: double
+              lng:
+                type: number
+                format: double
+            required:
+              - lat
+              - lng
+      required:
+        - name
+        - type
+        - polygon

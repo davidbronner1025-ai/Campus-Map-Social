@@ -1,0 +1,19 @@
+packages:
+  "leaflet": "Interactive maps for campus and zones"
+  "react-leaflet": "React components for Leaflet maps"
+  "@types/leaflet": "TypeScript definitions for Leaflet"
+  "framer-motion": "Page transitions and micro-interactions"
+  "react-hook-form": "Form state management"
+  "@hookform/resolvers": "Zod validation resolver for forms"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility for merging tailwind classes"
+
+images:
+  - path: "artifacts/admin-panel/public/images/logo.png"
+    description: "Minimalist geometric logo mark representing a campus or map pin, glowing indigo on a transparent dark background, premium tech aesthetic"
+    aspect_ratio: "1:1"
+
+notes:
+  - "Importing API hooks directly from @workspace/api-client-react as per workspace structure"
+  - "Using Leaflet for interactive maps, requiring leaflet CSS to be imported"
+  - "Using dark mode by default for the premium admin panel feel"
