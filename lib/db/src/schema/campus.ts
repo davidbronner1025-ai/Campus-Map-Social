@@ -240,6 +240,7 @@ export const conversationMembersTable = pgTable("conversation_members", {
   conversationId: integer("conversation_id").notNull().references(() => conversationsTable.id, { onDelete: "cascade" }),
   userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
+  lastReadMessageId: integer("last_read_message_id"),
 }, (table) => [
   uniqueIndex("conv_member_unique").on(table.conversationId, table.userId),
 ]);

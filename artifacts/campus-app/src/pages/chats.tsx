@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Send, MapPin, Plus, Users, X, MessageCircle, Search } from "lucide-react";
+import { ArrowLeft, Send, MapPin, Plus, Users, X, MessageCircle, Search, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import {
   getConversations, getChatMessages, sendChatMessage, createConversation,
-  getNearbyUsers,
+  getNearbyUsers, markConversationRead,
   type ConversationListItem, type ChatMsg, type NearbyUser,
 } from "@/lib/api";
 import { useLocationEngine } from "@/hooks/useLocationEngine";
@@ -60,13 +60,18 @@ function ConversationRow({ conv, currentUserId, onClick }: {
         ) : (
           <Avatar url={avatarUrl} name={displayName} size={48} color={avatarColor} />
         )}
+        {conv.unreadCount > 0 && (
+          <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1">
+            {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
+          </div>
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
-          <p className="font-semibold text-sm text-foreground truncate">{displayName}</p>
+          <p className={`font-semibold text-sm truncate ${conv.unreadCount > 0 ? "text-foreground" : "text-foreground"}`}>{displayName}</p>
           <span className="text-[10px] text-muted-foreground flex-shrink-0 ml-2">{timeAgo(ts)}</span>
         </div>
-        <p className="text-xs text-muted-foreground truncate mt-0.5">{preview}</p>
+        <p className={`text-xs truncate mt-0.5 ${conv.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>{preview}</p>
       </div>
     </button>
   );
@@ -78,6 +83,9 @@ function NewChatSheet({ onClose, onCreated, currentUserId }: {
   const [users, setUsers] = useState<NearbyUser[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [mode, setMode] = useState<"direct" | "group">("direct");
+  const [groupName, setGroupName] = useState("");
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const { pos } = useLocationEngine(false);
 
   useEffect(() => {
@@ -92,11 +100,23 @@ function NewChatSheet({ onClose, onCreated, currentUserId }: {
     ? users.filter(u => u.displayName.toLowerCase().includes(search.toLowerCase()))
     : users;
 
-  const startChat = async (userId: number) => {
+  const startDirectChat = async (userId: number) => {
     try {
       const conv = await createConversation({ type: "direct", memberIds: [userId] });
       onCreated(conv.id);
     } catch {}
+  };
+
+  const createGroup = async () => {
+    if (!groupName.trim() || selectedIds.length === 0) return;
+    try {
+      const conv = await createConversation({ type: "group", name: groupName.trim(), memberIds: selectedIds });
+      onCreated(conv.id);
+    } catch {}
+  };
+
+  const toggleSelected = (id: number) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
   return (
@@ -109,6 +129,27 @@ function NewChatSheet({ onClose, onCreated, currentUserId }: {
         </button>
         <h3 className="font-semibold text-foreground">New Chat</h3>
       </div>
+
+      <div className="flex gap-2 px-4 pt-3">
+        <button onClick={() => { setMode("direct"); setSelectedIds([]); }}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${mode === "direct" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
+          Direct
+        </button>
+        <button onClick={() => setMode("group")}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${mode === "group" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
+          <UserPlus className="w-3 h-3" /> Group
+        </button>
+      </div>
+
+      {mode === "group" && (
+        <div className="px-4 pt-3">
+          <input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="Group name..."
+            className="w-full px-3 py-2 rounded-xl bg-secondary border border-border text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary" />
+          {selectedIds.length > 0 && (
+            <p className="text-[10px] text-muted-foreground mt-1.5">{selectedIds.length} selected</p>
+          )}
+        </div>
+      )}
 
       <div className="px-4 py-2">
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary border border-border">
@@ -131,16 +172,31 @@ function NewChatSheet({ onClose, onCreated, currentUserId }: {
           </div>
         )}
         {filtered.map(u => (
-          <button key={u.id} onClick={() => startChat(u.id)}
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary/50 transition-colors text-left">
+          <button key={u.id}
+            onClick={() => mode === "direct" ? startDirectChat(u.id) : toggleSelected(u.id)}
+            className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary/50 transition-colors text-left ${mode === "group" && selectedIds.includes(u.id) ? "bg-primary/10" : ""}`}>
             <Avatar url={u.avatarUrl} name={u.displayName} size={40} color={u.bannerColor} />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">{u.displayName || "User"}</p>
               {u.title && <p className="text-xs text-muted-foreground truncate">{u.title}</p>}
             </div>
+            {mode === "group" && (
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedIds.includes(u.id) ? "bg-primary border-primary" : "border-muted-foreground"}`}>
+                {selectedIds.includes(u.id) && <span className="text-primary-foreground text-[10px]">✓</span>}
+              </div>
+            )}
           </button>
         ))}
       </div>
+
+      {mode === "group" && selectedIds.length > 0 && groupName.trim() && (
+        <div className="px-4 py-3 border-t border-border">
+          <button onClick={createGroup}
+            className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium">
+            Create Group ({selectedIds.length} members)
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -164,11 +220,15 @@ function ChatDetail({ convId, currentUserId, onBack }: {
 
   useEffect(() => {
     fetchMessages();
+    markConversationRead(convId).catch(() => {});
     getConversations().then(convs => {
       const c = convs.find(x => x.id === convId);
       if (c) setConvInfo(c);
     }).catch(() => {});
-    const interval = setInterval(fetchMessages, 5000);
+    const interval = setInterval(() => {
+      fetchMessages();
+      markConversationRead(convId).catch(() => {});
+    }, 5000);
     return () => clearInterval(interval);
   }, [convId, fetchMessages]);
 
@@ -179,17 +239,19 @@ function ChatDetail({ convId, currentUserId, onBack }: {
   const send = async () => {
     if (!text.trim()) return;
     setSending(true);
+    const content = text.trim();
     const optimistic: ChatMsg = {
       id: Date.now(), conversationId: convId, senderId: currentUserId,
-      content: text.trim(), messageType: "text", lat: null, lng: null,
+      content, messageType: "text", lat: null, lng: null,
       createdAt: new Date().toISOString(),
       senderName: "", senderAvatar: null, senderBannerColor: "#1e293b",
     };
     setMessages(prev => [...prev, optimistic]);
     setText("");
     try {
-      const real = await sendChatMessage(convId, { content: text.trim() });
+      const real = await sendChatMessage(convId, { content });
       setMessages(prev => prev.map(m => m.id === optimistic.id ? real : m));
+      markConversationRead(convId).catch(() => {});
     } catch {
       setMessages(prev => prev.filter(m => m.id !== optimistic.id));
     } finally { setSending(false); }
@@ -321,6 +383,8 @@ export default function ChatsPage() {
     return () => clearInterval(interval);
   }, [fetchConvs]);
 
+  const totalUnread = convs.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+
   if (!user) return null;
 
   if (activeChat) {
@@ -363,7 +427,6 @@ export default function ChatsPage() {
         ))}
       </div>
 
-      {/* Bottom nav */}
       <div className="border-t border-border bg-card/90 backdrop-blur-sm flex">
         <button onClick={() => navigate("/")}
           className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-muted-foreground hover:text-foreground transition-colors">
@@ -371,8 +434,15 @@ export default function ChatsPage() {
           <span className="text-[10px] font-medium">Map</span>
         </button>
         <button
-          className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-primary transition-colors">
-          <MessageCircle className="w-5 h-5" />
+          className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-primary transition-colors relative">
+          <div className="relative">
+            <MessageCircle className="w-5 h-5" />
+            {totalUnread > 0 && (
+              <div className="absolute -top-1.5 -right-2.5 min-w-[14px] h-[14px] rounded-full bg-red-500 text-white text-[8px] font-bold flex items-center justify-center px-0.5">
+                {totalUnread > 99 ? "99+" : totalUnread}
+              </div>
+            )}
+          </div>
           <span className="text-[10px] font-medium">Chats</span>
         </button>
       </div>

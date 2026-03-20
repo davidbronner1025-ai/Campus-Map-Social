@@ -13,7 +13,7 @@ import {
   getNearbyMessages, getNearbyUsers, getNearbyEvents,
   pinMessage, deleteMessage, reactToMessage,
   createEvent, deleteEvent, rsvpEvent, unrsvpEvent,
-  getReplies, postReply, createConversation,
+  getReplies, postReply, createConversation, getConversations,
   type NearbyMessage, type NearbyUser, type NearbyEvent, type Reply
 } from "@/lib/api";
 
@@ -830,6 +830,18 @@ export default function HomePage() {
   const [feedTab, setFeedTab] = useState<"messages" | "events">("messages");
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [showPeople, setShowPeople] = useState(true);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchUnread = () => {
+      getConversations().then(convs => {
+        setChatUnreadCount(convs.reduce((sum, c) => sum + (c.unreadCount || 0), 0));
+      }).catch(() => {});
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   const mapCenter: [number, number] = pos ? [pos.lat, pos.lng] : ISRAEL_CENTER;
   const mapZoom = pos ? 17 : FALLBACK_ZOOM;
@@ -1132,8 +1144,15 @@ export default function HomePage() {
           <span className="text-[10px] font-medium">Map</span>
         </button>
         <button onClick={() => navigate("/chats")}
-          className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-muted-foreground hover:text-foreground transition-colors">
-          <MessageCircle className="w-5 h-5" />
+          className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-muted-foreground hover:text-foreground transition-colors relative">
+          <div className="relative">
+            <MessageCircle className="w-5 h-5" />
+            {chatUnreadCount > 0 && (
+              <div className="absolute -top-1.5 -right-2.5 min-w-[14px] h-[14px] rounded-full bg-red-500 text-white text-[8px] font-bold flex items-center justify-center px-0.5">
+                {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
+              </div>
+            )}
+          </div>
           <span className="text-[10px] font-medium">Chats</span>
         </button>
       </div>

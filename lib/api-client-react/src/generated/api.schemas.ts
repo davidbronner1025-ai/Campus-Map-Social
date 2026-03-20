@@ -372,6 +372,103 @@ export interface CreateEventBody {
   locationId?: number;
 }
 
+export type ConversationType =
+  (typeof ConversationType)[keyof typeof ConversationType];
+
+export const ConversationType = {
+  direct: "direct",
+  group: "group",
+} as const;
+
+export interface Conversation {
+  id: number;
+  type: ConversationType;
+  name?: string | null;
+  creatorId?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ConversationMemberInfo {
+  userId: number;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+  bannerColor?: string | null;
+}
+
+export type LastMessageMessageType =
+  (typeof LastMessageMessageType)[keyof typeof LastMessageMessageType];
+
+export const LastMessageMessageType = {
+  text: "text",
+  location: "location",
+} as const;
+
+export interface LastMessage {
+  id: number;
+  content: string;
+  messageType: LastMessageMessageType;
+  senderId: number;
+  createdAt: string;
+}
+
+export type ConversationListItem = Conversation & {
+  members: ConversationMemberInfo[];
+  lastMessage?: LastMessage | null;
+  unreadCount: number;
+};
+
+export type ChatMessageMessageType =
+  (typeof ChatMessageMessageType)[keyof typeof ChatMessageMessageType];
+
+export const ChatMessageMessageType = {
+  text: "text",
+  location: "location",
+} as const;
+
+export interface ChatMessage {
+  id: number;
+  conversationId: number;
+  senderId: number;
+  content: string;
+  messageType: ChatMessageMessageType;
+  lat?: number | null;
+  lng?: number | null;
+  createdAt: string;
+  senderName?: string | null;
+  senderAvatar?: string | null;
+  senderBannerColor?: string;
+}
+
+export type CreateConversationInputType =
+  (typeof CreateConversationInputType)[keyof typeof CreateConversationInputType];
+
+export const CreateConversationInputType = {
+  direct: "direct",
+  group: "group",
+} as const;
+
+export interface CreateConversationInput {
+  type?: CreateConversationInputType;
+  name?: string;
+  memberIds: number[];
+}
+
+export type SendChatMessageInputMessageType =
+  (typeof SendChatMessageInputMessageType)[keyof typeof SendChatMessageInputMessageType];
+
+export const SendChatMessageInputMessageType = {
+  text: "text",
+  location: "location",
+} as const;
+
+export interface SendChatMessageInput {
+  content: string;
+  messageType?: SendChatMessageInputMessageType;
+  lat?: number;
+  lng?: number;
+}
+
 export type GetNearbyUsersParams = {
   lat: number;
   lng: number;
@@ -411,4 +508,34 @@ export const UnrsvpEvent200Status = {
 export type UnrsvpEvent200 = {
   ok: boolean;
   status: UnrsvpEvent200Status;
+};
+
+export type GetChatMessagesParams = {
+  before?: number;
+  limit?: number;
+};
+
+export type MarkConversationRead200 = {
+  ok: boolean;
+  lastReadMessageId: number;
+};
+
+export type AddConversationMemberBody = {
+  userId: number;
+};
+
+export type AddConversationMember200 = {
+  ok: boolean;
+  status?: string;
+};
+
+export type RemoveConversationMemberParams = {
+  /**
+   * User ID to remove (omit to leave self)
+   */
+  userId?: number;
+};
+
+export type RemoveConversationMember200 = {
+  ok: boolean;
 };

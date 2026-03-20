@@ -146,6 +146,7 @@ export type ConversationListItem = {
   creatorId: number | null; createdAt: string; updatedAt: string;
   members: ConversationMemberInfo[];
   lastMessage: LastMessage | null;
+  unreadCount: number;
 };
 export type ChatMsg = {
   id: number; conversationId: number; senderId: number;
@@ -169,5 +170,11 @@ export const sendChatMessage = (convId: number, data: { content: string; message
 export const addGroupMember = (convId: number, userId: number) =>
   apiFetch<{ ok: boolean }>(`/conversations/${convId}/members`, { method: "POST", body: JSON.stringify({ userId }) });
 
+export const markConversationRead = (convId: number) =>
+  apiFetch<{ ok: boolean; lastReadMessageId: number }>(`/conversations/${convId}/read`, { method: "POST" });
+
 export const leaveGroup = (convId: number) =>
   apiFetch<{ ok: boolean }>(`/conversations/${convId}/members`, { method: "DELETE" });
+
+export const removeGroupMember = (convId: number, userId: number) =>
+  apiFetch<{ ok: boolean }>(`/conversations/${convId}/members?userId=${userId}`, { method: "DELETE" });

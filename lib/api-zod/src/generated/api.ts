@@ -749,3 +749,148 @@ export const UnrsvpEventResponse = zod.object({
   ok: zod.boolean(),
   status: zod.enum(["left"]),
 });
+
+/**
+ * @summary List user's conversations with members, last message and unread count
+ */
+export const ListConversationsResponseItem = zod
+  .object({
+    id: zod.number(),
+    type: zod.enum(["direct", "group"]),
+    name: zod.string().nullish(),
+    creatorId: zod.number().nullish(),
+    createdAt: zod.date(),
+    updatedAt: zod.date(),
+  })
+  .and(
+    zod.object({
+      members: zod.array(
+        zod.object({
+          userId: zod.number(),
+          displayName: zod.string().nullish(),
+          avatarUrl: zod.string().nullish(),
+          bannerColor: zod.string().nullish(),
+        }),
+      ),
+      lastMessage: zod
+        .object({
+          id: zod.number(),
+          content: zod.string(),
+          messageType: zod.enum(["text", "location"]),
+          senderId: zod.number(),
+          createdAt: zod.date(),
+        })
+        .nullish(),
+      unreadCount: zod.number(),
+    }),
+  );
+export const ListConversationsResponse = zod.array(
+  ListConversationsResponseItem,
+);
+
+/**
+ * @summary Create a direct or group conversation
+ */
+export const CreateConversationBody = zod.object({
+  type: zod.enum(["direct", "group"]).optional(),
+  name: zod.string().optional(),
+  memberIds: zod.array(zod.number()),
+});
+
+export const CreateConversationResponse = zod.object({
+  id: zod.number(),
+  type: zod.enum(["direct", "group"]),
+  name: zod.string().nullish(),
+  creatorId: zod.number().nullish(),
+  createdAt: zod.date(),
+  updatedAt: zod.date(),
+});
+
+/**
+ * @summary Get messages in a conversation
+ */
+export const GetChatMessagesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const getChatMessagesQueryLimitDefault = 50;
+
+export const GetChatMessagesQueryParams = zod.object({
+  before: zod.coerce.number().optional(),
+  limit: zod.coerce.number().default(getChatMessagesQueryLimitDefault),
+});
+
+export const GetChatMessagesResponseItem = zod.object({
+  id: zod.number(),
+  conversationId: zod.number(),
+  senderId: zod.number(),
+  content: zod.string(),
+  messageType: zod.enum(["text", "location"]),
+  lat: zod.number().nullish(),
+  lng: zod.number().nullish(),
+  createdAt: zod.date(),
+  senderName: zod.string().nullish(),
+  senderAvatar: zod.string().nullish(),
+  senderBannerColor: zod.string().optional(),
+});
+export const GetChatMessagesResponse = zod.array(GetChatMessagesResponseItem);
+
+/**
+ * @summary Send a message in a conversation
+ */
+export const SendChatMessageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SendChatMessageBody = zod.object({
+  content: zod.string(),
+  messageType: zod.enum(["text", "location"]).optional(),
+  lat: zod.number().optional(),
+  lng: zod.number().optional(),
+});
+
+/**
+ * @summary Mark conversation as read up to latest message
+ */
+export const MarkConversationReadParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const MarkConversationReadResponse = zod.object({
+  ok: zod.boolean(),
+  lastReadMessageId: zod.number(),
+});
+
+/**
+ * @summary Add a member to a group conversation
+ */
+export const AddConversationMemberParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AddConversationMemberBody = zod.object({
+  userId: zod.number(),
+});
+
+export const AddConversationMemberResponse = zod.object({
+  ok: zod.boolean(),
+  status: zod.string().optional(),
+});
+
+/**
+ * @summary Leave conversation or remove a member (creator only)
+ */
+export const RemoveConversationMemberParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RemoveConversationMemberQueryParams = zod.object({
+  userId: zod.coerce
+    .number()
+    .optional()
+    .describe("User ID to remove (omit to leave self)"),
+});
+
+export const RemoveConversationMemberResponse = zod.object({
+  ok: zod.boolean(),
+});

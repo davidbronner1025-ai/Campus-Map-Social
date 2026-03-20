@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import {
   conversationsTable, conversationMembersTable, chatMessagesTable, usersTable
 } from "@workspace/db/schema";
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, gt } from "drizzle-orm";
 import { requireAuth } from "./users";
 
 const router: IRouter = Router();
@@ -13,12 +13,14 @@ function parseId(val: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-// GET /conversations — list user's conversations with last message + other members
 router.get("/conversations", requireAuth, async (req: Request, res: Response) => {
   const user = (req as Record<string, unknown>).user as { id: number };
 
   const memberships = await db
-    .select({ conversationId: conversationMembersTable.conversationId })
+    .select({
+      conversationId: conversationMembersTable.conversationId,
+      lastReadMessageId: conversationMembersTable.lastReadMessageId,
+    })
     .from(conversationMembersTable)
     .where(eq(conversationMembersTable.userId, user.id));
 
@@ -28,6 +30,7 @@ router.get("/conversations", requireAuth, async (req: Request, res: Response) =>
   }
 
   const convIds = memberships.map(m => m.conversationId);
+  const readMap = new Map(memberships.map(m => [m.conversationId, m.lastReadMessageId]));
 
   const convs = await db
     .select()
@@ -61,10 +64,22 @@ router.get("/conversations", requireAuth, async (req: Request, res: Response) =>
         .orderBy(desc(chatMessagesTable.createdAt))
         .limit(1);
 
+      const lastRead = readMap.get(conv.id) || 0;
+      const unreadResult = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(chatMessagesTable)
+        .where(
+          and(
+            eq(chatMessagesTable.conversationId, conv.id),
+            gt(chatMessagesTable.id, lastRead || 0)
+          )
+        );
+
       return {
         ...conv,
         members,
         lastMessage: lastMsg[0] || null,
+        unreadCount: unreadResult[0]?.count || 0,
       };
     })
   );
@@ -72,7 +87,6 @@ router.get("/conversations", requireAuth, async (req: Request, res: Response) =>
   res.json(enriched);
 });
 
-// POST /conversations — create or find a direct chat, or create a group
 router.post("/conversations", requireAuth, async (req: Request, res: Response) => {
   const user = (req as Record<string, unknown>).user as { id: number };
   const { type, name, memberIds } = req.body as {
@@ -144,7 +158,6 @@ router.post("/conversations", requireAuth, async (req: Request, res: Response) =
   res.status(201).json(conv);
 });
 
-// GET /conversations/:id/messages?before=&limit=
 router.get("/conversations/:id/messages", requireAuth, async (req: Request, res: Response) => {
   const user = (req as Record<string, unknown>).user as { id: number };
   const convId = parseId(req.params.id);
@@ -168,7 +181,7 @@ router.get("/conversations/:id/messages", requireAuth, async (req: Request, res:
 
   const beforeRaw = req.query.before ? parseInt(req.query.before as string, 10) : undefined;
   const beforeId = beforeRaw && Number.isFinite(beforeRaw) && beforeRaw > 0 ? beforeRaw : undefined;
-  let query = db
+  const query = db
     .select({
       id: chatMessagesTable.id,
       conversationId: chatMessagesTable.conversationId,
@@ -196,7 +209,6 @@ router.get("/conversations/:id/messages", requireAuth, async (req: Request, res:
   res.json(messages.reverse());
 });
 
-// POST /conversations/:id/messages — send a message
 router.post("/conversations/:id/messages", requireAuth, async (req: Request, res: Response) => {
   const user = (req as Record<string, unknown>).user as { id: number };
   const convId = parseId(req.params.id);
@@ -262,12 +274,41 @@ router.post("/conversations/:id/messages", requireAuth, async (req: Request, res
   });
 });
 
-// POST /conversations/:id/members — add member to group
+router.post("/conversations/:id/read", requireAuth, async (req: Request, res: Response) => {
+  const user = (req as Record<string, unknown>).user as { id: number };
+  const convId = parseId(req.params.id);
+  if (!convId) { res.status(400).json({ error: "Invalid conversation id" }); return; }
+
+  const lastMsg = await db
+    .select({ id: chatMessagesTable.id })
+    .from(chatMessagesTable)
+    .where(eq(chatMessagesTable.conversationId, convId))
+    .orderBy(desc(chatMessagesTable.id))
+    .limit(1);
+
+  const lastMsgId = lastMsg[0]?.id || 0;
+
+  await db
+    .update(conversationMembersTable)
+    .set({ lastReadMessageId: lastMsgId })
+    .where(and(
+      eq(conversationMembersTable.conversationId, convId),
+      eq(conversationMembersTable.userId, user.id)
+    ));
+
+  res.json({ ok: true, lastReadMessageId: lastMsgId });
+});
+
 router.post("/conversations/:id/members", requireAuth, async (req: Request, res: Response) => {
   const user = (req as Record<string, unknown>).user as { id: number };
   const convId = parseId(req.params.id);
   if (!convId) { res.status(400).json({ error: "Invalid conversation id" }); return; }
   const { userId } = req.body as { userId: number };
+
+  if (!userId || typeof userId !== "number" || !Number.isFinite(userId) || userId <= 0) {
+    res.status(400).json({ error: "Valid userId required" });
+    return;
+  }
 
   const conv = await db.select().from(conversationsTable).where(eq(conversationsTable.id, convId)).limit(1);
   if (!conv.length || conv[0].type !== "group") {
@@ -298,17 +339,37 @@ router.post("/conversations/:id/members", requireAuth, async (req: Request, res:
   }
 });
 
-// DELETE /conversations/:id/members — leave group
 router.delete("/conversations/:id/members", requireAuth, async (req: Request, res: Response) => {
   const user = (req as Record<string, unknown>).user as { id: number };
   const convId = parseId(req.params.id);
   if (!convId) { res.status(400).json({ error: "Invalid conversation id" }); return; }
 
+  const targetUserIdRaw = req.query.userId as string | undefined;
+  let targetUserId = user.id;
+
+  if (targetUserIdRaw) {
+    const parsed = parseId(targetUserIdRaw);
+    if (!parsed) { res.status(400).json({ error: "Invalid userId" }); return; }
+
+    if (parsed !== user.id) {
+      const conv = await db.select().from(conversationsTable).where(eq(conversationsTable.id, convId)).limit(1);
+      if (!conv.length || conv[0].type !== "group") {
+        res.status(400).json({ error: "Can only remove members from group chats" });
+        return;
+      }
+      if (conv[0].creatorId !== user.id) {
+        res.status(403).json({ error: "Only the group creator can remove other members" });
+        return;
+      }
+    }
+    targetUserId = parsed;
+  }
+
   await db
     .delete(conversationMembersTable)
     .where(and(
       eq(conversationMembersTable.conversationId, convId),
-      eq(conversationMembersTable.userId, user.id)
+      eq(conversationMembersTable.userId, targetUserId)
     ));
 
   res.json({ ok: true });
