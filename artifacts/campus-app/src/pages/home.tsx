@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
-import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -473,11 +473,11 @@ export default function HomePage() {
     } catch {} finally { setLoading(false); }
   }, [pos]);
 
-  // Initial fetch + periodic refresh every 30s
+  // Initial fetch + periodic refresh every 15s
   useEffect(() => {
     if (!pos) return;
     fetchMessages();
-    const interval = setInterval(fetchMessages, 30_000);
+    const interval = setInterval(fetchMessages, 15_000);
     return () => clearInterval(interval);
   }, [pos, fetchMessages]);
 
@@ -549,7 +549,17 @@ export default function HomePage() {
 
           {/* Nearby user markers */}
           {showPeople && nearbyUsers.map(u => (
-            <Marker key={`user-${u.id}`} position={[u.lat, u.lng]} icon={makeUserMarker(u)} />
+            <Marker key={`user-${u.id}`} position={[u.lat, u.lng]} icon={makeUserMarker(u)}>
+              <Popup className="user-popup" closeButton={false}>
+                <div style={{ minWidth: 120, textAlign: "center", padding: "2px 0" }}>
+                  <p style={{ fontWeight: 700, fontSize: 13, margin: 0 }}>{u.displayName || "?"}</p>
+                  {u.title && <p style={{ fontSize: 11, color: "#94a3b8", margin: "2px 0 0" }}>{u.title}</p>}
+                  <p style={{ fontSize: 10, color: u.active ? "#4ade80" : "#94a3b8", margin: "4px 0 0" }}>
+                    {u.active ? "Active now" : u.lastSeen ? `Last seen ${timeAgo(u.lastSeen)}` : "Inactive"}
+                  </p>
+                </div>
+              </Popup>
+            </Marker>
           ))}
         </MapContainer>
 

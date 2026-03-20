@@ -501,6 +501,82 @@ export const DeleteGameResponse = zod.object({
 });
 
 /**
+ * @summary Get visible users within radius
+ */
+export const getNearbyUsersQueryRadiusDefault = 500;
+
+export const GetNearbyUsersQueryParams = zod.object({
+  lat: zod.coerce.number(),
+  lng: zod.coerce.number(),
+  radius: zod.coerce.number().default(getNearbyUsersQueryRadiusDefault),
+});
+
+export const GetNearbyUsersResponseItem = zod.object({
+  id: zod.number(),
+  displayName: zod.string(),
+  title: zod.string().nullish(),
+  avatarUrl: zod.string().nullish(),
+  bannerColor: zod.string(),
+  visibility: zod.string(),
+  lat: zod.number(),
+  lng: zod.number(),
+  lastSeen: zod.date().nullish(),
+  active: zod.boolean(),
+});
+export const GetNearbyUsersResponse = zod.array(GetNearbyUsersResponseItem);
+
+/**
+ * @summary Get current user profile
+ */
+export const getMeResponseVisibilityDefault = `campus`;
+
+export const GetMeResponse = zod.object({
+  id: zod.number(),
+  phone: zod.string(),
+  displayName: zod.string(),
+  title: zod.string().nullish(),
+  avatarUrl: zod.string().nullish(),
+  bannerUrl: zod.string().nullish(),
+  bannerColor: zod.string(),
+  visibility: zod
+    .enum(["campus", "ghost"])
+    .default(getMeResponseVisibilityDefault),
+  lat: zod.number().nullish(),
+  lng: zod.number().nullish(),
+  lastSeen: zod.date().nullish(),
+});
+
+/**
+ * @summary Update current user profile
+ */
+export const UpdateMeBody = zod.object({
+  displayName: zod.string().optional(),
+  title: zod.string().nullish(),
+  avatarUrl: zod.string().nullish(),
+  bannerUrl: zod.string().nullish(),
+  bannerColor: zod.string().optional(),
+  visibility: zod.enum(["campus", "ghost"]).optional(),
+});
+
+export const updateMeResponseVisibilityDefault = `campus`;
+
+export const UpdateMeResponse = zod.object({
+  id: zod.number(),
+  phone: zod.string(),
+  displayName: zod.string(),
+  title: zod.string().nullish(),
+  avatarUrl: zod.string().nullish(),
+  bannerUrl: zod.string().nullish(),
+  bannerColor: zod.string(),
+  visibility: zod
+    .enum(["campus", "ghost"])
+    .default(updateMeResponseVisibilityDefault),
+  lat: zod.number().nullish(),
+  lng: zod.number().nullish(),
+  lastSeen: zod.date().nullish(),
+});
+
+/**
  * @summary Vote to join a game session
  */
 export const VoteForGameParams = zod.object({

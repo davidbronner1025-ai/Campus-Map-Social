@@ -262,3 +262,61 @@ export interface CreateGameRequest {
 export interface VoteGameRequest {
   playerName: string;
 }
+
+export type UserProfileVisibility =
+  (typeof UserProfileVisibility)[keyof typeof UserProfileVisibility];
+
+export const UserProfileVisibility = {
+  campus: "campus",
+  ghost: "ghost",
+} as const;
+
+export interface UserProfile {
+  id: number;
+  phone: string;
+  displayName: string;
+  title?: string | null;
+  avatarUrl?: string | null;
+  bannerUrl?: string | null;
+  bannerColor: string;
+  visibility: UserProfileVisibility;
+  lat?: number | null;
+  lng?: number | null;
+  lastSeen?: string | null;
+}
+
+export type UpdateUserRequestVisibility =
+  (typeof UpdateUserRequestVisibility)[keyof typeof UpdateUserRequestVisibility];
+
+export const UpdateUserRequestVisibility = {
+  campus: "campus",
+  ghost: "ghost",
+} as const;
+
+export interface UpdateUserRequest {
+  displayName?: string;
+  title?: string | null;
+  avatarUrl?: string | null;
+  bannerUrl?: string | null;
+  bannerColor?: string;
+  visibility?: UpdateUserRequestVisibility;
+}
+
+export interface NearbyUser {
+  id: number;
+  displayName: string;
+  title?: string | null;
+  avatarUrl?: string | null;
+  bannerColor: string;
+  visibility: string;
+  lat: number;
+  lng: number;
+  lastSeen?: string | null;
+  active: boolean;
+}
+
+export type GetNearbyUsersParams = {
+  lat: number;
+  lng: number;
+  radius?: number;
+};

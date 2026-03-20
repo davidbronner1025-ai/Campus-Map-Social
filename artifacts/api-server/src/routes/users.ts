@@ -57,9 +57,26 @@ router.put("/me/location", requireAuth, async (req: Request, res: Response) => {
   res.json({ ok: true });
 });
 
+// Rate limiter for /users/nearby — per-user sliding window
+const nearbyRateMap = new Map<number, number[]>();
+const NEARBY_RATE_WINDOW = 60_000;
+const NEARBY_RATE_LIMIT = 20;
+function checkNearbyRate(userId: number): boolean {
+  const now = Date.now();
+  const timestamps = (nearbyRateMap.get(userId) || []).filter(t => now - t < NEARBY_RATE_WINDOW);
+  if (timestamps.length >= NEARBY_RATE_LIMIT) return false;
+  timestamps.push(now);
+  nearbyRateMap.set(userId, timestamps);
+  return true;
+}
+
 // GET /users/nearby — get visible users within radius (Haversine)
 router.get("/users/nearby", requireAuth, async (req: Request, res: Response) => {
   const currentUser = (req as any).user;
+  if (!checkNearbyRate(currentUser.id)) {
+    res.status(429).json({ error: "Too many requests. Try again shortly." });
+    return;
+  }
   const lat = parseFloat(req.query.lat as string);
   const lng = parseFloat(req.query.lng as string);
   const radius = Math.min(parseFloat(req.query.radius as string) || 500, 2000);
