@@ -26,6 +26,7 @@ import type {
   CreateMenuRequest,
   CreateScheduleEntryRequest,
   DailyMenu,
+  DeleteEvent200,
   ErrorResponse,
   EventRow,
   GameSession,
@@ -2344,8 +2345,8 @@ export const getDeleteEventUrl = (id: number) => {
 export const deleteEvent = async (
   id: number,
   options?: RequestInit,
-): Promise<SuccessResponse> => {
-  return customFetch<SuccessResponse>(getDeleteEventUrl(id), {
+): Promise<DeleteEvent200> => {
+  return customFetch<DeleteEvent200>(getDeleteEventUrl(id), {
     ...options,
     method: "DELETE",
   });

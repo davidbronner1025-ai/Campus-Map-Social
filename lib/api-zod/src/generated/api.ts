@@ -723,8 +723,7 @@ export const DeleteEventParams = zod.object({
 });
 
 export const DeleteEventResponse = zod.object({
-  success: zod.boolean(),
-  message: zod.string().optional(),
+  ok: zod.boolean(),
 });
 
 /**

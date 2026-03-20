@@ -23,6 +23,7 @@ export * from "./dailyMenu";
 export * from "./dailyMenuItemsItem";
 export * from "./dailyMenuItemsItemCategory";
 export * from "./dayOfWeek";
+export * from "./deleteEvent200";
 export * from "./errorResponse";
 export * from "./eventCategory";
 export * from "./eventCreator";

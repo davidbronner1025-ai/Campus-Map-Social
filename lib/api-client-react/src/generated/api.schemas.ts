@@ -384,6 +384,10 @@ export type GetNearbyEventsParams = {
   radius?: number;
 };
 
+export type DeleteEvent200 = {
+  ok: boolean;
+};
+
 export type RsvpEvent200Status =
   (typeof RsvpEvent200Status)[keyof typeof RsvpEvent200Status];
 

@@ -624,7 +624,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResponse"
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required: [ok]
         "403":
           description: Not the event creator
         "404":
