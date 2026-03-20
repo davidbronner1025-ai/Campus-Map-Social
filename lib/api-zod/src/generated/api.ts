@@ -894,3 +894,53 @@ export const RemoveConversationMemberQueryParams = zod.object({
 export const RemoveConversationMemberResponse = zod.object({
   ok: zod.boolean(),
 });
+
+/**
+ * @summary List notifications for the current user
+ */
+export const listNotificationsQueryLimitDefault = 30;
+
+export const ListNotificationsQueryParams = zod.object({
+  limit: zod.coerce.number().default(listNotificationsQueryLimitDefault),
+  before: zod.coerce.number().optional(),
+});
+
+export const ListNotificationsResponse = zod.object({
+  notifications: zod.array(
+    zod.object({
+      id: zod.number(),
+      userId: zod.number(),
+      type: zod.enum([
+        "reaction",
+        "reply",
+        "event_join",
+        "nearby_event",
+        "chat_message",
+      ]),
+      referenceId: zod.number().nullish(),
+      referenceType: zod.enum(["message", "event", "conversation"]).nullish(),
+      content: zod.string(),
+      read: zod.boolean(),
+      createdAt: zod.date(),
+    }),
+  ),
+  unreadCount: zod.number(),
+});
+
+/**
+ * @summary Mark a single notification as read
+ */
+export const MarkNotificationReadParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const MarkNotificationReadResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Mark all notifications as read
+ */
+export const MarkAllNotificationsReadResponse = zod.object({
+  ok: zod.boolean(),
+});

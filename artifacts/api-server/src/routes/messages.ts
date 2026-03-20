@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { messagesTable, messageReactionsTable, messageRepliesTable, usersTable } from "@workspace/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { requireAuth } from "./users";
+import { createNotification } from "../lib/notify";
 
 const router: IRouter = Router();
 
@@ -138,6 +139,14 @@ router.post("/messages/:id/react", requireAuth, async (req: Request, res: Respon
     .values({ messageId: msgId, userId: user.id, type, emoji: emoji || null })
     .returning();
 
+  const msg = await db.select().from(messagesTable).where(eq(messagesTable.id, msgId)).limit(1);
+  if (msg.length && msg[0].userId !== user.id) {
+    const reactor = await db.select({ displayName: usersTable.displayName }).from(usersTable).where(eq(usersTable.id, user.id)).limit(1);
+    const name = reactor[0]?.displayName || "Someone";
+    const reactionEmoji = type === "yes" ? "👍" : type === "no" ? "👎" : (emoji || "😀");
+    createNotification(msg[0].userId, "reaction", `${name} reacted ${reactionEmoji} to your message`, msgId, "message");
+  }
+
   res.json(created[0]);
 });
 
@@ -173,6 +182,13 @@ router.post("/messages/:id/replies", requireAuth, async (req: Request, res: Resp
     .insert(messageRepliesTable)
     .values({ messageId: msgId, userId: user.id, content })
     .returning();
+
+  const msg = await db.select().from(messagesTable).where(eq(messagesTable.id, msgId)).limit(1);
+  if (msg.length && msg[0].userId !== user.id) {
+    const replier = await db.select({ displayName: usersTable.displayName }).from(usersTable).where(eq(usersTable.id, user.id)).limit(1);
+    const name = replier[0]?.displayName || "Someone";
+    createNotification(msg[0].userId, "reply", `${name} replied to your message`, msgId, "message");
+  }
 
   res.status(201).json(created[0]);
 });

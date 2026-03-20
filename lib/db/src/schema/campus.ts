@@ -260,6 +260,20 @@ export const chatMessagesTable = pgTable("chat_messages", {
 
 export type ChatMessage = typeof chatMessagesTable.$inferSelect;
 
+// ─── Notifications ─────────────────────────────────────────────────────────
+export const notificationsTable = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  type: text("type").$type<"reaction" | "reply" | "event_join" | "nearby_event" | "chat_message">().notNull(),
+  referenceId: integer("reference_id"),
+  referenceType: text("reference_type").$type<"message" | "event" | "conversation">(),
+  content: text("content").notNull(),
+  read: boolean("read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Notification = typeof notificationsTable.$inferSelect;
+
 // ─── Message Reactions ──────────────────────────────────────────────────────
 export const messageReactionsTable = pgTable("message_reactions", {
   id: serial("id").primaryKey(),

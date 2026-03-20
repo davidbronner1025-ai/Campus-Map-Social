@@ -7,6 +7,7 @@ import usersRouter from "./users";
 import messagesRouter from "./messages";
 import eventsRouter from "./events";
 import chatRouter from "./chat";
+import notificationsRouter from "./notifications";
 import adminRouter from "./admin";
 
 const router: IRouter = Router();
@@ -19,6 +20,7 @@ router.use(usersRouter);
 router.use(messagesRouter);
 router.use(eventsRouter);
 router.use(chatRouter);
+router.use(notificationsRouter);
 router.use(adminRouter);
 
 export default router;

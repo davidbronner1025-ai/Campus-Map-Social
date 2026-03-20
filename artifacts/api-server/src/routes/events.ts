@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { eventsTable, eventRsvpsTable, usersTable } from "@workspace/db/schema";
 import { eq, and, desc, sql, gte } from "drizzle-orm";
 import { requireAuth } from "./users";
+import { createNotification } from "../lib/notify";
 
 const router: IRouter = Router();
 
@@ -167,6 +168,13 @@ router.post("/events/:id/rsvp", requireAuth, async (req: Request, res: Response)
 
   try {
     await db.insert(eventRsvpsTable).values({ eventId, userId: user.id });
+
+    if (evt[0].creatorId !== user.id) {
+      const joiner = await db.select({ displayName: usersTable.displayName }).from(usersTable).where(eq(usersTable.id, user.id)).limit(1);
+      const name = joiner[0]?.displayName || "Someone";
+      createNotification(evt[0].creatorId, "event_join", `${name} joined your event "${evt[0].title}"`, eventId, "event");
+    }
+
     res.json({ ok: true, status: "joined" });
   } catch (e: unknown) {
     if (e instanceof Error && "code" in e && (e as { code: string }).code === "23505") {

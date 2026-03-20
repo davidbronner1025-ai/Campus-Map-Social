@@ -17,6 +17,7 @@ tags:
   - name: users
   - name: events
   - name: chat
+  - name: notifications
 
 paths:
   /healthz:
@@ -884,6 +885,83 @@ paths:
                     type: boolean
                 required: [ok]
 
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List notifications for the current user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 30
+        - name: before
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Notifications with unread count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notifications:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AppNotification"
+                  unreadCount:
+                    type: integer
+                required: [notifications, unreadCount]
+
+  /notifications/{id}/read:
+    put:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark a single notification as read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Marked as read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required: [ok]
+
+  /notifications/read-all:
+    put:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: All marked as read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required: [ok]
+
 components:
   schemas:
     HealthStatus:
@@ -1565,6 +1643,32 @@ components:
         lng:
           type: number
       required: [content]
+
+    AppNotification:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        type:
+          type: string
+          enum: [reaction, reply, event_join, nearby_event, chat_message]
+        referenceId:
+          type: integer
+          nullable: true
+        referenceType:
+          type: string
+          enum: [message, event, conversation]
+          nullable: true
+        content:
+          type: string
+        read:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, userId, type, content, read, createdAt]
 
   securitySchemes:
     bearerAuth:

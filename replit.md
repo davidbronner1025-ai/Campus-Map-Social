@@ -81,6 +81,11 @@ artifacts-monorepo/
   - New Chat sheet with nearby-user search
   - Bottom navigation: Map / Chats tabs on both home and chats pages
   - Group chat: named groups, add members, leave group
+- **Notifications Center**: Bell icon in header with unread badge, dropdown panel with notification list, mark-read/mark-all-read
+  - Auto-generated from: reactions on messages, replies to messages, event RSVP joins
+  - Notification types: reaction, reply, event_join, nearby_event, chat_message
+  - 15-second polling for new notifications, tap-to-navigate to source
+- **UX Polish**: Loading skeleton placeholders on chats list, empty states with helpful prompts
 - **Location engine**: Battery-optimized (network-accuracy, 30s server push, paused when backgrounded)
 
 ## Database Schema (lib/db/src/schema/campus.ts)
@@ -97,6 +102,7 @@ artifacts-monorepo/
 - `conversations` — Chat conversations (type: direct/group, name, creatorId)
 - `conversation_members` — Members of each conversation, unique(conversationId, userId)
 - `chat_messages` — Messages in conversations (text or location type, with optional lat/lng)
+- `notifications` — User notifications (type, referenceId, referenceType, content, read status)
 
 ## API Endpoints
 
@@ -137,6 +143,11 @@ artifacts-monorepo/
 - `POST /api/conversations/:id/messages` — Send message (text or location)
 - `POST /api/conversations/:id/members` — Add member to group
 - `DELETE /api/conversations/:id/members` — Leave group
+
+### Notifications (requires Bearer token)
+- `GET /api/notifications?limit=&before=` — List notifications with unread count (cursor pagination)
+- `PUT /api/notifications/:id/read` — Mark single notification as read
+- `PUT /api/notifications/read-all` — Mark all notifications as read
 
 ## Key Notes
 

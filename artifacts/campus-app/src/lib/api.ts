@@ -178,3 +178,24 @@ export const leaveGroup = (convId: number) =>
 
 export const removeGroupMember = (convId: number, userId: number) =>
   apiFetch<{ ok: boolean }>(`/conversations/${convId}/members?userId=${userId}`, { method: "DELETE" });
+
+// Notifications
+export type AppNotification = {
+  id: number;
+  userId: number;
+  type: "reaction" | "reply" | "event_join" | "nearby_event" | "chat_message";
+  referenceId: number | null;
+  referenceType: "message" | "event" | "conversation" | null;
+  content: string;
+  read: boolean;
+  createdAt: string;
+};
+
+export const getNotifications = (limit = 30, before?: number) =>
+  apiFetch<{ notifications: AppNotification[]; unreadCount: number }>(`/notifications?limit=${limit}${before ? `&before=${before}` : ""}`);
+
+export const markNotificationRead = (id: number) =>
+  apiFetch<{ ok: boolean }>(`/notifications/${id}/read`, { method: "PUT" });
+
+export const markAllNotificationsRead = () =>
+  apiFetch<{ ok: boolean }>(`/notifications/read-all`, { method: "PUT" });

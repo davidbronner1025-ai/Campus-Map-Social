@@ -469,6 +469,38 @@ export interface SendChatMessageInput {
   lng?: number;
 }
 
+export type AppNotificationType =
+  (typeof AppNotificationType)[keyof typeof AppNotificationType];
+
+export const AppNotificationType = {
+  reaction: "reaction",
+  reply: "reply",
+  event_join: "event_join",
+  nearby_event: "nearby_event",
+  chat_message: "chat_message",
+} as const;
+
+export type AppNotificationReferenceType =
+  | (typeof AppNotificationReferenceType)[keyof typeof AppNotificationReferenceType]
+  | null;
+
+export const AppNotificationReferenceType = {
+  message: "message",
+  event: "event",
+  conversation: "conversation",
+} as const;
+
+export interface AppNotification {
+  id: number;
+  userId: number;
+  type: AppNotificationType;
+  referenceId?: number | null;
+  referenceType?: AppNotificationReferenceType;
+  content: string;
+  read: boolean;
+  createdAt: string;
+}
+
 export type GetNearbyUsersParams = {
   lat: number;
   lng: number;
@@ -537,5 +569,23 @@ export type RemoveConversationMemberParams = {
 };
 
 export type RemoveConversationMember200 = {
+  ok: boolean;
+};
+
+export type ListNotificationsParams = {
+  limit?: number;
+  before?: number;
+};
+
+export type ListNotifications200 = {
+  notifications: AppNotification[];
+  unreadCount: number;
+};
+
+export type MarkNotificationRead200 = {
+  ok: boolean;
+};
+
+export type MarkAllNotificationsRead200 = {
   ok: boolean;
 };

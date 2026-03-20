@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationEngine } from "@/hooks/useLocationEngine";
+import NotificationBell from "@/components/NotificationBell";
 import {
   getNearbyMessages, getNearbyUsers, getNearbyEvents,
   pinMessage, deleteMessage, reactToMessage,
@@ -918,10 +919,11 @@ export default function HomePage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button onClick={fetchAll} className="p-2 rounded-xl hover:bg-secondary transition-colors" disabled={loading}>
             <RefreshCw className={`w-4 h-4 text-muted-foreground ${loading ? "animate-spin" : ""}`} />
           </button>
+          <NotificationBell />
           <button onClick={() => navigate("/profile")} className="p-2 rounded-xl hover:bg-secondary transition-colors">
             <User className="w-4 h-4 text-muted-foreground" />
           </button>

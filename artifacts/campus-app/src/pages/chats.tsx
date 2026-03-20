@@ -398,16 +398,27 @@ export default function ChatsPage() {
     <div className="flex flex-col h-full bg-background" style={{ maxWidth: 480, margin: "0 auto" }}>
       <div className="flex items-center justify-between px-4 py-3.5 border-b border-border bg-card/80 backdrop-blur-sm">
         <h1 className="font-bold text-lg text-foreground">Chats</h1>
-        <button onClick={() => setShowNew(true)}
-          className="p-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-          <Plus className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setShowNew(true)}
+            className="p-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         {loading && (
-          <div className="flex justify-center py-12">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="space-y-0">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="flex items-center gap-3 px-4 py-3.5 border-b border-border animate-pulse">
+                <div className="w-11 h-11 rounded-full bg-muted" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 w-24 bg-muted rounded" />
+                  <div className="h-3 w-40 bg-muted rounded" />
+                </div>
+                <div className="h-3 w-8 bg-muted rounded" />
+              </div>
+            ))}
           </div>
         )}
         {!loading && convs.length === 0 && (
