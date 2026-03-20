@@ -14,7 +14,7 @@ export default function RootRedirect() {
       if (isError || !campus) {
         setLocation("/setup");
       } else {
-        setLocation("/zones");
+        setLocation("/locations");
       }
     }
   }, [isLoading, isError, campus, setLocation]);

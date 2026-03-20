@@ -96,6 +96,22 @@ export function CardFooter({ className, ...props }: React.HTMLAttributes<HTMLDiv
   return <div className={cn("flex items-center p-6 pt-0", className)} {...props} />;
 }
 
+// --- Badge ---
+export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: "default" | "secondary" | "destructive" | "outline";
+}
+export function Badge({ className, variant = "default", ...props }: BadgeProps) {
+  const variants = {
+    default: "bg-primary text-primary-foreground",
+    secondary: "bg-secondary text-secondary-foreground",
+    destructive: "bg-destructive text-destructive-foreground",
+    outline: "border border-primary text-primary bg-transparent",
+  };
+  return (
+    <div className={cn("inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-mono font-semibold transition-colors", variants[variant], className)} {...props} />
+  );
+}
+
 // --- Textarea ---
 export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
   ({ className, ...props }, ref) => {
