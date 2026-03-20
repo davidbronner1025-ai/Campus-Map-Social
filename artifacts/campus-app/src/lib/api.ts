@@ -101,3 +101,35 @@ export const getReplies = (id: number) =>
 
 export const postReply = (id: number, content: string) =>
   apiFetch<Reply>(`/messages/${id}/replies`, { method: "POST", body: JSON.stringify({ content }) });
+
+// Events
+export type EventCreator = { id: number; displayName: string; avatarUrl: string | null; bannerColor: string };
+export type EventRsvpUser = { id: number; userId: number; displayName: string | null; avatarUrl: string | null };
+export type NearbyEvent = {
+  id: number; creatorId: number; locationId: number | null;
+  title: string; description: string | null;
+  category: "study_group" | "party" | "sports" | "club_meeting" | "food" | "other";
+  lat: number; lng: number; startsAt: string;
+  maxParticipants: number | null; createdAt: string;
+  creator: EventCreator | null;
+  rsvpCount: number; rsvps: EventRsvpUser[];
+  distance: number;
+};
+
+export const getNearbyEvents = (lat: number, lng: number, radius = 1000) =>
+  apiFetch<NearbyEvent[]>(`/events/nearby?lat=${lat}&lng=${lng}&radius=${radius}`);
+
+export const createEvent = (data: {
+  title: string; description?: string; category?: string;
+  lat: number; lng: number; startsAt: string;
+  maxParticipants?: number; locationId?: number;
+}) => apiFetch<{ id: number; title: string; category: string; lat: number; lng: number; startsAt: string }>("/events", { method: "POST", body: JSON.stringify(data) });
+
+export const deleteEvent = (id: number) =>
+  apiFetch<{ ok: boolean }>(`/events/${id}`, { method: "DELETE" });
+
+export const rsvpEvent = (id: number) =>
+  apiFetch<{ ok: boolean; status: string }>(`/events/${id}/rsvp`, { method: "POST" });
+
+export const unrsvpEvent = (id: number) =>
+  apiFetch<{ ok: boolean; status: string }>(`/events/${id}/rsvp`, { method: "DELETE" });

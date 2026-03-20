@@ -1,6 +1,6 @@
 import {
   pgTable, serial, text, doublePrecision, integer,
-  timestamp, jsonb, real, date, boolean
+  timestamp, jsonb, real, date, boolean, uniqueIndex
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -137,6 +137,37 @@ export const gameVotesTable = pgTable("game_votes", {
 export const insertGameSchema = createInsertSchema(gameSessionsTable).omit({ id: true, createdAt: true });
 export type InsertGame = z.infer<typeof insertGameSchema>;
 export type GameSession = typeof gameSessionsTable.$inferSelect;
+
+// ─── Events ───────────────────────────────────────────────────────────────
+export const eventCategoryEnum = ["study_group", "party", "sports", "club_meeting", "food", "other"] as const;
+export type EventCategory = typeof eventCategoryEnum[number];
+
+export const eventsTable = pgTable("events", {
+  id: serial("id").primaryKey(),
+  creatorId: integer("creator_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  locationId: integer("location_id").references(() => locationsTable.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  category: text("category").$type<EventCategory>().notNull().default("other"),
+  lat: doublePrecision("lat").notNull(),
+  lng: doublePrecision("lng").notNull(),
+  startsAt: timestamp("starts_at").notNull(),
+  maxParticipants: integer("max_participants"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Event = typeof eventsTable.$inferSelect;
+
+export const eventRsvpsTable = pgTable("event_rsvps", {
+  id: serial("id").primaryKey(),
+  eventId: integer("event_id").notNull().references(() => eventsTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("event_rsvps_event_user_unique").on(table.eventId, table.userId),
+]);
+
+export type EventRsvp = typeof eventRsvpsTable.$inferSelect;
 
 // ─── Users ─────────────────────────────────────────────────────────────────
 export const visibilityEnum = ["campus", "ghost"] as const;

@@ -64,6 +64,14 @@ artifacts-monorepo/
 - **Profile**: Emoji or URL avatar, banner color picker, display name + title
 - **Ghost Mode**: Privacy toggle in profile — switch between "Visible on Map" (campus) and "Ghost Mode" to hide from other users' maps
 - **Users on Map**: Nearby users shown as avatar markers on the map with active/inactive indicators, togglable via "People" button
+- **Events**: Create and join nearby events with RSVP
+  - 6 categories: 📚 Study Group · 🎉 Party · 🏀 Sports · 🤝 Club Meeting · 🍜 Food · ✨ Other
+  - Feed tab switcher: Messages / Events
+  - Distinct event markers on map (rounded square with category emoji)
+  - Event detail sheet with RSVP/leave, participant list
+  - Create event bottom sheet with title, category picker, date/time, max participants
+  - Creator auto-RSVPs, capacity enforcement, unique RSVP constraint
+  - Two FABs: primary message compose + secondary event create
 - **Location engine**: Battery-optimized (network-accuracy, 30s server push, paused when backgrounded)
 
 ## Database Schema (lib/db/src/schema/campus.ts)
@@ -75,6 +83,8 @@ artifacts-monorepo/
 - `messages` — Pinned messages with type, invitation type, expiry, lat/lng
 - `messageReactions` — Yes/No/emoji reactions per message per user
 - `messageReplies` — Threaded replies per message
+- `events` — Campus events with title, description, category, lat/lng, startsAt, maxParticipants, creatorId
+- `event_rsvps` — RSVP records with unique(eventId, userId) constraint, cascade delete
 
 ## API Endpoints
 
@@ -92,6 +102,14 @@ artifacts-monorepo/
 - `PUT /api/me` — Update profile fields (including `visibility: "campus" | "ghost"`)
 - `PUT /api/me/location` — Push location update
 - `GET /api/users/nearby?lat=&lng=&radius=` — Nearby visible users (Haversine filter, excludes ghost users)
+
+### Events (requires Bearer token)
+- `GET /api/events/nearby?lat=&lng=&radius=` — Nearby upcoming events (Haversine, future only)
+- `POST /api/events` — Create event (auto-RSVPs creator)
+- `DELETE /api/events/:id` — Delete own event
+- `GET /api/events/:id` — Event detail with RSVP list
+- `POST /api/events/:id/rsvp` — Join event
+- `DELETE /api/events/:id/rsvp` — Leave event
 
 ### Messages (requires Bearer token)
 - `GET /api/messages/nearby?lat=&lng=&radius=` — Nearby messages with Haversine filter

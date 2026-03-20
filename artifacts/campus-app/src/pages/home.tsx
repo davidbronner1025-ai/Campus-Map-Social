@@ -10,8 +10,11 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationEngine } from "@/hooks/useLocationEngine";
 import {
-  getNearbyMessages, getNearbyUsers, pinMessage, deleteMessage, reactToMessage,
-  getReplies, postReply, type NearbyMessage, type NearbyUser, type Reply
+  getNearbyMessages, getNearbyUsers, getNearbyEvents,
+  pinMessage, deleteMessage, reactToMessage,
+  createEvent, deleteEvent, rsvpEvent, unrsvpEvent,
+  getReplies, postReply,
+  type NearbyMessage, type NearbyUser, type NearbyEvent, type Reply
 } from "@/lib/api";
 
 // Fix Leaflet default icons
@@ -37,6 +40,44 @@ const INVITE_TYPES = [
 
 function getInviteConfig(type: string | null) {
   return INVITE_TYPES.find(t => t.key === type) || null;
+}
+
+// ── Event Categories ─────────────────────────────────────────────────────
+const EVENT_CATEGORIES = [
+  { key: "study_group",  emoji: "📚", label: "Study Group",  color: "#818cf8" },
+  { key: "party",        emoji: "🎉", label: "Party",        color: "#f472b6" },
+  { key: "sports",       emoji: "🏀", label: "Sports",       color: "#4ade80" },
+  { key: "club_meeting", emoji: "🤝", label: "Club Meeting", color: "#60a5fa" },
+  { key: "food",         emoji: "🍜", label: "Food",         color: "#fb923c" },
+  { key: "other",        emoji: "✨", label: "Other",        color: "#a78bfa" },
+] as const;
+
+function getEventCategory(cat: string) {
+  return EVENT_CATEGORIES.find(c => c.key === cat) || EVENT_CATEGORIES[5];
+}
+
+function formatEventTime(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diff = d.getTime() - now.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 0) return "Started";
+  if (mins < 60) return `In ${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `In ${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  return `In ${days}d`;
+}
+
+function formatEventDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (d.toDateString() === now.toDateString()) return `Today, ${time}`;
+  if (d.toDateString() === tomorrow.toDateString()) return `Tomorrow, ${time}`;
+  return `${d.toLocaleDateString([], { month: "short", day: "numeric" })}, ${time}`;
 }
 
 // ── Custom map marker via DivIcon ──────────────────────────────────────────
@@ -89,6 +130,27 @@ function makeUserMarker(user: NearbyUser) {
         <div style="position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:9px;font-weight:600;color:white;background:rgba(0,0,0,0.6);padding:1px 5px;border-radius:4px;pointer-events:none;">
           ${safeName}
         </div>
+      </div>`,
+  });
+}
+
+// ── Event map marker ─────────────────────────────────────────────────────
+function makeEventMarker(event: NearbyEvent) {
+  const cat = getEventCategory(event.category);
+  const safeTitle = esc(event.title.slice(0, 20));
+  return L.divIcon({
+    className: "",
+    iconSize: [44, 54],
+    iconAnchor: [22, 54],
+    html: `
+      <div style="position:relative;width:44px;height:54px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:${cat.color};border:2.5px solid rgba(255,255,255,0.9);box-shadow:0 3px 12px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:22px;line-height:1;">${cat.emoji}</span>
+        </div>
+        <div style="position:absolute;bottom:-12px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:8px;font-weight:700;color:white;background:${cat.color};padding:1px 6px;border-radius:4px;pointer-events:none;max-width:80px;overflow:hidden;text-overflow:ellipsis;">
+          ${safeTitle}
+        </div>
+        <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid ${cat.color};"></div>
       </div>`,
   });
 }
@@ -441,6 +503,315 @@ function ComposeSheet({ onClose, onPosted, userLat, userLng }: {
   );
 }
 
+// ── Event Card ────────────────────────────────────────────────────────────
+function EventCard({
+  event, currentUserId, onOpen, onRsvp, onDelete
+}: {
+  event: NearbyEvent; currentUserId: number;
+  onOpen: (e: NearbyEvent) => void;
+  onRsvp: (id: number, join: boolean) => void;
+  onDelete: (id: number) => void;
+}) {
+  const cat = getEventCategory(event.category);
+  const isCreator = event.creatorId === currentUserId;
+  const hasJoined = event.rsvps.some(r => r.userId === currentUserId);
+  const capacityText = event.maxParticipants
+    ? `${event.rsvpCount}/${event.maxParticipants}`
+    : `${event.rsvpCount}`;
+
+  return (
+    <div onClick={() => onOpen(event)}
+      className="bg-card rounded-2xl border border-border overflow-hidden cursor-pointer hover:border-border/80 transition-colors"
+      style={{ borderLeftWidth: 3, borderLeftColor: cat.color }}>
+      <div className="px-4 py-3 flex items-start gap-3">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
+          style={{ background: cat.color + "20" }}>
+          {cat.emoji}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground truncate">{event.title}</p>
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+            <Clock className="w-2.5 h-2.5" />
+            {formatEventDate(event.startsAt)}
+            <span style={{ color: cat.color }} className="font-semibold">{formatEventTime(event.startsAt)}</span>
+          </p>
+          <div className="flex items-center gap-2 mt-1.5">
+            <span className="text-xs px-2 py-0.5 rounded-md font-medium"
+              style={{ background: cat.color + "15", color: cat.color }}>
+              {cat.label}
+            </span>
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Users className="w-2.5 h-2.5" /> {capacityText} going
+            </span>
+            {event.distance > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {event.distance < 1000 ? `${event.distance}m` : `${(event.distance / 1000).toFixed(1)}km`}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+          {isCreator ? (
+            <button onClick={e => { e.stopPropagation(); onDelete(event.id); }}
+              className="p-1 text-muted-foreground hover:text-destructive transition-colors">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          ) : (
+            <button onClick={e => { e.stopPropagation(); onRsvp(event.id, !hasJoined); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                hasJoined
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-foreground hover:bg-primary/20"
+              }`}>
+              {hasJoined ? "Joined ✓" : "Join"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Event Detail Sheet ───────────────────────────────────────────────────
+function EventDetailSheet({
+  event, currentUserId, onClose, onRefresh
+}: {
+  event: NearbyEvent; currentUserId: number; onClose: () => void; onRefresh: () => void;
+}) {
+  const cat = getEventCategory(event.category);
+  const hasJoined = event.rsvps.some(r => r.userId === currentUserId);
+  const isCreator = event.creatorId === currentUserId;
+  const isFull = event.maxParticipants ? event.rsvpCount >= event.maxParticipants : false;
+  const [acting, setActing] = useState(false);
+
+  const handleRsvp = async () => {
+    setActing(true);
+    try {
+      if (hasJoined) await unrsvpEvent(event.id);
+      else await rsvpEvent(event.id);
+      onRefresh();
+    } finally { setActing(false); }
+  };
+
+  const handleDelete = async () => {
+    setActing(true);
+    try {
+      await deleteEvent(event.id);
+      onRefresh();
+      onClose();
+    } finally { setActing(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-background" style={{ maxWidth: 480, margin: "0 auto" }}>
+      <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border bg-card/80 backdrop-blur-sm">
+        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
+          <X className="w-5 h-5" />
+        </button>
+        <div className="flex-1">
+          <p className="text-sm font-semibold">Event Details</p>
+        </div>
+        {isCreator && (
+          <button onClick={handleDelete} disabled={acting}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+        <div className="flex items-start gap-4">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl"
+            style={{ background: cat.color + "20" }}>
+            {cat.emoji}
+          </div>
+          <div className="flex-1">
+            <h2 className="text-lg font-bold text-foreground">{event.title}</h2>
+            <span className="inline-block mt-1 text-xs px-2.5 py-1 rounded-lg font-semibold"
+              style={{ background: cat.color + "15", color: cat.color }}>
+              {cat.label}
+            </span>
+          </div>
+        </div>
+
+        {event.description && (
+          <p className="text-sm text-foreground/80 leading-relaxed">{event.description}</p>
+        )}
+
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 text-sm">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <span className="text-foreground">{formatEventDate(event.startsAt)}</span>
+            <span className="text-xs font-semibold" style={{ color: cat.color }}>{formatEventTime(event.startsAt)}</span>
+          </div>
+          <div className="flex items-center gap-3 text-sm">
+            <Users className="w-4 h-4 text-muted-foreground" />
+            <span className="text-foreground">
+              {event.rsvpCount}{event.maxParticipants ? `/${event.maxParticipants}` : ""} going
+            </span>
+            {isFull && <span className="text-xs text-destructive font-semibold">Full</span>}
+          </div>
+          {event.creator && (
+            <div className="flex items-center gap-3 text-sm">
+              <Avatar url={event.creator.avatarUrl} name={event.creator.displayName || "?"} size={20} color={event.creator.bannerColor} />
+              <span className="text-foreground">Created by {event.creator.displayName}</span>
+            </div>
+          )}
+        </div>
+
+        {event.rsvps.length > 0 && (
+          <div>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Participants</h3>
+            <div className="space-y-2">
+              {event.rsvps.map(r => (
+                <div key={r.id} className="flex items-center gap-2.5 py-1">
+                  <Avatar url={r.avatarUrl || null} name={r.displayName || "?"} size={28} />
+                  <span className="text-sm text-foreground">{r.displayName || "Anonymous"}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {!isCreator && (
+        <div className="px-5 py-4 border-t border-border bg-card/80 backdrop-blur-sm">
+          <button onClick={handleRsvp} disabled={acting || (isFull && !hasJoined)}
+            className={`w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
+              hasJoined
+                ? "bg-secondary text-foreground border border-border"
+                : "bg-primary text-primary-foreground"
+            } disabled:opacity-40`}>
+            {acting ? (
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : hasJoined ? (
+              "Leave Event"
+            ) : isFull ? (
+              "Event Full"
+            ) : (
+              <><Users className="w-4 h-4" /> Join Event</>
+            )}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Create Event Sheet ──────────────────────────────────────────────────
+function CreateEventSheet({ onClose, onCreated, userLat, userLng }: {
+  onClose: () => void; onCreated: () => void; userLat: number; userLng: number;
+}) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("other");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [maxPart, setMaxPart] = useState<string>("");
+  const [sending, setSending] = useState(false);
+
+  const canSend = title.trim() && date && time;
+
+  const send = async () => {
+    if (!canSend) return;
+    setSending(true);
+    try {
+      const startsAt = new Date(`${date}T${time}`).toISOString();
+      await createEvent({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        category,
+        lat: userLat, lng: userLng,
+        startsAt,
+        maxParticipants: maxPart ? parseInt(maxPart) : undefined,
+      });
+      onCreated();
+      onClose();
+    } finally { setSending(false); }
+  };
+
+  return (
+    <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 300 }}
+      className="fixed inset-x-0 bottom-0 z-50 bg-card rounded-t-3xl border-t border-border shadow-2xl max-h-[90vh] overflow-y-auto" style={{ maxWidth: 480, margin: "0 auto" }}>
+
+      <div className="flex justify-center pt-3 pb-2">
+        <div className="w-10 h-1 rounded-full bg-border" />
+      </div>
+
+      <div className="px-5 pb-safe space-y-4" style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-foreground text-base">Create Event</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
+            <X className="w-5 h-5 text-muted-foreground" />
+          </button>
+        </div>
+
+        <div>
+          <label className="text-xs text-muted-foreground block mb-1">Event Title</label>
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Study session at the library"
+            className="w-full px-4 py-3 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-primary transition-colors" />
+        </div>
+
+        <div>
+          <label className="text-xs text-muted-foreground block mb-1.5">Category</label>
+          <div className="grid grid-cols-3 gap-2">
+            {EVENT_CATEGORIES.map(c => (
+              <button key={c.key} onClick={() => setCategory(c.key)}
+                className={`flex items-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-medium transition-all ${
+                  category === c.key ? "scale-[1.02]" : "opacity-60 hover:opacity-80"
+                }`}
+                style={category === c.key
+                  ? { borderColor: c.color, background: c.color + "20", color: c.color }
+                  : { borderColor: "transparent", background: "hsl(var(--secondary))" }}>
+                <span className="text-base">{c.emoji}</span>
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <label className="text-xs text-muted-foreground block mb-1">Date</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              min={new Date().toISOString().split("T")[0]}
+              className="w-full px-3 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-primary" />
+          </div>
+          <div className="flex-1">
+            <label className="text-xs text-muted-foreground block mb-1">Time</label>
+            <input type="time" value={time} onChange={e => setTime(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-primary" />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs text-muted-foreground block mb-1">Max Participants (optional)</label>
+          <input type="number" min={2} max={200} value={maxPart} onChange={e => setMaxPart(e.target.value)}
+            placeholder="No limit"
+            className="w-full px-4 py-3 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-primary transition-colors" />
+        </div>
+
+        <div>
+          <label className="text-xs text-muted-foreground block mb-1">Description (optional)</label>
+          <textarea value={description} onChange={e => setDescription(e.target.value)}
+            placeholder="Add details about this event..."
+            rows={2}
+            className="w-full px-4 py-3 rounded-xl bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors resize-none" />
+        </div>
+
+        <button onClick={send} disabled={!canSend || sending}
+          className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+          {sending ? (
+            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <><MapPin className="w-4 h-4" /> Create Event</>
+          )}
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
 // ── Main Home Page ─────────────────────────────────────────────────────────
 export default function HomePage() {
   const [, navigate] = useLocation();
@@ -449,26 +820,39 @@ export default function HomePage() {
 
   const [messages, setMessages] = useState<NearbyMessage[]>([]);
   const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
+  const [events, setEvents] = useState<NearbyEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [compose, setCompose] = useState(false);
+  const [composeMode, setComposeMode] = useState<"message" | "event">("message");
   const [replyTarget, setReplyTarget] = useState<NearbyMessage | null>(null);
+  const [eventDetail, setEventDetail] = useState<NearbyEvent | null>(null);
   const [feedOpen, setFeedOpen] = useState(true);
+  const [feedTab, setFeedTab] = useState<"messages" | "events">("messages");
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [showPeople, setShowPeople] = useState(true);
 
   const mapCenter: [number, number] = pos ? [pos.lat, pos.lng] : ISRAEL_CENTER;
   const mapZoom = pos ? 17 : FALLBACK_ZOOM;
 
-  const fetchMessages = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
     if (!pos) return;
     setLoading(true);
     try {
-      const [msgs, users] = await Promise.all([
+      const [msgs, users, evts] = await Promise.allSettled([
         getNearbyMessages(pos.lat, pos.lng, 300),
         getNearbyUsers(pos.lat, pos.lng, 500),
+        getNearbyEvents(pos.lat, pos.lng, 1000),
       ]);
-      setMessages(msgs);
-      setNearbyUsers(users);
+      if (msgs.status === "fulfilled") setMessages(msgs.value);
+      if (users.status === "fulfilled") setNearbyUsers(users.value);
+      if (evts.status === "fulfilled") {
+        setEvents(evts.value);
+        setEventDetail(prev => {
+          if (!prev) return null;
+          const updated = evts.value.find(e => e.id === prev.id);
+          return updated || null;
+        });
+      }
       setLastRefresh(new Date());
     } catch {} finally { setLoading(false); }
   }, [pos]);
@@ -476,10 +860,10 @@ export default function HomePage() {
   // Initial fetch + periodic refresh every 15s
   useEffect(() => {
     if (!pos) return;
-    fetchMessages();
-    const interval = setInterval(fetchMessages, 15_000);
+    fetchAll();
+    const interval = setInterval(fetchAll, 15_000);
     return () => clearInterval(interval);
-  }, [pos, fetchMessages]);
+  }, [pos, fetchAll]);
 
   const handleDelete = async (id: number) => {
     await deleteMessage(id);
@@ -488,7 +872,22 @@ export default function HomePage() {
 
   const handleReact = async (id: number, type: "yes" | "no") => {
     await reactToMessage(id, type);
-    fetchMessages();
+    fetchAll();
+  };
+
+  const handleEventRsvp = async (id: number, join: boolean) => {
+    try {
+      if (join) await rsvpEvent(id);
+      else await unrsvpEvent(id);
+      fetchAll();
+    } catch {}
+  };
+
+  const handleEventDelete = async (id: number) => {
+    try {
+      await deleteEvent(id);
+      fetchAll();
+    } catch {}
   };
 
   if (!user) return null;
@@ -508,7 +907,7 @@ export default function HomePage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={fetchMessages} className="p-2 rounded-xl hover:bg-secondary transition-colors" disabled={loading}>
+          <button onClick={fetchAll} className="p-2 rounded-xl hover:bg-secondary transition-colors" disabled={loading}>
             <RefreshCw className={`w-4 h-4 text-muted-foreground ${loading ? "animate-spin" : ""}`} />
           </button>
           <button onClick={() => navigate("/profile")} className="p-2 rounded-xl hover:bg-secondary transition-colors">
@@ -546,6 +945,12 @@ export default function HomePage() {
               <Marker key={msg.id} position={[msg.lat, msg.lng]} icon={makeMarker(emoji, color)} />
             );
           })}
+
+          {/* Event markers */}
+          {events.map(evt => (
+            <Marker key={`event-${evt.id}`} position={[evt.lat, evt.lng]} icon={makeEventMarker(evt)}
+              eventHandlers={{ click: () => setEventDetail(evt) }} />
+          ))}
 
           {/* Nearby user markers */}
           {showPeople && nearbyUsers.map(u => (
@@ -601,42 +1006,80 @@ export default function HomePage() {
       {/* ── FEED ── */}
       {feedOpen && (
         <div className="flex-1 overflow-y-auto">
-          {/* Feed header */}
-          <div className="sticky top-0 z-10 bg-background/90 backdrop-blur-sm px-4 py-2.5 border-b border-border flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">
-              Nearby Messages {messages.length > 0 && <span className="text-muted-foreground font-normal">({messages.length})</span>}
-            </h2>
-            {lastRefresh && (
-              <span className="text-xs text-muted-foreground">Updated {timeAgo(lastRefresh.toISOString())}</span>
-            )}
+          {/* Feed header with tabs */}
+          <div className="sticky top-0 z-10 bg-background/90 backdrop-blur-sm border-b border-border">
+            <div className="px-4 pt-2.5 pb-0 flex items-center justify-between">
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                <button onClick={() => setFeedTab("messages")}
+                  className={`px-3.5 py-1.5 text-xs font-medium transition-colors ${feedTab === "messages" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                  💬 Messages {messages.length > 0 && `(${messages.length})`}
+                </button>
+                <button onClick={() => setFeedTab("events")}
+                  className={`px-3.5 py-1.5 text-xs font-medium transition-colors ${feedTab === "events" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                  🗓 Events {events.length > 0 && `(${events.length})`}
+                </button>
+              </div>
+              {lastRefresh && (
+                <span className="text-[10px] text-muted-foreground">Updated {timeAgo(lastRefresh.toISOString())}</span>
+              )}
+            </div>
+            <div className="h-2.5" />
           </div>
 
           <div className="px-4 py-3 space-y-3 pb-24">
-            {messages.length === 0 && !loading && (
-              <div className="text-center py-12">
-                <div className="text-4xl mb-3">📍</div>
-                <p className="text-muted-foreground text-sm font-medium">No messages nearby</p>
-                <p className="text-muted-foreground text-xs mt-1">Be the first to pin a message!</p>
-              </div>
+            {feedTab === "messages" ? (
+              <>
+                {messages.length === 0 && !loading && (
+                  <div className="text-center py-12">
+                    <div className="text-4xl mb-3">📍</div>
+                    <p className="text-muted-foreground text-sm font-medium">No messages nearby</p>
+                    <p className="text-muted-foreground text-xs mt-1">Be the first to pin a message!</p>
+                  </div>
+                )}
+                {messages.map(msg => (
+                  <MessageCard key={msg.id} msg={msg} currentUserId={user.id}
+                    onDelete={handleDelete}
+                    onReact={handleReact}
+                    onOpenReplies={setReplyTarget}
+                  />
+                ))}
+              </>
+            ) : (
+              <>
+                {events.length === 0 && !loading && (
+                  <div className="text-center py-12">
+                    <div className="text-4xl mb-3">🗓</div>
+                    <p className="text-muted-foreground text-sm font-medium">No events nearby</p>
+                    <p className="text-muted-foreground text-xs mt-1">Create one and invite people!</p>
+                  </div>
+                )}
+                {events.map(evt => (
+                  <EventCard key={evt.id} event={evt} currentUserId={user.id}
+                    onOpen={setEventDetail}
+                    onRsvp={handleEventRsvp}
+                    onDelete={handleEventDelete}
+                  />
+                ))}
+              </>
             )}
-            {messages.map(msg => (
-              <MessageCard key={msg.id} msg={msg} currentUserId={user.id}
-                onDelete={handleDelete}
-                onReact={handleReact}
-                onOpenReplies={setReplyTarget}
-              />
-            ))}
           </div>
         </div>
       )}
 
       {/* ── FAB: Compose ── */}
-      {!compose && !replyTarget && pos && (
-        <motion.button initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.2 }}
-          onClick={() => setCompose(true)}
-          className="fixed bottom-6 right-5 z-30 w-14 h-14 rounded-2xl bg-primary text-primary-foreground shadow-xl shadow-primary/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">
-          <MessageSquarePlus className="w-6 h-6" />
-        </motion.button>
+      {!compose && !replyTarget && !eventDetail && pos && (
+        <div className="fixed bottom-6 right-5 z-30 flex flex-col gap-2.5 items-end">
+          <motion.button initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.3 }}
+            onClick={() => { setComposeMode("event"); setCompose(true); }}
+            className="w-11 h-11 rounded-xl bg-card border border-border text-foreground shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform text-lg">
+            🗓
+          </motion.button>
+          <motion.button initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.2 }}
+            onClick={() => { setComposeMode("message"); setCompose(true); }}
+            className="w-14 h-14 rounded-2xl bg-primary text-primary-foreground shadow-xl shadow-primary/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">
+            <MessageSquarePlus className="w-6 h-6" />
+          </motion.button>
+        </div>
       )}
 
       {/* ── Compose Sheet ── */}
@@ -646,7 +1089,11 @@ export default function HomePage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
               onClick={() => setCompose(false)} />
-            <ComposeSheet onClose={() => setCompose(false)} onPosted={fetchMessages} userLat={pos.lat} userLng={pos.lng} />
+            {composeMode === "message" ? (
+              <ComposeSheet onClose={() => setCompose(false)} onPosted={fetchAll} userLat={pos.lat} userLng={pos.lng} />
+            ) : (
+              <CreateEventSheet onClose={() => setCompose(false)} onCreated={fetchAll} userLat={pos.lat} userLng={pos.lng} />
+            )}
           </>
         )}
       </AnimatePresence>
@@ -657,6 +1104,16 @@ export default function HomePage() {
           <RepliesSheet msg={replyTarget} currentUserId={user.id} onClose={() => setReplyTarget(null)} />
         )}
       </AnimatePresence>
+
+      {/* ── Event Detail Sheet ── */}
+      {eventDetail && (
+        <EventDetailSheet
+          event={eventDetail}
+          currentUserId={user.id}
+          onClose={() => setEventDetail(null)}
+          onRefresh={fetchAll}
+        />
+      )}
     </div>
   );
 }
