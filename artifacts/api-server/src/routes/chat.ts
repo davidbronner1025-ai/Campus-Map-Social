@@ -279,6 +279,20 @@ router.post("/conversations/:id/read", requireAuth, async (req: Request, res: Re
   const convId = parseId(req.params.id);
   if (!convId) { res.status(400).json({ error: "Invalid conversation id" }); return; }
 
+  const membership = await db
+    .select()
+    .from(conversationMembersTable)
+    .where(and(
+      eq(conversationMembersTable.conversationId, convId),
+      eq(conversationMembersTable.userId, user.id)
+    ))
+    .limit(1);
+
+  if (!membership.length) {
+    res.status(403).json({ error: "Not a member" });
+    return;
+  }
+
   const lastMsg = await db
     .select({ id: chatMessagesTable.id })
     .from(chatMessagesTable)
