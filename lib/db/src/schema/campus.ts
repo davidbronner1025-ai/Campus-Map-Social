@@ -1,6 +1,6 @@
 import {
   pgTable, serial, text, doublePrecision, integer,
-  timestamp, jsonb, real, date
+  timestamp, jsonb, real, date, boolean
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -136,3 +136,69 @@ export const gameVotesTable = pgTable("game_votes", {
 export const insertGameSchema = createInsertSchema(gameSessionsTable).omit({ id: true, createdAt: true });
 export type InsertGame = z.infer<typeof insertGameSchema>;
 export type GameSession = typeof gameSessionsTable.$inferSelect;
+
+// ─── Users ─────────────────────────────────────────────────────────────────
+export const usersTable = pgTable("users", {
+  id: serial("id").primaryKey(),
+  phone: text("phone").notNull().unique(),
+  displayName: text("display_name").notNull().default(""),
+  title: text("title"),
+  avatarUrl: text("avatar_url"),
+  bannerUrl: text("banner_url"),
+  bannerColor: text("banner_color").notNull().default("#1a2a3a"),
+  sessionToken: text("session_token").unique(),
+  lat: doublePrecision("lat"),
+  lng: doublePrecision("lng"),
+  lastSeen: timestamp("last_seen").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type User = typeof usersTable.$inferSelect;
+
+// ─── OTP ───────────────────────────────────────────────────────────────────
+export const userOtpsTable = pgTable("user_otps", {
+  id: serial("id").primaryKey(),
+  phone: text("phone").notNull(),
+  otp: text("otp").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ─── Messages ──────────────────────────────────────────────────────────────
+export const invitationTypeEnum = ["smoke", "carpool", "phone_game", "food_order", "football"] as const;
+export type InvitationType = typeof invitationTypeEnum[number];
+
+export const messagesTable = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  lat: doublePrecision("lat").notNull(),
+  lng: doublePrecision("lng").notNull(),
+  content: text("content").notNull(),
+  type: text("type").$type<"regular" | "invitation">().notNull().default("regular"),
+  invitationType: text("invitation_type").$type<InvitationType>(),
+  maxParticipants: integer("max_participants"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Message = typeof messagesTable.$inferSelect;
+
+// ─── Message Reactions ──────────────────────────────────────────────────────
+export const messageReactionsTable = pgTable("message_reactions", {
+  id: serial("id").primaryKey(),
+  messageId: integer("message_id").notNull().references(() => messagesTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  type: text("type").$type<"yes" | "no" | "emoji">().notNull(),
+  emoji: text("emoji"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ─── Message Replies ────────────────────────────────────────────────────────
+export const messageRepliesTable = pgTable("message_replies", {
+  id: serial("id").primaryKey(),
+  messageId: integer("message_id").notNull().references(() => messagesTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

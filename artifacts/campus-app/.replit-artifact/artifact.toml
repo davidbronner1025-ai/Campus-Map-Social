@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/campus-app/"
+title = "Campus Social App"
+version = "1.0.0"
+id = "artifacts/campus-app"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/campus-app/" ]
+localPort = 22515
+
+[services.development]
+run = "pnpm --filter @workspace/campus-app run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/campus-app", "run", "build" ]
+publicDir = "artifacts/campus-app/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22515"
+BASE_PATH = "/campus-app/"

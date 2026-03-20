@@ -1,8 +1,8 @@
-# Campus Social Network - Admin Panel
+# Campus Social Network
 
 ## Overview
 
-A campus-based location social network starting with the admin panel. Admins can configure the campus location on an interactive map and define named zones/areas across the campus.
+A campus-based location social network with two products: an Admin Panel for campus managers and a Campus App for students.
 
 ## Stack
 
@@ -15,54 +15,88 @@ A campus-based location social network starting with the admin panel. Admins can
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
-- **Frontend**: React + Vite, TailwindCSS v4, Leaflet.js maps
+- **Frontend**: React + Vite, TailwindCSS v4, Leaflet.js / react-leaflet maps
 
 ## Structure
 
 ```text
 artifacts-monorepo/
 ├── artifacts/
-│   ├── api-server/         # Express API server
-│   └── admin-panel/        # React + Vite admin dashboard
+│   ├── api-server/       # Express API server (port from PORT env)
+│   ├── admin-panel/      # React + Vite admin dashboard (satellite map)
+│   └── campus-app/       # Mobile-first PWA for students
 ├── lib/
-│   ├── api-spec/           # OpenAPI spec + Orval codegen config
-│   ├── api-client-react/   # Generated React Query hooks
-│   ├── api-zod/            # Generated Zod schemas from OpenAPI
-│   └── db/                 # Drizzle ORM schema + DB connection
-├── scripts/                # Utility scripts
+│   ├── api-spec/         # OpenAPI spec + Orval codegen config
+│   ├── api-client-react/ # Generated React Query hooks
+│   ├── api-zod/          # Generated Zod schemas from OpenAPI
+│   └── db/               # Drizzle ORM schema + DB connection
+├── scripts/              # Utility scripts
 ├── pnpm-workspace.yaml
 ├── tsconfig.base.json
-├── tsconfig.json
 └── package.json
 ```
 
-## Features (Admin Panel)
+## Admin Panel Features
 
-- **Campus Setup** (`/setup`) - Configure campus name, center coordinates via interactive map click, and default zoom level
-- **Zone Management** (`/zones`) - Draw and manage named zones on the map with types (academic, dining, sports, etc.) and colors
+- **Campus Setup** (`/setup`) — Configure campus name, center coordinates via satellite map click, Israel-centered by default (31.5°N, 35.0°E), Nominatim search restricted to Israel
+- **Locations Management** (`/locations`) — Draw polygons for locations with per-type panels:
+  - Buildings: announcements + schedule
+  - Dining Halls: daily menus + ratings
+  - Sports Fields: game sessions + voting
 
-## Database Schema
+## Campus App Features
 
-- `campus` table - Campus name, lat/lng center, default zoom
-- `zones` table - Zone name, description, type, color, polygon (JSON array of lat/lng points)
+- **Auth**: Phone OTP flow (demo mode — OTP returned in response, no SMS sent)
+- **Map**: Satellite (Esri World Imagery) + CartoDB label overlay, user's location centered
+- **Messages**: Pin messages at your location (regular or 5 invitation types)
+  - 🚬 Smoke · 🚗 Carpool · 📱 Phone Game · 🍕 Food Order · ⚽ Football
+- **Reactions**: Yes/No voting for invitations, thumbs up/down for regular messages
+- **Replies**: Threaded chat per message
+- **Profile**: Emoji or URL avatar, banner color picker, display name + title
+- **Location engine**: Battery-optimized (network-accuracy, 30s server push, paused when backgrounded)
+
+## Database Schema (lib/db/src/schema/campus.ts)
+
+- `campus` — Campus name, lat/lng center, default zoom
+- `locations` — Named locations with polygon, type (building/dining_hall/sports_field), per-type feature config
+- `users` — Phone, display name, title, avatar, banner, lat/lng, last seen
+- `userOtps` — OTP codes with expiry for phone auth
+- `messages` — Pinned messages with type, invitation type, expiry, lat/lng
+- `messageReactions` — Yes/No/emoji reactions per message per user
+- `messageReplies` — Threaded replies per message
 
 ## API Endpoints
 
-- `GET /api/campus` - Get campus configuration
-- `POST /api/campus` - Set/update campus configuration
-- `GET /api/campus/zones` - Get all zones
-- `POST /api/campus/zones` - Create a new zone
-- `GET /api/campus/zones/:id` - Get a zone
-- `PUT /api/campus/zones/:id` - Update a zone
-- `DELETE /api/campus/zones/:id` - Delete a zone
+### Campus & Locations
+- `GET /api/campus` — Get campus config
+- `POST /api/campus` — Set/update campus config
+- `GET /api/locations` · `POST /api/locations` · `PUT /api/locations/:id` · `DELETE /api/locations/:id`
 
-## TypeScript & Composite Projects
+### Auth (demo mode)
+- `POST /api/auth/request-otp` — Request OTP (returns `{ otp }` in demo mode)
+- `POST /api/auth/verify-otp` — Verify OTP, receive JWT token
 
-Every package extends `tsconfig.base.json` which sets `composite: true`. Run `pnpm run typecheck` from root.
+### Users (requires Bearer token)
+- `GET /api/me` — Get own profile
+- `PUT /api/me` — Update profile fields
+- `PUT /api/me/location` — Push location update
+
+### Messages (requires Bearer token)
+- `GET /api/messages/nearby?lat=&lng=&radius=` — Nearby messages with Haversine filter
+- `POST /api/messages` — Pin a new message
+- `DELETE /api/messages/:id` — Delete own message
+- `POST /api/messages/:id/react` — React (yes/no/emoji)
+- `GET /api/messages/:id/replies` · `POST /api/messages/:id/replies`
+
+## Key Notes
+
+- **Leaflet CSS** must be imported before `index.css` in `main.tsx` to avoid Tailwind v4 processing conflicts
+- **JWT secret** stored as `JWT_SECRET` environment variable
+- **OTP demo mode**: No SMS provider; OTP shown in auth page banner for testing
+- **API base URL**: All campus-app API calls use absolute `/api` path (no base path prefix)
 
 ## Root Scripts
 
-- `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages
-- `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API client from OpenAPI spec
+- `pnpm run build` — typecheck then build all packages
+- `pnpm run typecheck` — tsc project references check
 - `pnpm --filter @workspace/db run push` — push DB schema changes
