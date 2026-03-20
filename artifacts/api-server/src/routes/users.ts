@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, ne, isNotNull, gte, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -25,7 +25,7 @@ router.get("/me", requireAuth, async (req: Request, res: Response) => {
 // PUT /me
 router.put("/me", requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
-  const { displayName, title, avatarUrl, bannerUrl, bannerColor } = req.body;
+  const { displayName, title, avatarUrl, bannerUrl, bannerColor, visibility } = req.body;
   const updated = await db
     .update(usersTable)
     .set({
@@ -34,6 +34,7 @@ router.put("/me", requireAuth, async (req: Request, res: Response) => {
       ...(avatarUrl !== undefined && { avatarUrl }),
       ...(bannerUrl !== undefined && { bannerUrl }),
       ...(bannerColor !== undefined && { bannerColor }),
+      ...(visibility !== undefined && ["campus", "ghost"].includes(visibility) && { visibility }),
     })
     .where(eq(usersTable.id, user.id))
     .returning();
@@ -54,6 +55,59 @@ router.put("/me/location", requireAuth, async (req: Request, res: Response) => {
     .set({ lat, lng, lastSeen: new Date() })
     .where(eq(usersTable.id, user.id));
   res.json({ ok: true });
+});
+
+// GET /users/nearby — get visible users within radius (Haversine)
+router.get("/users/nearby", requireAuth, async (req: Request, res: Response) => {
+  const currentUser = (req as any).user;
+  const lat = parseFloat(req.query.lat as string);
+  const lng = parseFloat(req.query.lng as string);
+  const radius = Math.min(parseFloat(req.query.radius as string) || 500, 2000);
+
+  if (isNaN(lat) || isNaN(lng)) {
+    res.status(400).json({ error: "lat and lng required" });
+    return;
+  }
+
+  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+  const haversine = sql`(
+    6371000 * acos(
+      cos(radians(${lat})) * cos(radians(${usersTable.lat})) *
+      cos(radians(${usersTable.lng}) - radians(${lng})) +
+      sin(radians(${lat})) * sin(radians(${usersTable.lat}))
+    )
+  )`;
+
+  const rows = await db
+    .select({
+      id: usersTable.id,
+      displayName: usersTable.displayName,
+      title: usersTable.title,
+      avatarUrl: usersTable.avatarUrl,
+      bannerColor: usersTable.bannerColor,
+      visibility: usersTable.visibility,
+      lat: usersTable.lat,
+      lng: usersTable.lng,
+      lastSeen: usersTable.lastSeen,
+    })
+    .from(usersTable)
+    .where(
+      and(
+        ne(usersTable.id, currentUser.id),
+        eq(usersTable.visibility, "campus"),
+        isNotNull(usersTable.lat),
+        isNotNull(usersTable.lng),
+        sql`${haversine} < ${radius}`
+      )
+    );
+
+  const result = rows.map(u => ({
+    ...u,
+    active: u.lastSeen ? new Date(u.lastSeen) >= fiveMinAgo : false,
+  }));
+
+  res.json(result);
 });
 
 export { requireAuth };

@@ -50,7 +50,8 @@ artifacts-monorepo/
   - **Manager assignment** — Assign registered users as location managers (managerId stored in DB, joined from users table)
   - **Edit locations** — Edit name, description, type, color, and manager for existing locations
   - **Multi-location creation** — "Save & Add Another" button to create multiple locations in sequence without returning to list
-- **User Management** (`/users`) — List users, invite by phone (generates OTP), delete users
+- **User Management** (`/users`) — List users, invite by phone (generates OTP), delete users, ghost badge for invisible users
+  - **Live Map view** — Toggle between User List and Live Map tabs to see all users on a satellite map with active/inactive indicators
 
 ## Campus App Features
 
@@ -61,13 +62,15 @@ artifacts-monorepo/
 - **Reactions**: Yes/No voting for invitations, thumbs up/down for regular messages
 - **Replies**: Threaded chat per message
 - **Profile**: Emoji or URL avatar, banner color picker, display name + title
+- **Ghost Mode**: Privacy toggle in profile — switch between "Visible on Map" (campus) and "Ghost Mode" to hide from other users' maps
+- **Users on Map**: Nearby users shown as avatar markers on the map with active/inactive indicators, togglable via "People" button
 - **Location engine**: Battery-optimized (network-accuracy, 30s server push, paused when backgrounded)
 
 ## Database Schema (lib/db/src/schema/campus.ts)
 
 - `campus` — Campus name, lat/lng center, default zoom
 - `locations` — Named locations with polygon, type (building/dining_hall/sports_field), per-type feature config, managerId (FK → users)
-- `users` — Phone, display name, title, avatar, banner, lat/lng, last seen
+- `users` — Phone, display name, title, avatar, banner, visibility (campus/ghost), lat/lng, last seen
 - `userOtps` — OTP codes with expiry for phone auth
 - `messages` — Pinned messages with type, invitation type, expiry, lat/lng
 - `messageReactions` — Yes/No/emoji reactions per message per user
@@ -86,8 +89,9 @@ artifacts-monorepo/
 
 ### Users (requires Bearer token)
 - `GET /api/me` — Get own profile
-- `PUT /api/me` — Update profile fields
+- `PUT /api/me` — Update profile fields (including `visibility: "campus" | "ghost"`)
 - `PUT /api/me/location` — Push location update
+- `GET /api/users/nearby?lat=&lng=&radius=` — Nearby visible users (Haversine filter, excludes ghost users)
 
 ### Messages (requires Bearer token)
 - `GET /api/messages/nearby?lat=&lng=&radius=` — Nearby messages with Haversine filter

@@ -41,9 +41,23 @@ export type UserProfile = {
   avatarUrl: string | null;
   bannerUrl: string | null;
   bannerColor: string;
+  visibility: "campus" | "ghost";
   lat: number | null;
   lng: number | null;
   lastSeen: string | null;
+};
+
+export type NearbyUser = {
+  id: number;
+  displayName: string;
+  title: string | null;
+  avatarUrl: string | null;
+  bannerColor: string;
+  visibility: string;
+  lat: number;
+  lng: number;
+  lastSeen: string | null;
+  active: boolean;
 };
 
 export const getMe = () => apiFetch<UserProfile>("/me");
@@ -51,6 +65,9 @@ export const updateMe = (data: Partial<Omit<UserProfile, "id" | "phone" | "lat" 
   apiFetch<UserProfile>("/me", { method: "PUT", body: JSON.stringify(data) });
 export const updateLocation = (lat: number, lng: number) =>
   apiFetch<{ ok: boolean }>("/me/location", { method: "PUT", body: JSON.stringify({ lat, lng }) });
+
+export const getNearbyUsers = (lat: number, lng: number, radius = 500) =>
+  apiFetch<NearbyUser[]>(`/users/nearby?lat=${lat}&lng=${lng}&radius=${radius}`);
 
 // Messages
 export type Author = { id: number; displayName: string; title: string | null; avatarUrl: string | null; bannerColor: string };

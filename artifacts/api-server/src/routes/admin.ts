@@ -28,6 +28,7 @@ router.get("/admin/users", async (_req: Request, res: Response) => {
         title: usersTable.title,
         avatarUrl: usersTable.avatarUrl,
         bannerColor: usersTable.bannerColor,
+        visibility: usersTable.visibility,
         lat: usersTable.lat,
         lng: usersTable.lng,
         lastSeen: usersTable.lastSeen,

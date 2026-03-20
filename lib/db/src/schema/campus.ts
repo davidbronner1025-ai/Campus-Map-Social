@@ -139,6 +139,9 @@ export type InsertGame = z.infer<typeof insertGameSchema>;
 export type GameSession = typeof gameSessionsTable.$inferSelect;
 
 // ─── Users ─────────────────────────────────────────────────────────────────
+export const visibilityEnum = ["campus", "ghost"] as const;
+export type Visibility = typeof visibilityEnum[number];
+
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
   phone: text("phone").notNull().unique(),
@@ -147,6 +150,7 @@ export const usersTable = pgTable("users", {
   avatarUrl: text("avatar_url"),
   bannerUrl: text("banner_url"),
   bannerColor: text("banner_color").notNull().default("#1a2a3a"),
+  visibility: text("visibility").$type<Visibility>().notNull().default("campus"),
   sessionToken: text("session_token").unique(),
   lat: doublePrecision("lat"),
   lng: doublePrecision("lng"),

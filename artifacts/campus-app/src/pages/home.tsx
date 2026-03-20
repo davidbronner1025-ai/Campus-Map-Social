@@ -5,13 +5,13 @@ import L from "leaflet";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageSquarePlus, User, RefreshCw, X, Send, ThumbsUp, ThumbsDown,
-  MessageCircle, Trash2, ChevronDown, MapPin, Clock, Smile, Navigation
+  MessageCircle, Trash2, ChevronDown, MapPin, Clock, Smile, Navigation, Users
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationEngine } from "@/hooks/useLocationEngine";
 import {
-  getNearbyMessages, pinMessage, deleteMessage, reactToMessage,
-  getReplies, postReply, type NearbyMessage, type Reply
+  getNearbyMessages, getNearbyUsers, pinMessage, deleteMessage, reactToMessage,
+  getReplies, postReply, type NearbyMessage, type NearbyUser, type Reply
 } from "@/lib/api";
 
 // Fix Leaflet default icons
@@ -50,6 +50,44 @@ function makeMarker(emoji: string, color: string, pulse = false) {
         ${pulse ? `<div style="position:absolute;top:2px;left:2px;width:36px;height:36px;border-radius:50%;background:${color};opacity:0.3;animation:ping-slow 2s ease-in-out infinite;"></div>` : ""}
         <div style="width:40px;height:40px;border-radius:50% 50% 50% 4px;transform:rotate(-45deg);background:${color};border:2.5px solid rgba(255,255,255,0.85);box-shadow:0 3px 10px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">
           <span style="transform:rotate(45deg);font-size:16px;line-height:1;">${emoji}</span>
+        </div>
+      </div>`,
+  });
+}
+
+// ── HTML escape helper ───────────────────────────────────────────────────
+function esc(str: string): string {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// ── User map marker ──────────────────────────────────────────────────────
+function makeUserMarker(user: NearbyUser) {
+  const isEmoji = user.avatarUrl?.startsWith("emoji:");
+  const emoji = isEmoji ? user.avatarUrl!.slice(6) : null;
+  const initial = (user.displayName?.[0] || "?").toUpperCase();
+  const bg = user.bannerColor || "#1e293b";
+  const opacity = user.active ? "1" : "0.5";
+  const pulse = user.active ? `<div style="position:absolute;top:-3px;left:-3px;width:42px;height:42px;border-radius:50%;background:${bg};opacity:0.25;animation:ping-slow 2.5s ease-in-out infinite;"></div>` : "";
+  const border = user.active ? "rgba(74,222,128,0.9)" : "rgba(148,163,184,0.5)";
+  const safeEmoji = emoji ? esc(emoji) : null;
+  const safeInitial = esc(initial);
+  const safeName = esc(user.displayName || "?");
+  const content = safeEmoji
+    ? `<span style="font-size:18px;line-height:1;">${safeEmoji}</span>`
+    : `<span style="font-size:14px;font-weight:700;color:white;">${safeInitial}</span>`;
+
+  return L.divIcon({
+    className: "",
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    html: `
+      <div style="position:relative;width:36px;height:36px;opacity:${opacity};">
+        ${pulse}
+        <div style="width:36px;height:36px;border-radius:50%;background:${esc(bg)};border:2.5px solid ${border};display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+          ${content}
+        </div>
+        <div style="position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:9px;font-weight:600;color:white;background:rgba(0,0,0,0.6);padding:1px 5px;border-radius:4px;pointer-events:none;">
+          ${safeName}
         </div>
       </div>`,
   });
@@ -410,11 +448,13 @@ export default function HomePage() {
   const { pos, error: locError, requestPermission } = useLocationEngine(true);
 
   const [messages, setMessages] = useState<NearbyMessage[]>([]);
+  const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [compose, setCompose] = useState(false);
   const [replyTarget, setReplyTarget] = useState<NearbyMessage | null>(null);
   const [feedOpen, setFeedOpen] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [showPeople, setShowPeople] = useState(true);
 
   const mapCenter: [number, number] = pos ? [pos.lat, pos.lng] : ISRAEL_CENTER;
   const mapZoom = pos ? 17 : FALLBACK_ZOOM;
@@ -423,8 +463,12 @@ export default function HomePage() {
     if (!pos) return;
     setLoading(true);
     try {
-      const msgs = await getNearbyMessages(pos.lat, pos.lng, 300);
+      const [msgs, users] = await Promise.all([
+        getNearbyMessages(pos.lat, pos.lng, 300),
+        getNearbyUsers(pos.lat, pos.lng, 500),
+      ]);
       setMessages(msgs);
+      setNearbyUsers(users);
       setLastRefresh(new Date());
     } catch {} finally { setLoading(false); }
   }, [pos]);
@@ -502,7 +546,25 @@ export default function HomePage() {
               <Marker key={msg.id} position={[msg.lat, msg.lng]} icon={makeMarker(emoji, color)} />
             );
           })}
+
+          {/* Nearby user markers */}
+          {showPeople && nearbyUsers.map(u => (
+            <Marker key={`user-${u.id}`} position={[u.lat, u.lng]} icon={makeUserMarker(u)} />
+          ))}
         </MapContainer>
+
+        {/* People toggle */}
+        <button
+          onClick={() => setShowPeople(p => !p)}
+          className={`absolute top-3 right-3 z-10 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all shadow-lg backdrop-blur-sm border ${
+            showPeople
+              ? "bg-primary/90 text-primary-foreground border-primary/50"
+              : "bg-card/80 text-muted-foreground border-border"
+          }`}
+        >
+          <Users className="w-3.5 h-3.5" />
+          {nearbyUsers.length > 0 ? nearbyUsers.length : ""} People
+        </button>
 
         {/* Location permission notice */}
         {!pos && !locError && (

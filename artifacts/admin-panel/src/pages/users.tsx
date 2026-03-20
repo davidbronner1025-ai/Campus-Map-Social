@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { Users, Phone, Trash2, UserPlus, Loader2, RefreshCw, Clock, User, Copy, Check } from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
+import { Users, Phone, Trash2, UserPlus, Loader2, RefreshCw, Clock, User, Copy, Check, Map, List } from "lucide-react";
 
 interface AppUser {
   id: number;
@@ -8,9 +10,38 @@ interface AppUser {
   title: string | null;
   avatarUrl: string | null;
   bannerColor: string;
+  visibility: string;
   lat: number | null;
   lng: number | null;
   lastSeen: string | null;
+}
+
+const ISRAEL_CENTER: [number, number] = [31.77, 35.21];
+
+function escHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function makeAdminUserIcon(user: AppUser) {
+  const isEmoji = user.avatarUrl?.startsWith("emoji:");
+  const emoji = isEmoji ? escHtml(user.avatarUrl!.slice(6)) : null;
+  const initial = escHtml((user.displayName?.[0] || "?").toUpperCase());
+  const bg = escHtml(user.bannerColor || "#1e293b");
+  const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+  const active = user.lastSeen ? new Date(user.lastSeen).getTime() >= fiveMinAgo : false;
+  const border = active ? "#4ade80" : "#64748b";
+  const content = emoji
+    ? `<span style="font-size:16px;line-height:1;">${emoji}</span>`
+    : `<span style="font-size:12px;font-weight:700;color:white;">${initial}</span>`;
+
+  return L.divIcon({
+    className: "",
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    html: `<div style="width:32px;height:32px;border-radius:50%;background:${bg};border:2.5px solid ${border};display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+      ${content}
+    </div>`,
+  });
 }
 
 function timeAgo(dateStr: string | null): string {
@@ -49,6 +80,7 @@ export default function UsersPage() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const [searchQ, setSearchQ] = useState("");
+  const [view, setView] = useState<"list" | "map">("list");
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -147,70 +179,125 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* Search + count */}
-      <div className="px-4 pb-3 flex items-center gap-3">
-        <div className="relative flex-1">
-          <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-          <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Search users..."
-            className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-primary transition-colors" />
-        </div>
+      {/* View toggle tabs */}
+      <div className="px-4 pb-3 flex gap-2">
+        <button onClick={() => setView("list")}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all ${view === "list" ? "bg-primary text-primary-foreground" : "bg-card border border-border text-muted-foreground hover:text-foreground"}`}>
+          <List className="w-4 h-4" /> User List
+        </button>
+        <button onClick={() => setView("map")}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all ${view === "map" ? "bg-primary text-primary-foreground" : "bg-card border border-border text-muted-foreground hover:text-foreground"}`}>
+          <Map className="w-4 h-4" /> Live Map
+        </button>
+        <div className="flex-1" />
         <button onClick={fetchUsers} disabled={loading} className="p-2.5 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-colors">
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="px-4 pb-3 grid grid-cols-3 gap-3">
-        {[
-          { label: "Total Users", value: users.length, icon: Users },
-          { label: "Active Today", value: users.filter(u => u.lastSeen && Date.now() - new Date(u.lastSeen).getTime() < 86400000).length, icon: Clock },
-          { label: "With Profile", value: users.filter(u => u.displayName).length, icon: User },
-        ].map(s => (
-          <div key={s.label} className="bg-card border border-border rounded-xl p-3 text-center">
-            <s.icon className="w-4 h-4 text-muted-foreground mx-auto mb-1" />
-            <p className="text-lg font-bold text-foreground">{s.value}</p>
-            <p className="text-[10px] text-muted-foreground">{s.label}</p>
+      {view === "map" ? (
+        <div className="px-4 pb-6">
+          <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ height: "calc(100dvh - 280px)" }}>
+            <MapContainer center={ISRAEL_CENTER} zoom={14} style={{ width: "100%", height: "100%" }}>
+              <TileLayer
+                attribution="&copy; Esri"
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                maxZoom={19}
+              />
+              <TileLayer
+                url="https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png"
+                attribution=""
+              />
+              {users.filter(u => u.lat && u.lng).map(u => (
+                <Marker key={u.id} position={[u.lat!, u.lng!]} icon={makeAdminUserIcon(u)}>
+                  <Popup>
+                    <div className="text-xs">
+                      <p className="font-semibold">{u.displayName || u.phone}</p>
+                      {u.title && <p className="text-gray-500">{u.title}</p>}
+                      <p className="text-gray-400 mt-1">Last seen: {timeAgo(u.lastSeen)}</p>
+                      <p className="text-gray-400">Visibility: {u.visibility || "campus"}</p>
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
+            </MapContainer>
           </div>
-        ))}
-      </div>
-
-      {/* User list */}
-      <div className="px-4 pb-6 space-y-2">
-        {loading && (
-          <div className="text-center py-10">
-            <Loader2 className="w-8 h-8 text-muted-foreground animate-spin mx-auto" />
+          <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-emerald-400 border border-emerald-500" /> Active (last 5 min)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-slate-500 border border-slate-600" /> Inactive
+            </span>
+            <span className="ml-auto">{users.filter(u => u.lat && u.lng).length} users on map</span>
           </div>
-        )}
-        {!loading && filtered.length === 0 && (
-          <div className="text-center py-12">
-            <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-sm font-medium text-muted-foreground">No users yet</p>
-            <p className="text-xs text-muted-foreground mt-1">Invite people using the form above</p>
-          </div>
-        )}
-        {filtered.map(u => (
-          <div key={u.id} className="bg-card border border-border rounded-2xl p-3.5 flex items-start gap-3">
-            <Avatar url={u.avatarUrl} name={u.displayName || u.phone} color={u.bannerColor} />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">{u.displayName || <span className="text-muted-foreground italic">No name set</span>}</p>
-              {u.title && <p className="text-xs text-muted-foreground truncate">{u.title}</p>}
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Phone className="w-2.5 h-2.5" />{u.phone}
-                </span>
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Clock className="w-2.5 h-2.5" />{timeAgo(u.lastSeen)}
-                </span>
-                {u.lat && u.lng && <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-md">📍 On campus</span>}
-              </div>
+        </div>
+      ) : (
+        <>
+          {/* Search */}
+          <div className="px-4 pb-3">
+            <div className="relative">
+              <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Search users..."
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-primary transition-colors" />
             </div>
-            <button onClick={() => deleteUser(u.id)} disabled={deleting === u.id}
-              className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0">
-              {deleting === u.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-            </button>
           </div>
-        ))}
-      </div>
+
+          {/* Stats */}
+          <div className="px-4 pb-3 grid grid-cols-3 gap-3">
+            {[
+              { label: "Total Users", value: users.length, icon: Users },
+              { label: "Active Today", value: users.filter(u => u.lastSeen && Date.now() - new Date(u.lastSeen).getTime() < 86400000).length, icon: Clock },
+              { label: "With Profile", value: users.filter(u => u.displayName).length, icon: User },
+            ].map(s => (
+              <div key={s.label} className="bg-card border border-border rounded-xl p-3 text-center">
+                <s.icon className="w-4 h-4 text-muted-foreground mx-auto mb-1" />
+                <p className="text-lg font-bold text-foreground">{s.value}</p>
+                <p className="text-[10px] text-muted-foreground">{s.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* User list */}
+          <div className="px-4 pb-6 space-y-2">
+            {loading && (
+              <div className="text-center py-10">
+                <Loader2 className="w-8 h-8 text-muted-foreground animate-spin mx-auto" />
+              </div>
+            )}
+            {!loading && filtered.length === 0 && (
+              <div className="text-center py-12">
+                <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-sm font-medium text-muted-foreground">No users yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Invite people using the form above</p>
+              </div>
+            )}
+            {filtered.map(u => (
+              <div key={u.id} className="bg-card border border-border rounded-2xl p-3.5 flex items-start gap-3">
+                <Avatar url={u.avatarUrl} name={u.displayName || u.phone} color={u.bannerColor} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{u.displayName || <span className="text-muted-foreground italic">No name set</span>}</p>
+                  {u.title && <p className="text-xs text-muted-foreground truncate">{u.title}</p>}
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Phone className="w-2.5 h-2.5" />{u.phone}
+                    </span>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="w-2.5 h-2.5" />{timeAgo(u.lastSeen)}
+                    </span>
+                    {u.lat && u.lng && <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-md">📍 On campus</span>}
+                    {u.visibility === "ghost" && <span className="text-xs bg-violet-500/10 text-violet-400 px-1.5 py-0.5 rounded-md">👻 Ghost</span>}
+                  </div>
+                </div>
+                <button onClick={() => deleteUser(u.id)} disabled={deleting === u.id}
+                  className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0">
+                  {deleting === u.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

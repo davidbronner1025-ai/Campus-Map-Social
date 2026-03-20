@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Camera, Save, Loader2, LogOut, Pencil } from "lucide-react";
+import { ArrowLeft, Camera, Save, Loader2, LogOut, Pencil, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { updateMe } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,13 +24,14 @@ export default function ProfilePage() {
   const [title, setTitle] = useState(user?.title || "");
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || "");
   const [bannerColor, setBannerColor] = useState(user?.bannerColor || "#1a2233");
+  const [visibility, setVisibility] = useState<"campus" | "ghost">(user?.visibility || "campus");
   const [saving, setSaving] = useState(false);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await updateMe({ displayName, title: title || null, avatarUrl: avatarUrl || null, bannerColor });
+      await updateMe({ displayName, title: title || null, avatarUrl: avatarUrl || null, bannerColor, visibility });
       await refreshUser();
       navigate("/");
     } finally {
@@ -106,6 +107,40 @@ export default function ProfilePage() {
                 style={{ background: c }} />
             ))}
           </div>
+        </div>
+
+        {/* Ghost Mode Toggle */}
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Map Visibility</label>
+          <button
+            onClick={() => setVisibility(v => v === "campus" ? "ghost" : "campus")}
+            className={`w-full px-4 py-3.5 rounded-xl border flex items-center gap-3 transition-all ${
+              visibility === "ghost"
+                ? "bg-violet-500/10 border-violet-500/40 text-violet-300"
+                : "bg-card border-border text-foreground"
+            }`}
+          >
+            {visibility === "ghost" ? (
+              <EyeOff className="w-5 h-5 text-violet-400" />
+            ) : (
+              <Eye className="w-5 h-5 text-emerald-400" />
+            )}
+            <div className="flex-1 text-left">
+              <p className="text-sm font-semibold">{visibility === "ghost" ? "Ghost Mode" : "Visible on Map"}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {visibility === "ghost"
+                  ? "You're invisible — others can't see you on the map"
+                  : "Other students can see your location on the map"}
+              </p>
+            </div>
+            <div className={`w-10 h-6 rounded-full transition-colors relative ${
+              visibility === "ghost" ? "bg-violet-500" : "bg-emerald-500"
+            }`}>
+              <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                visibility === "ghost" ? "left-[18px]" : "left-0.5"
+              }`} />
+            </div>
+          </button>
         </div>
 
         {/* Save */}

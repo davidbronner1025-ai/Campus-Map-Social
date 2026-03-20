@@ -113,3 +113,8 @@
   font-size: 14px;
   line-height: 1;
 }
+
+@keyframes ping-slow {
+  0%, 100% { transform: scale(1); opacity: 0.25; }
+  50% { transform: scale(1.4); opacity: 0; }
+}
