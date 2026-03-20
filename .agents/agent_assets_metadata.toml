@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "ITrE9oui2OnUjc9mkl0PS"
+uri = "file://.canvas/assets/campus-project.zip"
+type = "unspecified"
+title = "campus-project.zip"
