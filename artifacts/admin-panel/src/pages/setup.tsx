@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
+import { MapContainer, Marker, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
-import { Save, Navigation, MapPin, Search, Loader2, X, SlidersHorizontal, CheckCircle } from "lucide-react";
+import { Save, Navigation, MapPin, Search, Loader2, X, SlidersHorizontal, CheckCircle, Layers } from "lucide-react";
 import { useGetCampus, useSetCampus } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,6 +23,68 @@ const schema = z.object({
   defaultZoom: z.coerce.number().min(1).max(20),
 });
 type FormValues = z.infer<typeof schema>;
+
+const MAP_STYLES = [
+  { key: "satellite", label: "Satellite", emoji: "🛰️",
+    tiles: [
+      { url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr: "&copy; Esri" },
+      { url: "https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png", attr: "" },
+    ] },
+  { key: "street", label: "Street", emoji: "🗺️",
+    tiles: [
+      { url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", attr: "&copy; OSM" },
+    ] },
+  { key: "terrain", label: "Terrain", emoji: "⛰️",
+    tiles: [
+      { url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}", attr: "&copy; Esri" },
+    ] },
+  { key: "dark", label: "Dark", emoji: "🌙",
+    tiles: [
+      { url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", attr: "&copy; CartoDB" },
+    ] },
+] as const;
+
+function DynamicTiles({ styleKey }: { styleKey: string }) {
+  const map = useMap();
+  const layersRef = useRef<L.TileLayer[]>([]);
+
+  useEffect(() => {
+    layersRef.current.forEach(l => map.removeLayer(l));
+    layersRef.current = [];
+    const style = MAP_STYLES.find(s => s.key === styleKey) || MAP_STYLES[0];
+    style.tiles.forEach(t => {
+      const layer = L.tileLayer(t.url, { attribution: t.attr, maxZoom: 20 });
+      layer.addTo(map);
+      layersRef.current.push(layer);
+    });
+    return () => { layersRef.current.forEach(l => map.removeLayer(l)); };
+  }, [styleKey, map]);
+
+  return null;
+}
+
+function MapStyleSwitcher({ style, onChange }: { style: string; onChange: (s: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="absolute bottom-3 right-3 z-[500]">
+      {open && (
+        <div className="mb-2 bg-card/95 backdrop-blur-sm border border-border rounded-xl shadow-xl overflow-hidden">
+          {MAP_STYLES.map(s => (
+            <button key={s.key} onClick={() => { onChange(s.key); setOpen(false); }}
+              className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium transition-colors border-b border-border last:border-0 ${
+                style === s.key ? "bg-primary/15 text-primary" : "text-foreground hover:bg-secondary"}`}>
+              <span className="text-base">{s.emoji}</span><span>{s.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <button onClick={() => setOpen(!open)}
+        className="w-10 h-10 rounded-xl bg-card/95 backdrop-blur-sm border border-border shadow-xl flex items-center justify-center text-foreground hover:bg-secondary transition-colors ml-auto">
+        <Layers className="w-4.5 h-4.5" />
+      </button>
+    </div>
+  );
+}
 
 interface SearchResult { display_name: string; lat: string; lon: string }
 
@@ -51,6 +113,7 @@ export default function SetupPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [detected, setDetected] = useState("");
   const [saved, setSaved] = useState(false);
+  const [mapStyle, setMapStyle] = useState("satellite");
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const form = useForm<FormValues>({
@@ -134,15 +197,12 @@ export default function SetupPage() {
       <div className="relative flex-shrink-0" style={{ height: "42dvh" }}>
         <MapContainer center={[lat || 31.5, lng || 35.0]} zoom={campus ? campus.defaultZoom : 8}
           style={{ width: "100%", height: "100%" }}>
-          <TileLayer
-            attribution="&copy; Esri"
-            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            maxZoom={20} />
-          <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png" attribution="" />
+          <DynamicTiles styleKey={mapStyle} />
           <MapClickSync onSelect={handleMapClick} />
           {!isNaN(lat) && !isNaN(lng) && <Marker position={[lat, lng]} />}
           {!isNaN(lat) && !isNaN(lng) && <MapFly center={[lat, lng]} zoom={zoom} />}
         </MapContainer>
+        <MapStyleSwitcher style={mapStyle} onChange={setMapStyle} />
         <div className="absolute top-3 left-3 right-3 z-[400]">
           <div className="relative bg-card/95 backdrop-blur-sm rounded-xl border border-border shadow-xl">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

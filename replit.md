@@ -45,9 +45,11 @@ artifacts-monorepo/
   - Buildings: announcements + schedule
   - Dining Halls: daily menus + ratings
   - Sports Fields: game sessions + voting
+  - **Map style switcher** — Toggle between Satellite, Street, Terrain, and Dark map styles (bottom-right layers button)
   - **Map search bar** — Nominatim geocoding search on the map for finding places
   - **Manager assignment** — Assign registered users as location managers (managerId stored in DB, joined from users table)
   - **Edit locations** — Edit name, description, type, color, and manager for existing locations
+  - **Multi-location creation** — "Save & Add Another" button to create multiple locations in sequence without returning to list
 - **User Management** (`/users`) — List users, invite by phone (generates OTP), delete users
 
 ## Campus App Features

@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
-import { MapContainer, TileLayer, Polygon, Polyline, Marker, useMapEvents, useMap } from "react-leaflet";
+import { MapContainer, Polygon, Polyline, Marker, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Trash2, X, Save, Building2, UtensilsCrossed, Trophy, Car, Trees,
   MapPin, Star, Calendar, Users, Bell, Clock, Undo2, ChevronLeft,
   Megaphone, Loader2, AlertTriangle, ChevronRight, Search, Edit2, UserCheck,
+  Layers, PlusCircle,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -45,6 +46,74 @@ const PRIORITY_STYLE: Record<string, string> = {
   important: "border-accent/50 text-accent",
   urgent:    "border-destructive/50 text-destructive",
 };
+
+const MAP_STYLES = [
+  { key: "satellite", label: "Satellite", emoji: "🛰️",
+    tiles: [
+      { url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr: "&copy; Esri" },
+      { url: "https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png", attr: "" },
+    ] },
+  { key: "street", label: "Street", emoji: "🗺️",
+    tiles: [
+      { url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", attr: "&copy; OSM" },
+    ] },
+  { key: "terrain", label: "Terrain", emoji: "⛰️",
+    tiles: [
+      { url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}", attr: "&copy; Esri" },
+    ] },
+  { key: "dark", label: "Dark", emoji: "🌙",
+    tiles: [
+      { url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", attr: "&copy; CartoDB" },
+    ] },
+] as const;
+
+function MapStyleSwitcher({ style, onChange }: { style: string; onChange: (s: string) => void }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="absolute bottom-3 right-3 z-[500]">
+      {open && (
+        <div className="mb-2 bg-card/95 backdrop-blur-sm border border-border rounded-xl shadow-xl overflow-hidden">
+          {MAP_STYLES.map(s => (
+            <button key={s.key} onClick={() => { onChange(s.key); setOpen(false); }}
+              className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium transition-colors border-b border-border last:border-0 ${
+                style === s.key ? "bg-primary/15 text-primary" : "text-foreground hover:bg-secondary"}`}>
+              <span className="text-base">{s.emoji}</span>
+              <span>{s.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <button onClick={() => setOpen(!open)}
+        className="w-10 h-10 rounded-xl bg-card/95 backdrop-blur-sm border border-border shadow-xl flex items-center justify-center text-foreground hover:bg-secondary transition-colors ml-auto">
+        <Layers className="w-4.5 h-4.5" />
+      </button>
+    </div>
+  );
+}
+
+function DynamicTiles({ styleKey }: { styleKey: string }) {
+  const map = useMap();
+  const layersRef = useRef<L.TileLayer[]>([]);
+
+  useEffect(() => {
+    layersRef.current.forEach(l => map.removeLayer(l));
+    layersRef.current = [];
+
+    const style = MAP_STYLES.find(s => s.key === styleKey) || MAP_STYLES[0];
+    style.tiles.forEach(t => {
+      const layer = L.tileLayer(t.url, { attribution: t.attr, maxZoom: 20 });
+      layer.addTo(map);
+      layersRef.current.push(layer);
+    });
+
+    return () => {
+      layersRef.current.forEach(l => map.removeLayer(l));
+    };
+  }, [styleKey, map]);
+
+  return null;
+}
 
 function fmtDate(d: string) { return new Date(d).toLocaleDateString("en-IL", { day:"numeric",month:"short" }); }
 function fmtTime(d: string) { return new Date(d).toLocaleTimeString("en-IL", { hour:"2-digit",minute:"2-digit" }); }
@@ -408,6 +477,7 @@ export default function LocationsPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [managerId, setManagerId] = useState<number | null>(null);
   const [editManagerId, setEditManagerId] = useState<number | null>(null);
+  const [mapStyle, setMapStyle] = useState("satellite");
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   useEffect(() => {
@@ -464,12 +534,23 @@ export default function LocationsPage() {
 
   const cancelAdd = () => { setMode("list"); setDrawing(false); setPts([]); };
 
-  const submit = (data: LocForm) => {
+  const submit = (data: LocForm, addAnother = false) => {
     if (pts.length === 0) return;
     const center = pts[0];
     createLoc.mutate({
       data: { ...data, lat: center[0], lng: center[1], polygon: pts.map(p => ({ lat: p[0], lng: p[1] })), managerId: managerId as any }
-    }, { onSuccess: () => { cancelAdd(); refetch(); } });
+    }, { onSuccess: () => {
+      refetch();
+      if (addAnother) {
+        setPts([]);
+        setDetected("");
+        setManagerId(null);
+        setDrawing(true);
+        lForm.reset({ name:"", description:"", type: LocationType.building, color:"#60a5fa", adminName:"" });
+      } else {
+        cancelAdd();
+      }
+    } });
   };
 
   const openDetail = (id: number) => {
@@ -525,9 +606,7 @@ export default function LocationsPage() {
       {/* ── MAP ── */}
       <div className="relative flex-shrink-0 transition-all duration-300" style={{ height: mapHeight }}>
         <MapContainer center={[campus.lat, campus.lng]} zoom={campus.defaultZoom} style={{ width:"100%", height:"100%" }}>
-          <TileLayer attribution="&copy; Esri"
-            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" maxZoom={20} />
-          <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png" attribution="" />
+          <DynamicTiles styleKey={mapStyle} />
           <MapClick drawing={drawing} onPoint={handleMapClick} />
           {flyTarget && <MapFly lat={flyTarget.lat} lng={flyTarget.lng} zoom={flyTarget.zoom} />}
 
@@ -552,6 +631,7 @@ export default function LocationsPage() {
         </MapContainer>
 
         <MapSearchBar onSelect={handleSearchSelect} />
+        <MapStyleSwitcher style={mapStyle} onChange={setMapStyle} />
 
         {drawing && (
           <div className="absolute top-14 left-3 right-3 z-[400] bg-primary/90 backdrop-blur-sm text-primary-foreground rounded-xl px-4 py-2.5 text-sm font-medium flex items-center justify-between shadow-xl">
@@ -650,13 +730,17 @@ export default function LocationsPage() {
               <input {...lForm.register("color")} className="flex-1 px-3 py-2 rounded-xl bg-card border border-border text-xs text-foreground focus:outline-none"/>
             </div>
 
-            <div className="flex gap-2 pb-6">
-              <button type="button" onClick={cancelAdd} className="flex-1 py-3 rounded-xl bg-secondary text-foreground text-sm font-medium">Cancel</button>
-              <button type="button" onClick={lForm.handleSubmit(submit)} disabled={pts.length === 0 || createLoc.isPending}
+            <div className="flex gap-2 pb-2">
+              <button type="button" onClick={cancelAdd} className="py-3 px-4 rounded-xl bg-secondary text-foreground text-sm font-medium">Cancel</button>
+              <button type="button" onClick={lForm.handleSubmit(d => submit(d, false))} disabled={pts.length === 0 || createLoc.isPending}
                 className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2">
-                {createLoc.isPending ? <Loader2 className="w-4 h-4 animate-spin"/> : <><Save className="w-4 h-4"/> Save ({pts.length} pts)</>}
+                {createLoc.isPending ? <Loader2 className="w-4 h-4 animate-spin"/> : <><Save className="w-4 h-4"/> Save</>}
               </button>
             </div>
+            <button type="button" onClick={lForm.handleSubmit(d => submit(d, true))} disabled={pts.length === 0 || createLoc.isPending}
+              className="w-full py-3 rounded-xl border-2 border-dashed border-primary/40 text-primary text-sm font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-primary/5 transition-colors mb-6">
+              <PlusCircle className="w-4 h-4"/> Save & Add Another Location
+            </button>
           </div>
         </div>
       )}
