@@ -131,6 +131,21 @@ router.post("/events", requireAuth, async (req: Request, res: Response) => {
     userId: user.id,
   });
 
+  const creatorUser = await db.select({ displayName: usersTable.displayName }).from(usersTable).where(eq(usersTable.id, user.id)).limit(1);
+  const creatorName = creatorUser[0]?.displayName || "Someone";
+  const allUsers = await db.select({ id: usersTable.id, lat: usersTable.lat, lng: usersTable.lng }).from(usersTable).where(
+    and(
+      sql`${usersTable.lat} IS NOT NULL`,
+      sql`${usersTable.lng} IS NOT NULL`
+    )
+  );
+  const nearbyRadius = 2000;
+  for (const u of allUsers) {
+    if (u.id !== user.id && u.lat !== null && u.lng !== null && haversine(parsedLat, parsedLng, u.lat, u.lng) <= nearbyRadius) {
+      createNotification(u.id, "nearby_event", `${creatorName} created "${title.trim()}" nearby`, created[0].id, "event");
+    }
+  }
+
   res.status(201).json(created[0]);
 });
 

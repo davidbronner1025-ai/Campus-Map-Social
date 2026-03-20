@@ -63,12 +63,12 @@ export default function NotificationBell() {
 
     setOpen(false);
 
-    if (notif.referenceType === "event") {
-      navigate("/");
-    } else if (notif.referenceType === "conversation") {
+    if (notif.referenceType === "event" && notif.referenceId) {
+      navigate(`/?viewEvent=${notif.referenceId}`);
+    } else if (notif.referenceType === "conversation" && notif.referenceId) {
       navigate(`/chats?open=${notif.referenceId}`);
-    } else if (notif.referenceType === "message") {
-      navigate("/");
+    } else if (notif.referenceType === "message" && notif.referenceId) {
+      navigate(`/?viewMessage=${notif.referenceId}`);
     }
   };
 

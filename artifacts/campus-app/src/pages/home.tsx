@@ -878,6 +878,33 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, [pos, fetchAll]);
 
+  // Deep-link from notifications: ?viewEvent=ID or ?viewMessage=ID
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const viewEventId = params.get("viewEvent");
+    const viewMessageId = params.get("viewMessage");
+
+    if (viewEventId && events.length > 0) {
+      const evt = events.find(e => e.id === parseInt(viewEventId));
+      if (evt) {
+        setFeedTab("events");
+        setFeedOpen(true);
+        setEventDetail(evt);
+      }
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
+    if (viewMessageId && messages.length > 0) {
+      const msg = messages.find(m => m.id === parseInt(viewMessageId));
+      if (msg) {
+        setFeedTab("messages");
+        setFeedOpen(true);
+        setReplyTarget(msg);
+      }
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [events, messages]);
+
   const handleDelete = async (id: number) => {
     await deleteMessage(id);
     setMessages(p => p.filter(m => m.id !== id));
@@ -1028,7 +1055,22 @@ export default function HomePage() {
 
       {/* ── FEED ── */}
       {feedOpen && (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto"
+          onTouchStart={(e) => {
+            const el = e.currentTarget;
+            if (el.scrollTop <= 0) {
+              (el as any).__pullStartY = e.touches[0].clientY;
+            }
+          }}
+          onTouchEnd={(e) => {
+            const el = e.currentTarget;
+            const startY = (el as any).__pullStartY;
+            if (startY !== undefined && el.scrollTop <= 0) {
+              const endY = e.changedTouches[0].clientY;
+              if (endY - startY > 60) fetchAll();
+              delete (el as any).__pullStartY;
+            }
+          }}>
           {/* Feed header with tabs */}
           <div className="sticky top-0 z-10 bg-background/90 backdrop-blur-sm border-b border-border">
             <div className="px-4 pt-2.5 pb-0 flex items-center justify-between">
@@ -1050,6 +1092,23 @@ export default function HomePage() {
           </div>
 
           <div className="px-4 py-3 space-y-3 pb-24">
+            {loading && messages.length === 0 && events.length === 0 && (
+              <div className="space-y-3">
+                {[1,2,3].map(i => (
+                  <div key={i} className="rounded-2xl bg-card border border-border p-4 animate-pulse">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-full bg-muted" />
+                      <div className="space-y-1.5">
+                        <div className="h-3.5 w-24 bg-muted rounded" />
+                        <div className="h-3 w-16 bg-muted rounded" />
+                      </div>
+                    </div>
+                    <div className="h-4 w-full bg-muted rounded mb-2" />
+                    <div className="h-4 w-3/4 bg-muted rounded" />
+                  </div>
+                ))}
+              </div>
+            )}
             {feedTab === "messages" ? (
               <>
                 {messages.length === 0 && !loading && (

@@ -3,8 +3,9 @@ import { db } from "@workspace/db";
 import {
   conversationsTable, conversationMembersTable, chatMessagesTable, usersTable
 } from "@workspace/db/schema";
-import { eq, and, desc, sql, inArray, gt } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, gt, ne } from "drizzle-orm";
 import { requireAuth } from "./users";
+import { createNotification } from "../lib/notify";
 
 const router: IRouter = Router();
 
@@ -266,9 +267,23 @@ router.post("/conversations/:id/messages", requireAuth, async (req: Request, res
     bannerColor: usersTable.bannerColor,
   }).from(usersTable).where(eq(usersTable.id, user.id)).limit(1);
 
+  const conv = await db.select().from(conversationsTable).where(eq(conversationsTable.id, convId)).limit(1);
+  const otherMembers = await db
+    .select({ userId: conversationMembersTable.userId })
+    .from(conversationMembersTable)
+    .where(and(eq(conversationMembersTable.conversationId, convId), ne(conversationMembersTable.userId, user.id)));
+
+  const senderName = sender[0]?.displayName || "Someone";
+  const convName = conv[0]?.type === "group" ? conv[0].name || "group chat" : "a chat";
+  const preview = content.trim().length > 50 ? content.trim().slice(0, 50) + "…" : content.trim();
+
+  for (const m of otherMembers) {
+    createNotification(m.userId, "chat_message", `${senderName} in ${convName}: ${preview}`, convId, "conversation");
+  }
+
   res.status(201).json({
     ...msg,
-    senderName: sender[0]?.displayName || "",
+    senderName,
     senderAvatar: sender[0]?.avatarUrl || null,
     senderBannerColor: sender[0]?.bannerColor || "#1e293b",
   });

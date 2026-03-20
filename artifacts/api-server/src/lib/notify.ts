@@ -19,5 +19,7 @@ export async function createNotification(
       referenceId: referenceId ?? null,
       referenceType: referenceType ?? null,
     });
-  } catch {}
+  } catch (err) {
+    console.error("[notify] Failed to create notification:", { userId, type, referenceId }, err);
+  }
 }
