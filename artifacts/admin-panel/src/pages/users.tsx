@@ -92,6 +92,13 @@ export default function UsersPage() {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
+  // Auto-refresh every 30s when on map view
+  useEffect(() => {
+    if (view !== "map") return;
+    const interval = setInterval(fetchUsers, 30_000);
+    return () => clearInterval(interval);
+  }, [view, fetchUsers]);
+
   const deleteUser = async (id: number) => {
     if (!confirm("Remove this user from the platform?")) return;
     setDeleting(id);
