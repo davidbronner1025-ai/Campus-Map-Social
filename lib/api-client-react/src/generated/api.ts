@@ -20,21 +20,27 @@ import type {
   Announcement,
   Campus,
   CreateAnnouncementRequest,
+  CreateEventBody,
   CreateGameRequest,
   CreateLocationRequest,
   CreateMenuRequest,
   CreateScheduleEntryRequest,
   DailyMenu,
   ErrorResponse,
+  EventRow,
   GameSession,
+  GetNearbyEventsParams,
   GetNearbyUsersParams,
   HealthStatus,
   Location,
+  NearbyEvent,
   NearbyUser,
   RateMenuRequest,
+  RsvpEvent200,
   ScheduleEntry,
   SetCampusRequest,
   SuccessResponse,
+  UnrsvpEvent200,
   UpdateUserRequest,
   UserProfile,
   VoteGameRequest,
@@ -2061,4 +2067,521 @@ export const useVoteForGame = <
   TContext
 > => {
   return useMutation(getVoteForGameMutationOptions(options));
+};
+
+/**
+ * @summary Get upcoming events within radius
+ */
+export const getGetNearbyEventsUrl = (params: GetNearbyEventsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/events/nearby?${stringifiedParams}`
+    : `/api/events/nearby`;
+};
+
+export const getNearbyEvents = async (
+  params: GetNearbyEventsParams,
+  options?: RequestInit,
+): Promise<NearbyEvent[]> => {
+  return customFetch<NearbyEvent[]>(getGetNearbyEventsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetNearbyEventsQueryKey = (params?: GetNearbyEventsParams) => {
+  return [`/api/events/nearby`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetNearbyEventsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getNearbyEvents>>,
+  TError = ErrorType<void>,
+>(
+  params: GetNearbyEventsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getNearbyEvents>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetNearbyEventsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getNearbyEvents>>> = ({
+    signal,
+  }) => getNearbyEvents(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getNearbyEvents>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetNearbyEventsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getNearbyEvents>>
+>;
+export type GetNearbyEventsQueryError = ErrorType<void>;
+
+/**
+ * @summary Get upcoming events within radius
+ */
+
+export function useGetNearbyEvents<
+  TData = Awaited<ReturnType<typeof getNearbyEvents>>,
+  TError = ErrorType<void>,
+>(
+  params: GetNearbyEventsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getNearbyEvents>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetNearbyEventsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new event (auto-RSVPs creator)
+ */
+export const getCreateEventUrl = () => {
+  return `/api/events`;
+};
+
+export const createEvent = async (
+  createEventBody: CreateEventBody,
+  options?: RequestInit,
+): Promise<EventRow> => {
+  return customFetch<EventRow>(getCreateEventUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createEventBody),
+  });
+};
+
+export const getCreateEventMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createEvent>>,
+    TError,
+    { data: BodyType<CreateEventBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createEvent>>,
+  TError,
+  { data: BodyType<CreateEventBody> },
+  TContext
+> => {
+  const mutationKey = ["createEvent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createEvent>>,
+    { data: BodyType<CreateEventBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createEvent(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateEventMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createEvent>>
+>;
+export type CreateEventMutationBody = BodyType<CreateEventBody>;
+export type CreateEventMutationError = ErrorType<void>;
+
+/**
+ * @summary Create a new event (auto-RSVPs creator)
+ */
+export const useCreateEvent = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createEvent>>,
+    TError,
+    { data: BodyType<CreateEventBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createEvent>>,
+  TError,
+  { data: BodyType<CreateEventBody> },
+  TContext
+> => {
+  return useMutation(getCreateEventMutationOptions(options));
+};
+
+/**
+ * @summary Get single event detail
+ */
+export const getGetEventUrl = (id: number) => {
+  return `/api/events/${id}`;
+};
+
+export const getEvent = async (
+  id: number,
+  options?: RequestInit,
+): Promise<NearbyEvent> => {
+  return customFetch<NearbyEvent>(getGetEventUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetEventQueryKey = (id: number) => {
+  return [`/api/events/${id}`] as const;
+};
+
+export const getGetEventQueryOptions = <
+  TData = Awaited<ReturnType<typeof getEvent>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getEvent>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetEventQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getEvent>>> = ({
+    signal,
+  }) => getEvent(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getEvent>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type GetEventQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getEvent>>
+>;
+export type GetEventQueryError = ErrorType<void>;
+
+/**
+ * @summary Get single event detail
+ */
+
+export function useGetEvent<
+  TData = Awaited<ReturnType<typeof getEvent>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getEvent>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetEventQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Delete own event
+ */
+export const getDeleteEventUrl = (id: number) => {
+  return `/api/events/${id}`;
+};
+
+export const deleteEvent = async (
+  id: number,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getDeleteEventUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteEventMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteEvent>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteEvent>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteEvent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteEvent>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteEvent(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteEventMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteEvent>>
+>;
+
+export type DeleteEventMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete own event
+ */
+export const useDeleteEvent = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteEvent>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteEvent>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteEventMutationOptions(options));
+};
+
+/**
+ * @summary Join an event
+ */
+export const getRsvpEventUrl = (id: number) => {
+  return `/api/events/${id}/rsvp`;
+};
+
+export const rsvpEvent = async (
+  id: number,
+  options?: RequestInit,
+): Promise<RsvpEvent200> => {
+  return customFetch<RsvpEvent200>(getRsvpEventUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRsvpEventMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rsvpEvent>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rsvpEvent>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["rsvpEvent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rsvpEvent>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return rsvpEvent(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RsvpEventMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rsvpEvent>>
+>;
+
+export type RsvpEventMutationError = ErrorType<void>;
+
+/**
+ * @summary Join an event
+ */
+export const useRsvpEvent = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rsvpEvent>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rsvpEvent>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getRsvpEventMutationOptions(options));
+};
+
+/**
+ * @summary Leave an event
+ */
+export const getUnrsvpEventUrl = (id: number) => {
+  return `/api/events/${id}/rsvp`;
+};
+
+export const unrsvpEvent = async (
+  id: number,
+  options?: RequestInit,
+): Promise<UnrsvpEvent200> => {
+  return customFetch<UnrsvpEvent200>(getUnrsvpEventUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getUnrsvpEventMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unrsvpEvent>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof unrsvpEvent>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["unrsvpEvent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof unrsvpEvent>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return unrsvpEvent(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnrsvpEventMutationResult = NonNullable<
+  Awaited<ReturnType<typeof unrsvpEvent>>
+>;
+
+export type UnrsvpEventMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Leave an event
+ */
+export const useUnrsvpEvent = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unrsvpEvent>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof unrsvpEvent>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getUnrsvpEventMutationOptions(options));
 };

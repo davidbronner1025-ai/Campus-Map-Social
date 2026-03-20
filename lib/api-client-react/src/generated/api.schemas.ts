@@ -315,8 +315,96 @@ export interface NearbyUser {
   active: boolean;
 }
 
+export type EventCategory = (typeof EventCategory)[keyof typeof EventCategory];
+
+export const EventCategory = {
+  study_group: "study_group",
+  party: "party",
+  sports: "sports",
+  club_meeting: "club_meeting",
+  food: "food",
+  other: "other",
+} as const;
+
+export interface EventCreator {
+  id: number;
+  displayName: string;
+  avatarUrl?: string | null;
+  bannerColor: string;
+}
+
+export interface EventRsvpUser {
+  id: number;
+  userId: number;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+}
+
+export interface EventRow {
+  id: number;
+  creatorId: number;
+  locationId?: number | null;
+  title: string;
+  description?: string | null;
+  category: EventCategory;
+  lat: number;
+  lng: number;
+  startsAt: string;
+  maxParticipants?: number | null;
+  createdAt: string;
+}
+
+export type NearbyEvent = EventRow & {
+  creator?: EventCreator | null;
+  rsvpCount: number;
+  rsvps: EventRsvpUser[];
+  distance?: number;
+};
+
+export interface CreateEventBody {
+  title: string;
+  description?: string;
+  category?: EventCategory;
+  lat: number;
+  lng: number;
+  startsAt: string;
+  maxParticipants?: number;
+  locationId?: number;
+}
+
 export type GetNearbyUsersParams = {
   lat: number;
   lng: number;
   radius?: number;
+};
+
+export type GetNearbyEventsParams = {
+  lat: number;
+  lng: number;
+  radius?: number;
+};
+
+export type RsvpEvent200Status =
+  (typeof RsvpEvent200Status)[keyof typeof RsvpEvent200Status];
+
+export const RsvpEvent200Status = {
+  joined: "joined",
+  already_joined: "already_joined",
+} as const;
+
+export type RsvpEvent200 = {
+  ok: boolean;
+  status: RsvpEvent200Status;
+};
+
+export type UnrsvpEvent200Status =
+  (typeof UnrsvpEvent200Status)[keyof typeof UnrsvpEvent200Status];
+
+export const UnrsvpEvent200Status = {
+  left: "left",
+} as const;
+
+export type UnrsvpEvent200 = {
+  ok: boolean;
+  status: UnrsvpEvent200Status;
 };

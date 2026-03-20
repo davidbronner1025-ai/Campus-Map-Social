@@ -15,6 +15,7 @@ tags:
   - name: menus
   - name: sports
   - name: users
+  - name: events
 
 paths:
   /healthz:
@@ -524,6 +525,169 @@ paths:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
 
+  /events/nearby:
+    get:
+      operationId: getNearbyEvents
+      tags: [events]
+      summary: Get upcoming events within radius
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: radius
+          in: query
+          required: false
+          schema:
+            type: number
+            default: 1000
+      responses:
+        "200":
+          description: List of nearby upcoming events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NearbyEvent"
+        "400":
+          description: Missing lat/lng
+
+  /events:
+    post:
+      operationId: createEvent
+      tags: [events]
+      summary: Create a new event (auto-RSVPs creator)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventBody"
+      responses:
+        "201":
+          description: Event created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventRow"
+        "400":
+          description: Validation error
+
+  /events/{id}:
+    get:
+      operationId: getEvent
+      tags: [events]
+      summary: Get single event detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Event with RSVP list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NearbyEvent"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteEvent
+      tags: [events]
+      summary: Delete own event
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Event deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "403":
+          description: Not the event creator
+        "404":
+          description: Not found
+
+  /events/{id}/rsvp:
+    post:
+      operationId: rsvpEvent
+      tags: [events]
+      summary: Join an event
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: RSVP result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  status:
+                    type: string
+                    enum: [joined, already_joined]
+                required: [ok, status]
+        "400":
+          description: Event is full
+        "404":
+          description: Not found
+    delete:
+      operationId: unrsvpEvent
+      tags: [events]
+      summary: Leave an event
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Left event
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  status:
+                    type: string
+                    enum: [left]
+                required: [ok, status]
+
 components:
   schemas:
     HealthStatus:
@@ -967,6 +1131,112 @@ components:
         active:
           type: boolean
       required: [id, displayName, bannerColor, visibility, lat, lng, active]
+
+    EventCategory:
+      type: string
+      enum: [study_group, party, sports, club_meeting, food, other]
+
+    EventCreator:
+      type: object
+      properties:
+        id:
+          type: integer
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        bannerColor:
+          type: string
+      required: [id, displayName, bannerColor]
+
+    EventRsvpUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        displayName:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          nullable: true
+      required: [id, userId]
+
+    EventRow:
+      type: object
+      properties:
+        id:
+          type: integer
+        creatorId:
+          type: integer
+        locationId:
+          type: integer
+          nullable: true
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        category:
+          $ref: "#/components/schemas/EventCategory"
+        lat:
+          type: number
+        lng:
+          type: number
+        startsAt:
+          type: string
+          format: date-time
+        maxParticipants:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, creatorId, title, category, lat, lng, startsAt, createdAt]
+
+    NearbyEvent:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/EventRow"
+        - type: object
+          properties:
+            creator:
+              $ref: "#/components/schemas/EventCreator"
+              nullable: true
+            rsvpCount:
+              type: integer
+            rsvps:
+              type: array
+              items:
+                $ref: "#/components/schemas/EventRsvpUser"
+            distance:
+              type: integer
+          required: [rsvpCount, rsvps]
+
+    CreateEventBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          $ref: "#/components/schemas/EventCategory"
+        lat:
+          type: number
+        lng:
+          type: number
+        startsAt:
+          type: string
+          format: date-time
+        maxParticipants:
+          type: integer
+        locationId:
+          type: integer
+      required: [title, lat, lng, startsAt]
 
   securitySchemes:
     bearerAuth:

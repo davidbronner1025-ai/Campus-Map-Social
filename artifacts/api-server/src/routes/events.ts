@@ -168,8 +168,8 @@ router.post("/events/:id/rsvp", requireAuth, async (req: Request, res: Response)
   try {
     await db.insert(eventRsvpsTable).values({ eventId, userId: user.id });
     res.json({ ok: true, status: "joined" });
-  } catch (e: any) {
-    if (e?.code === "23505") {
+  } catch (e: unknown) {
+    if (e instanceof Error && "code" in e && (e as { code: string }).code === "23505") {
       res.json({ ok: true, status: "already_joined" });
     } else {
       throw e;

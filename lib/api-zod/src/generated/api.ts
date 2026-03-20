@@ -591,3 +591,162 @@ export const VoteForGameResponse = zod.object({
   success: zod.boolean(),
   message: zod.string().optional(),
 });
+
+/**
+ * @summary Get upcoming events within radius
+ */
+export const getNearbyEventsQueryRadiusDefault = 1000;
+
+export const GetNearbyEventsQueryParams = zod.object({
+  lat: zod.coerce.number(),
+  lng: zod.coerce.number(),
+  radius: zod.coerce.number().default(getNearbyEventsQueryRadiusDefault),
+});
+
+export const GetNearbyEventsResponseItem = zod
+  .object({
+    id: zod.number(),
+    creatorId: zod.number(),
+    locationId: zod.number().nullish(),
+    title: zod.string(),
+    description: zod.string().nullish(),
+    category: zod.enum([
+      "study_group",
+      "party",
+      "sports",
+      "club_meeting",
+      "food",
+      "other",
+    ]),
+    lat: zod.number(),
+    lng: zod.number(),
+    startsAt: zod.date(),
+    maxParticipants: zod.number().nullish(),
+    createdAt: zod.date(),
+  })
+  .and(
+    zod.object({
+      creator: zod
+        .object({
+          id: zod.number(),
+          displayName: zod.string(),
+          avatarUrl: zod.string().nullish(),
+          bannerColor: zod.string(),
+        })
+        .nullish(),
+      rsvpCount: zod.number(),
+      rsvps: zod.array(
+        zod.object({
+          id: zod.number(),
+          userId: zod.number(),
+          displayName: zod.string().nullish(),
+          avatarUrl: zod.string().nullish(),
+        }),
+      ),
+      distance: zod.number().optional(),
+    }),
+  );
+export const GetNearbyEventsResponse = zod.array(GetNearbyEventsResponseItem);
+
+/**
+ * @summary Create a new event (auto-RSVPs creator)
+ */
+export const CreateEventBody = zod.object({
+  title: zod.string(),
+  description: zod.string().optional(),
+  category: zod
+    .enum(["study_group", "party", "sports", "club_meeting", "food", "other"])
+    .optional(),
+  lat: zod.number(),
+  lng: zod.number(),
+  startsAt: zod.date(),
+  maxParticipants: zod.number().optional(),
+  locationId: zod.number().optional(),
+});
+
+/**
+ * @summary Get single event detail
+ */
+export const GetEventParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetEventResponse = zod
+  .object({
+    id: zod.number(),
+    creatorId: zod.number(),
+    locationId: zod.number().nullish(),
+    title: zod.string(),
+    description: zod.string().nullish(),
+    category: zod.enum([
+      "study_group",
+      "party",
+      "sports",
+      "club_meeting",
+      "food",
+      "other",
+    ]),
+    lat: zod.number(),
+    lng: zod.number(),
+    startsAt: zod.date(),
+    maxParticipants: zod.number().nullish(),
+    createdAt: zod.date(),
+  })
+  .and(
+    zod.object({
+      creator: zod
+        .object({
+          id: zod.number(),
+          displayName: zod.string(),
+          avatarUrl: zod.string().nullish(),
+          bannerColor: zod.string(),
+        })
+        .nullish(),
+      rsvpCount: zod.number(),
+      rsvps: zod.array(
+        zod.object({
+          id: zod.number(),
+          userId: zod.number(),
+          displayName: zod.string().nullish(),
+          avatarUrl: zod.string().nullish(),
+        }),
+      ),
+      distance: zod.number().optional(),
+    }),
+  );
+
+/**
+ * @summary Delete own event
+ */
+export const DeleteEventParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteEventResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary Join an event
+ */
+export const RsvpEventParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RsvpEventResponse = zod.object({
+  ok: zod.boolean(),
+  status: zod.enum(["joined", "already_joined"]),
+});
+
+/**
+ * @summary Leave an event
+ */
+export const UnrsvpEventParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UnrsvpEventResponse = zod.object({
+  ok: zod.boolean(),
+  status: zod.enum(["left"]),
+});
