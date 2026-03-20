@@ -133,3 +133,41 @@ export const rsvpEvent = (id: number) =>
 
 export const unrsvpEvent = (id: number) =>
   apiFetch<{ ok: boolean; status: string }>(`/events/${id}/rsvp`, { method: "DELETE" });
+
+// Chat
+export type ConversationMemberInfo = {
+  userId: number; displayName: string | null; avatarUrl: string | null; bannerColor: string | null;
+};
+export type LastMessage = {
+  id: number; content: string; messageType: "text" | "location"; senderId: number; createdAt: string;
+};
+export type ConversationListItem = {
+  id: number; type: "direct" | "group"; name: string | null;
+  creatorId: number | null; createdAt: string; updatedAt: string;
+  members: ConversationMemberInfo[];
+  lastMessage: LastMessage | null;
+};
+export type ChatMsg = {
+  id: number; conversationId: number; senderId: number;
+  content: string; messageType: "text" | "location";
+  lat: number | null; lng: number | null; createdAt: string;
+  senderName: string; senderAvatar: string | null; senderBannerColor: string;
+};
+
+export const getConversations = () =>
+  apiFetch<ConversationListItem[]>("/conversations");
+
+export const createConversation = (data: { type?: "direct" | "group"; name?: string; memberIds: number[] }) =>
+  apiFetch<{ id: number; type: string; name: string | null }>("/conversations", { method: "POST", body: JSON.stringify(data) });
+
+export const getChatMessages = (convId: number, before?: number, limit = 50) =>
+  apiFetch<ChatMsg[]>(`/conversations/${convId}/messages?limit=${limit}${before ? `&before=${before}` : ""}`);
+
+export const sendChatMessage = (convId: number, data: { content: string; messageType?: "text" | "location"; lat?: number; lng?: number }) =>
+  apiFetch<ChatMsg>(`/conversations/${convId}/messages`, { method: "POST", body: JSON.stringify(data) });
+
+export const addGroupMember = (convId: number, userId: number) =>
+  apiFetch<{ ok: boolean }>(`/conversations/${convId}/members`, { method: "POST", body: JSON.stringify({ userId }) });
+
+export const leaveGroup = (convId: number) =>
+  apiFetch<{ ok: boolean }>(`/conversations/${convId}/members`, { method: "DELETE" });

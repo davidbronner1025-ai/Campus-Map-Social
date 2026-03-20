@@ -220,6 +220,45 @@ export const messagesTable = pgTable("messages", {
 
 export type Message = typeof messagesTable.$inferSelect;
 
+// ─── Conversations (DM & Group Chat) ──────────────────────────────────────
+export const conversationTypeEnum = ["direct", "group"] as const;
+export type ConversationType = typeof conversationTypeEnum[number];
+
+export const conversationsTable = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+  type: text("type").$type<ConversationType>().notNull().default("direct"),
+  name: text("name"),
+  creatorId: integer("creator_id").references(() => usersTable.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Conversation = typeof conversationsTable.$inferSelect;
+
+export const conversationMembersTable = pgTable("conversation_members", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").notNull().references(() => conversationsTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("conv_member_unique").on(table.conversationId, table.userId),
+]);
+
+export type ConversationMember = typeof conversationMembersTable.$inferSelect;
+
+export const chatMessagesTable = pgTable("chat_messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").notNull().references(() => conversationsTable.id, { onDelete: "cascade" }),
+  senderId: integer("sender_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  messageType: text("message_type").$type<"text" | "location">().notNull().default("text"),
+  lat: doublePrecision("lat"),
+  lng: doublePrecision("lng"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type ChatMessage = typeof chatMessagesTable.$inferSelect;
+
 // ─── Message Reactions ──────────────────────────────────────────────────────
 export const messageReactionsTable = pgTable("message_reactions", {
   id: serial("id").primaryKey(),

@@ -13,7 +13,7 @@ import {
   getNearbyMessages, getNearbyUsers, getNearbyEvents,
   pinMessage, deleteMessage, reactToMessage,
   createEvent, deleteEvent, rsvpEvent, unrsvpEvent,
-  getReplies, postReply,
+  getReplies, postReply, createConversation,
   type NearbyMessage, type NearbyUser, type NearbyEvent, type Reply
 } from "@/lib/api";
 
@@ -956,12 +956,21 @@ export default function HomePage() {
           {showPeople && nearbyUsers.map(u => (
             <Marker key={`user-${u.id}`} position={[u.lat, u.lng]} icon={makeUserMarker(u)}>
               <Popup className="user-popup" closeButton={false}>
-                <div style={{ minWidth: 120, textAlign: "center", padding: "2px 0" }}>
+                <div style={{ minWidth: 130, textAlign: "center", padding: "2px 0" }}>
                   <p style={{ fontWeight: 700, fontSize: 13, margin: 0 }}>{u.displayName || "?"}</p>
                   {u.title && <p style={{ fontSize: 11, color: "#94a3b8", margin: "2px 0 0" }}>{u.title}</p>}
                   <p style={{ fontSize: 10, color: u.active ? "#4ade80" : "#94a3b8", margin: "4px 0 0" }}>
                     {u.active ? "Active now" : u.lastSeen ? `Last seen ${timeAgo(u.lastSeen)}` : "Inactive"}
                   </p>
+                  <button onClick={async () => {
+                      try {
+                        const conv = await createConversation({ type: "direct", memberIds: [u.id] });
+                        navigate(`/chats?open=${conv.id}`);
+                      } catch {}
+                    }}
+                    style={{ marginTop: 6, padding: "4px 12px", fontSize: 11, fontWeight: 600, background: "hsl(221.2 83.2% 53.3%)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>
+                    Message
+                  </button>
                 </div>
               </Popup>
             </Marker>
@@ -1114,6 +1123,20 @@ export default function HomePage() {
           onRefresh={fetchAll}
         />
       )}
+
+      {/* ── Bottom Navigation ── */}
+      <div className="border-t border-border bg-card/90 backdrop-blur-sm flex z-20">
+        <button
+          className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-primary transition-colors">
+          <MapPin className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Map</span>
+        </button>
+        <button onClick={() => navigate("/chats")}
+          className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-muted-foreground hover:text-foreground transition-colors">
+          <MessageCircle className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Chats</span>
+        </button>
+      </div>
     </div>
   );
 }

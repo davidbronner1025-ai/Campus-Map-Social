@@ -72,6 +72,15 @@ artifacts-monorepo/
   - Create event bottom sheet with title, category picker, date/time, max participants
   - Creator auto-RSVPs, capacity enforcement, unique RSVP constraint
   - Two FABs: primary message compose + secondary event create
+- **Direct Chat & Group Messaging**:
+  - DM and group conversations with real-time message list (5s polling)
+  - Chat list page with last message preview and time-ago display
+  - Chat detail with message bubbles, sender avatars, optimistic sending
+  - Share location in chat (MapPin button)
+  - Start chat from map marker popup ("Message" button on user markers)
+  - New Chat sheet with nearby-user search
+  - Bottom navigation: Map / Chats tabs on both home and chats pages
+  - Group chat: named groups, add members, leave group
 - **Location engine**: Battery-optimized (network-accuracy, 30s server push, paused when backgrounded)
 
 ## Database Schema (lib/db/src/schema/campus.ts)
@@ -85,6 +94,9 @@ artifacts-monorepo/
 - `messageReplies` — Threaded replies per message
 - `events` — Campus events with title, description, category, lat/lng, startsAt, maxParticipants, creatorId
 - `event_rsvps` — RSVP records with unique(eventId, userId) constraint, cascade delete
+- `conversations` — Chat conversations (type: direct/group, name, creatorId)
+- `conversation_members` — Members of each conversation, unique(conversationId, userId)
+- `chat_messages` — Messages in conversations (text or location type, with optional lat/lng)
 
 ## API Endpoints
 
@@ -117,6 +129,14 @@ artifacts-monorepo/
 - `DELETE /api/messages/:id` — Delete own message
 - `POST /api/messages/:id/react` — React (yes/no/emoji)
 - `GET /api/messages/:id/replies` · `POST /api/messages/:id/replies`
+
+### Chat (requires Bearer token)
+- `GET /api/conversations` — List user's conversations with members + last message
+- `POST /api/conversations` — Create DM (idempotent: finds existing) or group chat
+- `GET /api/conversations/:id/messages?before=&limit=` — Paginated messages
+- `POST /api/conversations/:id/messages` — Send message (text or location)
+- `POST /api/conversations/:id/members` — Add member to group
+- `DELETE /api/conversations/:id/members` — Leave group
 
 ## Key Notes
 

@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import AuthPage from "@/pages/auth";
 import HomePage from "@/pages/home";
 import ProfilePage from "@/pages/profile";
+import ChatsPage from "@/pages/chats";
 
 function Router() {
   const { token, isLoading } = useAuth();
@@ -21,6 +22,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
+      <Route path="/chats" component={ChatsPage} />
       <Route path="/profile" component={ProfilePage} />
       <Route>
         <HomePage />
