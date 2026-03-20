@@ -554,6 +554,16 @@ components:
           type: string
         adminName:
           type: string
+        managerId:
+          type: integer
+          nullable: true
+          description: User ID of the assigned location manager
+        managerName:
+          type: string
+          description: Display name of the assigned manager (joined from users)
+        managerPhone:
+          type: string
+          description: Phone of the assigned manager (joined from users)
         lat:
           type: number
           format: double
@@ -589,6 +599,10 @@ components:
           default: "#6366f1"
         adminName:
           type: string
+        managerId:
+          type: integer
+          nullable: true
+          description: User ID to assign as location manager
         lat:
           type: number
           format: double

@@ -34,6 +34,7 @@ export const locationsTable = pgTable("locations", {
   type: text("type").$type<LocationType>().notNull().default("other"),
   color: text("color").notNull().default("#6366f1"),
   adminName: text("admin_name"),
+  managerId: integer("manager_id").references(() => usersTable.id, { onDelete: "set null" }),
   lat: doublePrecision("lat").notNull(),
   lng: doublePrecision("lng").notNull(),
   polygon: jsonb("polygon").$type<{ lat: number; lng: number }[]>().notNull().default([]),

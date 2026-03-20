@@ -16,6 +16,12 @@ export interface Location {
   type: LocationType;
   color: string;
   adminName?: string;
+  /** User ID of the assigned location manager */
+  managerId?: number | null;
+  /** Display name of the assigned manager (joined from users) */
+  managerName?: string;
+  /** Phone of the assigned manager (joined from users) */
+  managerPhone?: string;
   lat: number;
   lng: number;
   polygon: LatLng[];

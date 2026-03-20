@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { MapContainer, TileLayer, Polygon, Polyline, Marker, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Trash2, X, Save, Building2, UtensilsCrossed, Trophy, Car, Trees,
   MapPin, Star, Calendar, Users, Bell, Clock, Undo2, ChevronLeft,
-  Megaphone, Loader2, AlertTriangle, ChevronRight,
+  Megaphone, Loader2, AlertTriangle, ChevronRight, Search, Edit2, UserCheck,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,7 +27,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// ── Type Config ────────────────────────────────────────────────────────────────
 const TYPES: Record<string, { label: string; color: string; Icon: any; emoji: string }> = {
   building:     { label: "Building",     color: "#60a5fa", Icon: Building2,       emoji: "🏛️" },
   dining_hall:  { label: "Dining Hall",  color: "#fb923c", Icon: UtensilsCrossed, emoji: "🍽️" },
@@ -47,7 +46,6 @@ const PRIORITY_STYLE: Record<string, string> = {
   urgent:    "border-destructive/50 text-destructive",
 };
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
 function fmtDate(d: string) { return new Date(d).toLocaleDateString("en-IL", { day:"numeric",month:"short" }); }
 function fmtTime(d: string) { return new Date(d).toLocaleTimeString("en-IL", { hour:"2-digit",minute:"2-digit" }); }
 
@@ -59,6 +57,96 @@ function StarRating({ value, max=5, onRate }: { value:number; max?:number; onRat
         <Star key={i} className={`w-4 h-4 cursor-pointer ${(hover||value)>i?"text-accent fill-accent":"text-muted-foreground"}`}
           onClick={()=>onRate?.(i+1)} onMouseEnter={()=>onRate&&setHover(i+1)} onMouseLeave={()=>onRate&&setHover(0)} />
       ))}
+    </div>
+  );
+}
+
+// ── Map Search Component ────────────────────────────────────────────────────
+function MapSearchBar({ onSelect }: { onSelect: (lat: number, lng: number, name: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<any[]>([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const debounceRef = useRef<any>(null);
+
+  const doSearch = useCallback(async (q: string) => {
+    if (q.length < 2) { setResults([]); return; }
+    setLoading(true);
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&countrycodes=il`);
+      const data = await r.json();
+      setResults(data);
+      setOpen(data.length > 0);
+    } catch { setResults([]); }
+    setLoading(false);
+  }, []);
+
+  const handleChange = (val: string) => {
+    setQuery(val);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => doSearch(val), 400);
+  };
+
+  return (
+    <div className="absolute top-3 left-3 right-3 z-[500]">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+        <input value={query} onChange={e => handleChange(e.target.value)} placeholder="Search location..."
+          className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-card/95 backdrop-blur-sm border border-border text-sm text-foreground focus:outline-none focus:border-primary shadow-lg" />
+        {query && <button onClick={() => { setQuery(""); setResults([]); setOpen(false); }} className="absolute right-2 top-1/2 -translate-y-1/2 p-1"><X className="w-3.5 h-3.5 text-muted-foreground" /></button>}
+        {loading && <Loader2 className="absolute right-8 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground animate-spin" />}
+      </div>
+      {open && results.length > 0 && (
+        <div className="mt-1 bg-card/95 backdrop-blur-sm border border-border rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+          {results.map((r, i) => (
+            <button key={i} onClick={() => { onSelect(parseFloat(r.lat), parseFloat(r.lon), r.display_name.split(",")[0]); setQuery(r.display_name.split(",")[0]); setOpen(false); }}
+              className="w-full text-left px-3 py-2.5 text-xs text-foreground hover:bg-primary/10 border-b border-border last:border-0 transition-colors">
+              <span className="font-medium">{r.display_name.split(",")[0]}</span>
+              <span className="text-muted-foreground ml-1">{r.display_name.split(",").slice(1, 3).join(",")}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── User Picker Component ───────────────────────────────────────────────────
+type AdminUser = { id: number; phone: string; displayName: string; avatarUrl?: string };
+
+function UserPicker({ value, onChange, users }: { value: number | null; onChange: (id: number | null) => void; users: AdminUser[] }) {
+  const [open, setOpen] = useState(false);
+  const selected = users.find(u => u.id === value);
+
+  return (
+    <div className="relative">
+      <label className="text-xs text-muted-foreground mb-1 block">Location Manager</label>
+      <button type="button" onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-card border border-border text-sm text-left transition-colors hover:border-primary/40">
+        <UserCheck className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+        {selected ? (
+          <span className="text-foreground flex-1 truncate">{selected.displayName || selected.phone}</span>
+        ) : (
+          <span className="text-muted-foreground flex-1">Select a manager (optional)</span>
+        )}
+        {value && (
+          <button type="button" onClick={e => { e.stopPropagation(); onChange(null); setOpen(false); }} className="p-0.5 text-muted-foreground hover:text-destructive">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg max-h-40 overflow-y-auto z-50">
+          {users.length === 0 && <p className="text-xs text-muted-foreground px-3 py-3 text-center">No registered users</p>}
+          {users.map(u => (
+            <button key={u.id} type="button" onClick={() => { onChange(u.id); setOpen(false); }}
+              className={`w-full text-left px-3 py-2.5 text-xs border-b border-border last:border-0 transition-colors hover:bg-primary/10 flex items-center gap-2 ${u.id === value ? "bg-primary/10 text-primary" : "text-foreground"}`}>
+              <span className="font-medium">{u.displayName || "No name"}</span>
+              <span className="text-muted-foreground">{u.phone}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -308,15 +396,23 @@ export default function LocationsPage() {
   const { data: campus, isLoading: campusLoading } = useGetCampus({ query: { retry: false } });
   const { data: locs = [], isLoading: locsLoading, refetch } = useGetLocations();
   const createLoc = useCreateLocation();
+  const updateLoc = useUpdateLocation();
   const deleteLoc = useDeleteLocation();
 
-  const [mode, setMode] = useState<"list" | "add" | "detail">("list");
+  const [mode, setMode] = useState<"list" | "add" | "detail" | "edit">("list");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [drawing, setDrawing] = useState(false);
   const [pts, setPts] = useState<[number,number][]>([]);
   const [detected, setDetected] = useState("");
   const [flyTarget, setFlyTarget] = useState<{ lat:number; lng:number; zoom:number } | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [managerId, setManagerId] = useState<number | null>(null);
+  const [editManagerId, setEditManagerId] = useState<number | null>(null);
+
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  useEffect(() => {
+    fetch("/api/admin/users").then(r => r.json()).then(setUsers).catch(() => {});
+  }, []);
 
   const lForm = useForm<LocForm>({
     resolver: zodResolver(locSchema),
@@ -324,6 +420,11 @@ export default function LocationsPage() {
   });
   const watchedType = lForm.watch("type");
   const watchedColor = lForm.watch("color");
+
+  const editForm = useForm<LocForm>({
+    resolver: zodResolver(locSchema),
+    defaultValues: { name:"", description:"", type: LocationType.building, color:"#60a5fa", adminName:"" },
+  });
 
   useEffect(() => {
     if (!campusLoading && !campus) nav("/setup");
@@ -347,8 +448,16 @@ export default function LocationsPage() {
     if (pts.length === 0) reverseGeocode(lat, lng);
   };
 
+  const handleSearchSelect = (lat: number, lng: number, name: string) => {
+    setFlyTarget({ lat, lng, zoom: 18 });
+    if (mode === "add" && !lForm.getValues("name")) {
+      lForm.setValue("name", name);
+      setDetected(name);
+    }
+  };
+
   const startAdd = () => {
-    setMode("add"); setDrawing(true); setPts([]); setDetected("");
+    setMode("add"); setDrawing(true); setPts([]); setDetected(""); setManagerId(null);
     setSheetOpen(false); setSelectedId(null);
     lForm.reset({ name:"", description:"", type: LocationType.building, color:"#60a5fa", adminName:"" });
   };
@@ -359,7 +468,7 @@ export default function LocationsPage() {
     if (pts.length === 0) return;
     const center = pts[0];
     createLoc.mutate({
-      data: { ...data, lat: center[0], lng: center[1], polygon: pts.map(p => ({ lat: p[0], lng: p[1] })) }
+      data: { ...data, lat: center[0], lng: center[1], polygon: pts.map(p => ({ lat: p[0], lng: p[1] })), managerId: managerId as any }
     }, { onSuccess: () => { cancelAdd(); refetch(); } });
   };
 
@@ -370,6 +479,33 @@ export default function LocationsPage() {
     setMode("detail");
     setSheetOpen(true);
     setFlyTarget({ lat: loc.lat, lng: loc.lng, zoom: 18 });
+  };
+
+  const startEdit = () => {
+    if (!selectedLoc) return;
+    editForm.reset({
+      name: selectedLoc.name,
+      description: selectedLoc.description || "",
+      type: selectedLoc.type as LocationType,
+      color: selectedLoc.color,
+      adminName: selectedLoc.adminName || "",
+    });
+    setEditManagerId((selectedLoc as any).managerId || null);
+    setMode("edit");
+  };
+
+  const submitEdit = (data: LocForm) => {
+    if (!selectedLoc) return;
+    updateLoc.mutate({
+      locationId: selectedLoc.id,
+      data: {
+        ...data,
+        lat: selectedLoc.lat,
+        lng: selectedLoc.lng,
+        polygon: (selectedLoc.polygon as any[]).map((p: any) => ({ lat: p.lat, lng: p.lng })),
+        managerId: editManagerId as any,
+      },
+    }, { onSuccess: () => { setMode("detail"); refetch(); } });
   };
 
   const selectedLoc = locs.find(l => l.id === selectedId);
@@ -395,7 +531,6 @@ export default function LocationsPage() {
           <MapClick drawing={drawing} onPoint={handleMapClick} />
           {flyTarget && <MapFly lat={flyTarget.lat} lng={flyTarget.lng} zoom={flyTarget.zoom} />}
 
-          {/* Existing locations */}
           {locs.map(loc => {
             const cfg = TYPES[loc.type] || TYPES.other;
             const isSel = loc.id === selectedId;
@@ -411,15 +546,15 @@ export default function LocationsPage() {
             return <Marker key={loc.id} position={[loc.lat, loc.lng]} eventHandlers={{ click: () => openDetail(loc.id) }} />;
           })}
 
-          {/* Draft polygon */}
           {drawing && pts.length >= 3 && <Polygon positions={pts} pathOptions={{ color: watchedColor, fillColor: watchedColor, fillOpacity: 0.3, weight: 2, dashArray: "6 6" }} />}
           {drawing && pts.length === 2 && <Polyline positions={pts} pathOptions={{ color: watchedColor, weight: 2, dashArray: "6 6" }} />}
           {drawing && pts.map((p, i) => <Marker key={i} position={p} />)}
         </MapContainer>
 
-        {/* Draw mode banner */}
+        <MapSearchBar onSelect={handleSearchSelect} />
+
         {drawing && (
-          <div className="absolute top-3 left-3 right-3 z-[400] bg-primary/90 backdrop-blur-sm text-primary-foreground rounded-xl px-4 py-2.5 text-sm font-medium flex items-center justify-between shadow-xl">
+          <div className="absolute top-14 left-3 right-3 z-[400] bg-primary/90 backdrop-blur-sm text-primary-foreground rounded-xl px-4 py-2.5 text-sm font-medium flex items-center justify-between shadow-xl">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 flex-shrink-0" />
               <span>{pts.length === 0 ? "Tap map to draw the area" : `${pts.length} points marked`}</span>
@@ -433,7 +568,7 @@ export default function LocationsPage() {
         )}
       </div>
 
-      {/* ── BOTTOM AREA ── */}
+      {/* ── LIST MODE ── */}
       {mode === "list" && (
         <div className="flex-1 overflow-y-auto">
           <div className="sticky top-0 bg-background/90 backdrop-blur-sm border-b border-border px-4 py-2.5 flex items-center justify-between z-10">
@@ -449,6 +584,7 @@ export default function LocationsPage() {
             )}
             {locs.map(loc => {
               const cfg = TYPES[loc.type] || TYPES.other;
+              const mgrName = (loc as any).managerName;
               return (
                 <div key={loc.id} onClick={() => openDetail(loc.id)}
                   className="bg-card border border-border rounded-2xl p-3.5 flex items-center gap-3 cursor-pointer hover:border-primary/30 transition-colors active:scale-[0.98]">
@@ -458,7 +594,15 @@ export default function LocationsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate">{loc.name}</p>
-                    <p className="text-xs text-muted-foreground">{cfg.label}{loc.adminName ? ` · ${loc.adminName}` : ""}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {cfg.label}
+                      {loc.description ? ` · ${loc.description}` : ""}
+                    </p>
+                    {mgrName && (
+                      <p className="text-[10px] text-primary mt-0.5 flex items-center gap-1">
+                        <UserCheck className="w-3 h-3" /> {mgrName}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button onClick={e => { e.stopPropagation(); deleteLoc.mutate({ locationId: loc.id }, { onSuccess: refetch }); }}
@@ -474,7 +618,7 @@ export default function LocationsPage() {
         </div>
       )}
 
-      {/* Add mode form */}
+      {/* ── ADD MODE ── */}
       {mode === "add" && (
         <div className="flex-1 overflow-y-auto">
           <div className="px-4 py-4 space-y-3">
@@ -495,8 +639,10 @@ export default function LocationsPage() {
             </div>
 
             <input {...lForm.register("name")} placeholder="Location name" className="w-full px-4 py-3 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-primary transition-colors"/>
-            <input {...lForm.register("adminName")} placeholder="Manager / Admin name (optional)" className="w-full px-4 py-3 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-primary transition-colors"/>
-            <textarea {...lForm.register("description")} placeholder="Description (optional)" rows={2} className="w-full px-4 py-3 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-primary resize-none transition-colors"/>
+            <textarea {...lForm.register("description")} placeholder="Description" rows={2} className="w-full px-4 py-3 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-primary resize-none transition-colors"/>
+            <input {...lForm.register("adminName")} placeholder="Admin name (optional)" className="w-full px-4 py-3 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-primary transition-colors"/>
+
+            <UserPicker value={managerId} onChange={setManagerId} users={users} />
 
             <div className="flex gap-2 items-center">
               <label className="text-xs text-muted-foreground">Color:</label>
@@ -515,14 +661,13 @@ export default function LocationsPage() {
         </div>
       )}
 
-      {/* Detail bottom sheet */}
+      {/* ── DETAIL BOTTOM SHEET ── */}
       <AnimatePresence>
         {mode === "detail" && selectedLoc && sheetOpen && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 28, stiffness: 320 }}
             className="absolute bottom-0 left-0 right-0 z-30 bg-card border-t border-border rounded-t-3xl shadow-2xl overflow-hidden"
             style={{ maxHeight: "65dvh", display: "flex", flexDirection: "column" }}>
 
-            {/* Sheet handle + header */}
             <div className="flex-shrink-0 px-4 pt-3 pb-3 border-b border-border">
               <div className="w-10 h-1 rounded-full bg-border mx-auto mb-3" />
               <div className="flex items-center gap-3">
@@ -538,6 +683,10 @@ export default function LocationsPage() {
                   <p className="text-sm font-bold text-foreground truncate">{selectedLoc.name}</p>
                   <p className="text-xs text-muted-foreground">{TYPES[selectedLoc.type]?.label}{selectedLoc.adminName ? ` · ${selectedLoc.adminName}` : ""}</p>
                 </div>
+                <button onClick={startEdit}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                  <Edit2 className="w-4 h-4" />
+                </button>
                 <button onClick={() => { if (confirm("Delete this location?")) deleteLoc.mutate({ locationId: selectedLoc.id }, { onSuccess: () => { setMode("list"); setSheetOpen(false); refetch(); } }); }}
                   className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
                   <Trash2 className="w-4 h-4" />
@@ -545,10 +694,15 @@ export default function LocationsPage() {
               </div>
             </div>
 
-            {/* Panel content */}
             <div className="flex-1 overflow-y-auto px-4 py-4">
               {selectedLoc.description && (
-                <p className="text-sm text-muted-foreground mb-4 bg-background border border-border rounded-xl px-3 py-2.5">{selectedLoc.description}</p>
+                <p className="text-sm text-muted-foreground mb-3 bg-background border border-border rounded-xl px-3 py-2.5">{selectedLoc.description}</p>
+              )}
+              {(selectedLoc as any).managerName && (
+                <div className="flex items-center gap-2 mb-4 bg-primary/5 border border-primary/20 rounded-xl px-3 py-2.5">
+                  <UserCheck className="w-4 h-4 text-primary flex-shrink-0" />
+                  <p className="text-xs font-medium text-primary">Manager: {(selectedLoc as any).managerName}</p>
+                </div>
               )}
               {selectedLoc.type === "building"     && <BuildingPanel locationId={selectedLoc.id} />}
               {selectedLoc.type === "dining_hall"  && <DiningPanel   locationId={selectedLoc.id} />}
@@ -556,6 +710,67 @@ export default function LocationsPage() {
               {!["building","dining_hall","sports_field"].includes(selectedLoc.type) && (
                 <div className="text-center py-8"><MapPin className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2"/><p className="text-sm text-muted-foreground">No management features for this type</p></div>
               )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── EDIT BOTTOM SHEET ── */}
+      <AnimatePresence>
+        {mode === "edit" && selectedLoc && (
+          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 28, stiffness: 320 }}
+            className="absolute bottom-0 left-0 right-0 z-30 bg-card border-t border-border rounded-t-3xl shadow-2xl overflow-hidden"
+            style={{ maxHeight: "75dvh", display: "flex", flexDirection: "column" }}>
+
+            <div className="flex-shrink-0 px-4 pt-3 pb-3 border-b border-border">
+              <div className="w-10 h-1 rounded-full bg-border mx-auto mb-3" />
+              <div className="flex items-center gap-3">
+                <button onClick={() => setMode("detail")}
+                  className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <p className="text-sm font-bold text-foreground flex-1">Edit Location</p>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(TYPES).map(([k, v]) => (
+                  <button key={k} type="button" onClick={() => { editForm.setValue("type", k as LocationType); editForm.setValue("color", v.color); }}
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm transition-all ${editForm.watch("type") === k ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-foreground hover:border-primary/40"}`}>
+                    <span className="text-lg">{v.emoji}</span><span className="text-xs font-medium">{v.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Name</label>
+                <input {...editForm.register("name")} className="w-full px-4 py-3 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-primary" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Description</label>
+                <textarea {...editForm.register("description")} rows={2} className="w-full px-4 py-3 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-primary resize-none" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Admin Name</label>
+                <input {...editForm.register("adminName")} className="w-full px-4 py-3 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-primary" />
+              </div>
+
+              <UserPicker value={editManagerId} onChange={setEditManagerId} users={users} />
+
+              <div className="flex gap-2 items-center">
+                <label className="text-xs text-muted-foreground">Color:</label>
+                <input type="color" value={editForm.watch("color")} onChange={e => editForm.setValue("color", e.target.value)} className="w-10 h-9 rounded-lg border border-border bg-transparent p-0.5 cursor-pointer"/>
+                <input {...editForm.register("color")} className="flex-1 px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none"/>
+              </div>
+
+              <div className="flex gap-2 pb-6">
+                <button type="button" onClick={() => setMode("detail")} className="flex-1 py-3 rounded-xl bg-secondary text-foreground text-sm font-medium">Cancel</button>
+                <button type="button" onClick={editForm.handleSubmit(submitEdit)} disabled={updateLoc.isPending}
+                  className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2">
+                  {updateLoc.isPending ? <Loader2 className="w-4 h-4 animate-spin"/> : <><Save className="w-4 h-4"/> Save Changes</>}
+                </button>
+              </div>
             </div>
           </motion.div>
         )}

@@ -14,6 +14,8 @@ export interface CreateLocationRequest {
   type: LocationType;
   color?: string;
   adminName?: string;
+  /** User ID to assign as location manager */
+  managerId?: number | null;
   lat: number;
   lng: number;
   polygon: LatLng[];

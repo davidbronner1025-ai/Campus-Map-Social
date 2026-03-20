@@ -38,11 +38,17 @@ artifacts-monorepo/
 
 ## Admin Panel Features
 
+- **PIN Security** — Default PIN `1234` (override via `VITE_ADMIN_PIN` env var), session stored in `sessionStorage`, expires on browser close
+- **Bottom Navigation** — Setup / Locations / Users tabs
 - **Campus Setup** (`/setup`) — Configure campus name, center coordinates via satellite map click, Israel-centered by default (31.5°N, 35.0°E), Nominatim search restricted to Israel
 - **Locations Management** (`/locations`) — Draw polygons for locations with per-type panels:
   - Buildings: announcements + schedule
   - Dining Halls: daily menus + ratings
   - Sports Fields: game sessions + voting
+  - **Map search bar** — Nominatim geocoding search on the map for finding places
+  - **Manager assignment** — Assign registered users as location managers (managerId stored in DB, joined from users table)
+  - **Edit locations** — Edit name, description, type, color, and manager for existing locations
+- **User Management** (`/users`) — List users, invite by phone (generates OTP), delete users
 
 ## Campus App Features
 
@@ -58,7 +64,7 @@ artifacts-monorepo/
 ## Database Schema (lib/db/src/schema/campus.ts)
 
 - `campus` — Campus name, lat/lng center, default zoom
-- `locations` — Named locations with polygon, type (building/dining_hall/sports_field), per-type feature config
+- `locations` — Named locations with polygon, type (building/dining_hall/sports_field), per-type feature config, managerId (FK → users)
 - `users` — Phone, display name, title, avatar, banner, lat/lng, last seen
 - `userOtps` — OTP codes with expiry for phone auth
 - `messages` — Pinned messages with type, invitation type, expiry, lat/lng

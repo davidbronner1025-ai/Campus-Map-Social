@@ -69,6 +69,18 @@ export const GetLocationsResponseItem = zod.object({
     .describe("Type of location"),
   color: zod.string(),
   adminName: zod.string().optional(),
+  managerId: zod
+    .number()
+    .nullish()
+    .describe("User ID of the assigned location manager"),
+  managerName: zod
+    .string()
+    .optional()
+    .describe("Display name of the assigned manager (joined from users)"),
+  managerPhone: zod
+    .string()
+    .optional()
+    .describe("Phone of the assigned manager (joined from users)"),
   lat: zod.number(),
   lng: zod.number(),
   polygon: zod.array(
@@ -106,6 +118,10 @@ export const CreateLocationBody = zod.object({
     .describe("Type of location"),
   color: zod.string().default(createLocationBodyColorDefault),
   adminName: zod.string().optional(),
+  managerId: zod
+    .number()
+    .nullish()
+    .describe("User ID to assign as location manager"),
   lat: zod.number(),
   lng: zod.number(),
   polygon: zod.array(
@@ -141,6 +157,18 @@ export const GetLocationResponse = zod.object({
     .describe("Type of location"),
   color: zod.string(),
   adminName: zod.string().optional(),
+  managerId: zod
+    .number()
+    .nullish()
+    .describe("User ID of the assigned location manager"),
+  managerName: zod
+    .string()
+    .optional()
+    .describe("Display name of the assigned manager (joined from users)"),
+  managerPhone: zod
+    .string()
+    .optional()
+    .describe("Phone of the assigned manager (joined from users)"),
   lat: zod.number(),
   lng: zod.number(),
   polygon: zod.array(
@@ -181,6 +209,10 @@ export const UpdateLocationBody = zod.object({
     .describe("Type of location"),
   color: zod.string().default(updateLocationBodyColorDefault),
   adminName: zod.string().optional(),
+  managerId: zod
+    .number()
+    .nullish()
+    .describe("User ID to assign as location manager"),
   lat: zod.number(),
   lng: zod.number(),
   polygon: zod.array(
@@ -209,6 +241,18 @@ export const UpdateLocationResponse = zod.object({
     .describe("Type of location"),
   color: zod.string(),
   adminName: zod.string().optional(),
+  managerId: zod
+    .number()
+    .nullish()
+    .describe("User ID of the assigned location manager"),
+  managerName: zod
+    .string()
+    .optional()
+    .describe("Display name of the assigned manager (joined from users)"),
+  managerPhone: zod
+    .string()
+    .optional()
+    .describe("Phone of the assigned manager (joined from users)"),
   lat: zod.number(),
   lng: zod.number(),
   polygon: zod.array(

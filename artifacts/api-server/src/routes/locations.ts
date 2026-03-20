@@ -2,7 +2,8 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import {
   locationsTable, announcementsTable, schedulesTable,
-  menusTable, menuRatingsTable, gameSessionsTable, gameVotesTable
+  menusTable, menuRatingsTable, gameSessionsTable, gameVotesTable,
+  usersTable,
 } from "@workspace/db/schema";
 import { eq, desc, avg } from "drizzle-orm";
 import {
@@ -26,10 +27,21 @@ async function getCampusId(): Promise<number | null> {
 
 // ─── Locations ──────────────────────────────────────────────────────────────
 
+async function enrichLocationsWithManager(locations: any[]) {
+  return Promise.all(locations.map(async (loc) => {
+    if (loc.managerId) {
+      const [mgr] = await db.select({ displayName: usersTable.displayName })
+        .from(usersTable).where(eq(usersTable.id, loc.managerId));
+      if (mgr) return { ...loc, managerName: mgr.displayName || "Assigned" };
+    }
+    return loc;
+  }));
+}
+
 router.get("/locations", async (_req, res) => {
   try {
     const locations = await db.select().from(locationsTable).orderBy(desc(locationsTable.createdAt));
-    res.json(locations);
+    res.json(await enrichLocationsWithManager(locations));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -37,14 +49,16 @@ router.get("/locations", async (_req, res) => {
 
 router.post("/locations", async (req, res) => {
   try {
+    const managerId = req.body.managerId != null ? Number(req.body.managerId) : null;
     const body = CreateLocationBody.parse(req.body);
     const campusId = await getCampusId();
     if (!campusId) {
       res.status(400).json({ error: "Campus not configured yet." });
       return;
     }
-    const created = await db.insert(locationsTable).values({ ...body, campusId }).returning();
-    res.status(201).json(created[0]);
+    const created = await db.insert(locationsTable).values({ ...body, campusId, managerId }).returning();
+    const enriched = await enrichLocationsWithManager(created);
+    res.status(201).json(enriched[0]);
   } catch (err) {
     res.status(400).json({ error: String(err) });
   }
@@ -55,7 +69,8 @@ router.get("/locations/:locationId", async (req, res) => {
     const { locationId } = GetLocationParams.parse({ locationId: Number(req.params.locationId) });
     const rows = await db.select().from(locationsTable).where(eq(locationsTable.id, locationId));
     if (!rows.length) { res.status(404).json({ error: "Location not found" }); return; }
-    res.json(rows[0]);
+    const enriched = await enrichLocationsWithManager(rows);
+    res.json(enriched[0]);
   } catch (err) {
     res.status(400).json({ error: String(err) });
   }
@@ -64,13 +79,17 @@ router.get("/locations/:locationId", async (req, res) => {
 router.put("/locations/:locationId", async (req, res) => {
   try {
     const { locationId } = UpdateLocationParams.parse({ locationId: Number(req.params.locationId) });
+    const managerId = req.body.managerId !== undefined ? (req.body.managerId != null ? Number(req.body.managerId) : null) : undefined;
     const body = UpdateLocationBody.parse(req.body);
+    const setObj: any = { ...body, updatedAt: new Date() };
+    if (managerId !== undefined) setObj.managerId = managerId;
     const updated = await db.update(locationsTable)
-      .set({ ...body, updatedAt: new Date() })
+      .set(setObj)
       .where(eq(locationsTable.id, locationId))
       .returning();
     if (!updated.length) { res.status(404).json({ error: "Location not found" }); return; }
-    res.json(updated[0]);
+    const enriched = await enrichLocationsWithManager(updated);
+    res.json(enriched[0]);
   } catch (err) {
     res.status(400).json({ error: String(err) });
   }
