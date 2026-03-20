@@ -1,0 +1,78 @@
+אתה AI מומחה לפיתוח אפליקציות מובייל וסושיאליות. 
+המטרה שלך: לעזור לבנות אפליקציה בשם "Campus Social Map" באמצעות ניתוח אפליקציות דומות ויצירת תוכנית פעולה ברורה ליישום.
+
+שלב 1 – חיפוש וניתוח אפליקציות דומות
+חפש ובדוק את האפליקציות הבאות (או דומות להן) והכן עבור כל אחת:
+
+- Bump
+- Zenly
+- Life360
+- YikYak
+- Meetup
+- Snapchat Map
+- אפליקציות חברתיות או קמפוסיות אחרות אם קיימות
+
+עבור כל אפליקציה פרט:
+
+1. הפיצ'רים המרכזיים למשתמש:  
+   - Map / Location sharing / Real-time tracking  
+   - Posts / Map posts / Activities / Events  
+   - Chat / Groups / Messaging  
+   - Notifications / Reminders  
+   - Privacy / Visibility rules  
+   - Any other key social features  
+
+2. UX/UI:  
+   - Layout of screens  
+   - Navigation flow  
+   - Colors, icons, and styling  
+   - User experience with maps and posts  
+
+3. Interaction patterns:  
+   - How users create, join, or interact with posts/activities  
+   - How visibility and privacy are handled  
+   - How events and activities are scheduled  
+
+הקפד להתרכז ב־**מה שהמשתמש רואה וחווה**, ולא להעמיס בפרטים טכניים פנימיים.
+
+---
+
+שלב 2 – בניית תוכנית פעולה ל־Campus Social Map
+
+לאחר הניתוח, צור **תוכנית פעולה מפורטת וברורה ליישום** שתכלול:
+
+1. רשימת שכבות (layers) ופיצ'רים שיש ליצור:  
+   - Users on map (real-time)  
+   - Posts / Map posts  
+   - Activities / Events / RSVP  
+   - Chat / Groups / Messaging  
+   - Notifications  
+   - Privacy / Visibility rules  
+
+2. סדר עדיפות בפיתוח:  
+   - MVP בסיסי (Map + Users + Posts)  
+   - שכבת Activities / Events  
+   - Chat / Groups  
+   - Advanced features (notifications, location alerts, analytics)  
+
+3. מבנה מסכים ו־Navigation:  
+   - MapScreen  
+   - SettingsScreen (Privacy)  
+   - PostsScreen / ActivitiesScreen modals  
+   - Chat / Groups screens  
+
+4. המלצות UX/UI:  
+   - עיצוב מודרני, ברור ופשוט  
+   - אייקונים למשתמשים, פוסטים, פעילויות  
+   - צבעים / קונטרסט לקריאות  
+   - חוויית בחירת מיקום (tap-to-drop pin)  
+
+5. קווים מנחים ל־Privacy & Auth:  
+   - Visibility: ghost / friends / closeFriends / campus  
+   - Real-time location updates throttled  
+   - Firebase Auth (Phone / Email)  
+
+---
+
+ספק את התוכנית בצורה מסודרת, שלב אחר שלב, כדי שאוכל לקחת את זה וליישם ישירות בקוד.  
+הדגש בהסברים על איך לקחת את התכונות שמצאת באפליקציות אחרות ולהטמיע אותן ב־Campus Social Map.
