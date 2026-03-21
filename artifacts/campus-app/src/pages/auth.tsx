@@ -11,6 +11,8 @@ function formatPhone(val: string): string {
   return digits;
 }
 
+const DEMO_PHONE = "+972501234567";
+
 export default function AuthPage() {
   const { setToken, refreshUser } = useAuth();
   const [step, setStep] = useState<"phone" | "otp" | "done">("phone");
@@ -18,7 +20,26 @@ export default function AuthPage() {
   const [otp, setOtp] = useState("");
   const [demoOtp, setDemoOtp] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const handleDemoLogin = async () => {
+    setDemoLoading(true);
+    setError("");
+    try {
+      const res = await requestOtp(DEMO_PHONE);
+      const verify = await verifyOtp(DEMO_PHONE, res.otp);
+      setStep("done");
+      setTimeout(async () => {
+        setToken(verify.token);
+        await refreshUser();
+      }, 600);
+    } catch (err: any) {
+      setError(err.message || "Demo login failed");
+    } finally {
+      setDemoLoading(false);
+    }
+  };
 
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,6 +115,15 @@ export default function AuthPage() {
               <button type="submit" disabled={loading || !phone.trim()}
                 className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Get OTP <ArrowRight className="w-4 h-4" /></>}
+              </button>
+              <div className="relative flex items-center gap-3 my-1">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground">or</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+              <button type="button" onClick={handleDemoLogin} disabled={demoLoading}
+                className="w-full py-3.5 rounded-xl bg-secondary border border-border text-foreground font-semibold text-sm flex items-center justify-center gap-2 hover:bg-secondary/80 active:scale-[0.98] transition-all disabled:opacity-50">
+                {demoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>🗺️ View Map Demo</>}
               </button>
               <p className="text-center text-xs text-muted-foreground">
                 By continuing you agree to our Terms of Service
