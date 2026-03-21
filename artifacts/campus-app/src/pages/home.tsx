@@ -216,9 +216,11 @@ function polygonCentroid(pts: { lat: number; lng: number }[]): [number, number] 
 function LocationDetailSheet({
   loc,
   onClose,
+  onComposeHere,
 }: {
   loc: CampusLocation;
   onClose: () => void;
+  onComposeHere?: () => void;
 }) {
   const cfg = LOC_TYPES[loc.type] || LOC_TYPES.other;
   const [anns, setAnns] = useState<LocationAnnouncement[]>([]);
@@ -267,9 +269,20 @@ function LocationDetailSheet({
           <h2 className="text-base font-bold text-foreground truncate">{loc.name}</h2>
           <p className="text-xs text-muted-foreground">{cfg.label}{loc.adminName ? ` · ${loc.adminName}` : ""}</p>
         </div>
-        <button onClick={onClose} className="p-2 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
-          <X className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {onComposeHere && (
+            <button
+              onClick={onComposeHere}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 active:scale-95 transition-all"
+            >
+              <MessageSquarePlus className="w-3.5 h-3.5" />
+              Post here
+            </button>
+          )}
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -600,8 +613,9 @@ function RepliesSheet({ msg, currentUserId, onClose }: { msg: NearbyMessage; cur
 // ── Compose Sheet ──────────────────────────────────────────────────────────
 const EMOJI_QUICK = ["😊","😂","❤️","🔥","👍","🙏","😍","🤔","😎","🎉","💯","⚽","🍕","🎮","☕","🚗"];
 
-function ComposeSheet({ onClose, onPosted, userLat, userLng }: {
+function ComposeSheet({ onClose, onPosted, userLat, userLng, locationLabel }: {
   onClose: () => void; onPosted: () => void; userLat: number; userLng: number;
+  locationLabel?: string;
 }) {
   const [msgType, setMsgType] = useState<"regular" | "invitation">("regular");
   const [inviteType, setInviteType] = useState<string>("");
@@ -645,7 +659,12 @@ function ComposeSheet({ onClose, onPosted, userLat, userLng }: {
 
       <div className="px-5 pb-safe space-y-4" style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}>
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-foreground text-base">Pin a Message</h3>
+          <div>
+            <h3 className="font-semibold text-foreground text-base">Pin a Message</h3>
+            {locationLabel && (
+              <p className="text-xs text-primary mt-0.5">📍 {locationLabel}</p>
+            )}
+          </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
             <X className="w-5 h-5 text-muted-foreground" />
           </button>
@@ -1068,6 +1087,8 @@ export default function HomePage() {
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const [locations, setLocations] = useState<CampusLocation[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<CampusLocation | null>(null);
+  const [locationCenter, setLocationCenter] = useState<[number, number] | null>(null);
+  const [composeLocationOverride, setComposeLocationOverride] = useState<{ lat: number; lng: number; name: string } | null>(null);
 
   // ── Unified app state ──
   const [activeTab, setActiveTab] = useState<"map" | "chats">("map");
@@ -1102,15 +1123,22 @@ export default function HomePage() {
     }
   }, []);
 
-  // Fetch campus locations once on mount
+  // Fetch campus locations once on mount; derive map center from them when no GPS
   useEffect(() => {
-    getLocations()
-      .then(locs => setLocations(locs.filter(l => l.polygon && l.polygon.length >= 3)))
-      .catch(() => {});
+    getLocations().then(locs => {
+      const valid = locs.filter(l => l.polygon && l.polygon.length >= 3);
+      setLocations(valid);
+      if (valid.length > 0) {
+        const allPts = valid.flatMap(l => l.polygon);
+        const cLat = allPts.reduce((s, p) => s + p.lat, 0) / allPts.length;
+        const cLng = allPts.reduce((s, p) => s + p.lng, 0) / allPts.length;
+        if (!isNaN(cLat) && !isNaN(cLng)) setLocationCenter([cLat, cLng]);
+      }
+    }).catch(() => {});
   }, []);
 
-  const mapCenter: [number, number] = pos ? [pos.lat, pos.lng] : ISRAEL_CENTER;
-  const mapZoom = pos ? 17 : FALLBACK_ZOOM;
+  const mapCenter: [number, number] = pos ? [pos.lat, pos.lng] : (locationCenter ?? ISRAEL_CENTER);
+  const mapZoom = pos ? 17 : (locationCenter ? 16 : FALLBACK_ZOOM);
 
   const fetchAll = useCallback(async () => {
     if (!pos) return;
@@ -1240,6 +1268,9 @@ export default function HomePage() {
           />
           {pos && !isNaN(pos.lat) && !isNaN(pos.lng) && (
             <MapCenterUpdater center={[pos.lat, pos.lng]} zoom={17} />
+          )}
+          {!pos && locationCenter && (
+            <MapCenterUpdater center={locationCenter} zoom={16} />
           )}
           <MapSizeInvalidator deps={[activeTab, feedOpen]} />
 
@@ -1528,13 +1559,24 @@ export default function HomePage() {
 
       {/* ── Compose Sheet ── (transparent click-catcher keeps map visible) */}
       <AnimatePresence>
-        {compose && pos && (
+        {compose && (pos || composeLocationOverride) && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setCompose(false)} />
+            <div className="fixed inset-0 z-40" onClick={() => { setCompose(false); setComposeLocationOverride(null); }} />
             {composeMode === "message" ? (
-              <ComposeSheet onClose={() => setCompose(false)} onPosted={fetchAll} userLat={pos.lat} userLng={pos.lng} />
+              <ComposeSheet
+                onClose={() => { setCompose(false); setComposeLocationOverride(null); }}
+                onPosted={() => { fetchAll(); setComposeLocationOverride(null); }}
+                userLat={composeLocationOverride?.lat ?? pos!.lat}
+                userLng={composeLocationOverride?.lng ?? pos!.lng}
+                locationLabel={composeLocationOverride?.name}
+              />
             ) : (
-              <CreateEventSheet onClose={() => setCompose(false)} onCreated={fetchAll} userLat={pos.lat} userLng={pos.lng} />
+              <CreateEventSheet
+                onClose={() => { setCompose(false); setComposeLocationOverride(null); }}
+                onCreated={() => { fetchAll(); setComposeLocationOverride(null); }}
+                userLat={composeLocationOverride?.lat ?? pos!.lat}
+                userLng={composeLocationOverride?.lng ?? pos!.lng}
+              />
             )}
           </>
         )}
@@ -1563,6 +1605,13 @@ export default function HomePage() {
           <LocationDetailSheet
             loc={selectedLocation}
             onClose={() => setSelectedLocation(null)}
+            onComposeHere={() => {
+              const ctr = polygonCentroid(selectedLocation.polygon);
+              setComposeLocationOverride({ lat: ctr[0], lng: ctr[1], name: selectedLocation.name });
+              setComposeMode("message");
+              setCompose(true);
+              setSelectedLocation(null);
+            }}
           />
         )}
       </AnimatePresence>
