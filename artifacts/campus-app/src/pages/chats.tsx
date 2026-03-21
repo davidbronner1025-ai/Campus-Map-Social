@@ -36,7 +36,7 @@ function Avatar({ url, name, size = 44, color }: { url: string | null; name: str
   );
 }
 
-function ConversationRow({ conv, currentUserId, onClick }: {
+export function ConversationRow({ conv, currentUserId, onClick }: {
   conv: ConversationListItem; currentUserId: number; onClick: () => void;
 }) {
   const other = conv.members.find(m => m.userId !== currentUserId);
@@ -77,7 +77,7 @@ function ConversationRow({ conv, currentUserId, onClick }: {
   );
 }
 
-function NewChatSheet({ onClose, onCreated, currentUserId }: {
+export function NewChatSheet({ onClose, onCreated, currentUserId }: {
   onClose: () => void; onCreated: (convId: number) => void; currentUserId: number;
 }) {
   const [users, setUsers] = useState<NearbyUser[]>([]);
@@ -201,7 +201,7 @@ function NewChatSheet({ onClose, onCreated, currentUserId }: {
   );
 }
 
-function ChatDetail({ convId, currentUserId, onBack }: {
+export function ChatDetail({ convId, currentUserId, onBack }: {
   convId: number; currentUserId: number; onBack: () => void;
 }) {
   const [messages, setMessages] = useState<ChatMsg[]>([]);

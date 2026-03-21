@@ -5,7 +5,7 @@ import L from "leaflet";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageSquarePlus, User, RefreshCw, X, Send, ThumbsUp, ThumbsDown,
-  MessageCircle, Trash2, ChevronDown, MapPin, Clock, Smile, Navigation, Users
+  MessageCircle, Trash2, ChevronDown, MapPin, Clock, Smile, Navigation, Users, Plus
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationEngine } from "@/hooks/useLocationEngine";
@@ -15,8 +15,10 @@ import {
   pinMessage, deleteMessage, reactToMessage,
   createEvent, deleteEvent, rsvpEvent, unrsvpEvent,
   getReplies, postReply, createConversation, getConversations,
-  type NearbyMessage, type NearbyUser, type NearbyEvent, type Reply
+  type NearbyMessage, type NearbyUser, type NearbyEvent, type Reply,
+  type ConversationListItem,
 } from "@/lib/api";
+import { ConversationRow, ChatDetail, NewChatSheet } from "@/pages/chats";
 
 // Fix Leaflet default icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -833,15 +835,37 @@ export default function HomePage() {
   const [showPeople, setShowPeople] = useState(true);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
 
+  // ── Unified app state ──
+  const [activeTab, setActiveTab] = useState<"map" | "chats">("map");
+  const [activeChatId, setActiveChatId] = useState<number | null>(null);
+  const [showNewChat, setShowNewChat] = useState(false);
+  const [convs, setConvs] = useState<ConversationListItem[]>([]);
+  const [convsLoading, setConvsLoading] = useState(false);
+
+  const fetchConvs = useCallback(async () => {
+    try {
+      const c = await getConversations();
+      setConvs(c);
+      setChatUnreadCount(c.reduce((sum, x) => sum + (x.unreadCount || 0), 0));
+    } catch {} finally { setConvsLoading(false); }
+  }, []);
+
   useEffect(() => {
-    const fetchUnread = () => {
-      getConversations().then(convs => {
-        setChatUnreadCount(convs.reduce((sum, c) => sum + (c.unreadCount || 0), 0));
-      }).catch(() => {});
-    };
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 15000);
+    setConvsLoading(true);
+    fetchConvs();
+    const interval = setInterval(fetchConvs, 10000);
     return () => clearInterval(interval);
+  }, [fetchConvs]);
+
+  // Handle ?open=convId deep-link (from notifications) — open specific chat
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const openChatId = params.get("open");
+    if (openChatId) {
+      setActiveTab("chats");
+      setActiveChatId(parseInt(openChatId));
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   }, []);
 
   const mapCenter: [number, number] = pos ? [pos.lat, pos.lng] : ISRAEL_CENTER;
@@ -958,7 +982,11 @@ export default function HomePage() {
       </div>
 
       {/* ── MAP ── */}
-      <div className="relative" style={{ height: feedOpen ? "40%" : "calc(100% - 56px)" }}>
+      <div className="relative" style={{
+        height: activeTab === "chats"
+          ? "35%"
+          : feedOpen ? "40%" : "calc(100% - 56px)"
+      }}>
         <MapContainer center={mapCenter} zoom={mapZoom} style={{ width: "100%", height: "100%" }}>
           <TileLayer
             attribution="&copy; Esri"
@@ -1006,7 +1034,8 @@ export default function HomePage() {
                   <button onClick={async () => {
                       try {
                         const conv = await createConversation({ type: "direct", memberIds: [u.id] });
-                        navigate(`/chats?open=${conv.id}`);
+                        setActiveTab("chats");
+                        setActiveChatId(conv.id);
                       } catch {}
                     }}
                     style={{ marginTop: 6, padding: "4px 12px", fontSize: 11, fontWeight: 600, background: "hsl(221.2 83.2% 53.3%)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>
@@ -1053,8 +1082,8 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* ── FEED ── */}
-      {feedOpen && (
+      {/* ── FEED (map tab only) ── */}
+      {feedOpen && activeTab === "map" && (
         <div className="flex-1 overflow-y-auto"
           onTouchStart={(e) => {
             const el = e.currentTarget;
@@ -1148,8 +1177,52 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* ── CHATS PANEL (chats tab) ── */}
+      {activeTab === "chats" && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/80 backdrop-blur-sm flex-shrink-0">
+            <p className="font-bold text-base text-foreground">Chats</p>
+            <button onClick={() => setShowNewChat(true)}
+              className="p-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {convsLoading && (
+              <div className="space-y-0">
+                {[1,2,3,4].map(i => (
+                  <div key={i} className="flex items-center gap-3 px-4 py-3.5 border-b border-border animate-pulse">
+                    <div className="w-12 h-12 rounded-2xl bg-muted" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3.5 w-28 bg-muted rounded" />
+                      <div className="h-3 w-40 bg-muted rounded" />
+                    </div>
+                    <div className="h-3 w-8 bg-muted rounded" />
+                  </div>
+                ))}
+              </div>
+            )}
+            {!convsLoading && convs.length === 0 && (
+              <div className="text-center py-14">
+                <MessageCircle className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-30" />
+                <p className="text-muted-foreground text-sm font-medium">No chats yet</p>
+                <p className="text-muted-foreground text-xs mt-1">Start a conversation with nearby people!</p>
+                <button onClick={() => setShowNewChat(true)}
+                  className="mt-4 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium">
+                  New Chat
+                </button>
+              </div>
+            )}
+            {convs.map(c => (
+              <ConversationRow key={c.id} conv={c} currentUserId={user.id}
+                onClick={() => setActiveChatId(c.id)} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── FAB: Compose ── */}
-      {!compose && !replyTarget && !eventDetail && pos && (
+      {!compose && !replyTarget && !eventDetail && pos && activeTab === "map" && (
         <div className="fixed bottom-6 right-5 z-30 flex flex-col gap-2.5 items-end">
           <motion.button initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.3 }}
             onClick={() => { setComposeMode("event"); setCompose(true); }}
@@ -1198,14 +1271,14 @@ export default function HomePage() {
       )}
 
       {/* ── Bottom Navigation ── */}
-      <div className="border-t border-border bg-card/90 backdrop-blur-sm flex z-20">
-        <button
-          className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-primary transition-colors">
+      <div className="border-t border-border bg-card/90 backdrop-blur-sm flex z-20 flex-shrink-0">
+        <button onClick={() => setActiveTab("map")}
+          className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${activeTab === "map" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
           <MapPin className="w-5 h-5" />
           <span className="text-[10px] font-medium">Map</span>
         </button>
-        <button onClick={() => navigate("/chats")}
-          className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-muted-foreground hover:text-foreground transition-colors relative">
+        <button onClick={() => setActiveTab("chats")}
+          className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors relative ${activeTab === "chats" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
           <div className="relative">
             <MessageCircle className="w-5 h-5" />
             {chatUnreadCount > 0 && (
@@ -1216,7 +1289,32 @@ export default function HomePage() {
           </div>
           <span className="text-[10px] font-medium">Chats</span>
         </button>
+        <button onClick={() => navigate("/profile")}
+          className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-muted-foreground hover:text-foreground transition-colors">
+          <User className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Profile</span>
+        </button>
       </div>
+
+      {/* ── Chat Detail Overlay ── */}
+      {activeChatId !== null && (
+        <ChatDetail
+          convId={activeChatId}
+          currentUserId={user.id}
+          onBack={() => { setActiveChatId(null); fetchConvs(); }}
+        />
+      )}
+
+      {/* ── New Chat Sheet ── */}
+      <AnimatePresence>
+        {showNewChat && (
+          <NewChatSheet
+            onClose={() => setShowNewChat(false)}
+            onCreated={(id) => { setShowNewChat(false); setActiveChatId(id); }}
+            currentUserId={user.id}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

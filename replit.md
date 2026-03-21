@@ -72,14 +72,21 @@ artifacts-monorepo/
   - Create event bottom sheet with title, category picker, date/time, max participants
   - Creator auto-RSVPs, capacity enforcement, unique RSVP constraint
   - Two FABs: primary message compose + secondary event create
+- **Unified Map-Centric Layout** (all views share a persistent map):
+  - Map is always visible — never hidden when switching between chats or composing
+  - 3-tab bottom navigation: **Map** | **Chats** | **Profile** (all within the home page)
+  - Map tab: map takes 40% height (collapsible), feed (messages/events) in panel below
+  - Chats tab: map takes 35% height (always visible), chat list panel below
+  - Chat detail: full-screen overlay (back button returns to chat list)
+  - "Message" button on map user markers opens chat panel directly (no page navigation)
+  - Notification deep-links for conversations open the chat panel in-app (`?open=convId`)
 - **Direct Chat & Group Messaging**:
   - DM and group conversations with real-time message list (5s polling)
-  - Chat list page with last message preview and time-ago display
+  - Chat list with last message preview and time-ago display (embedded panel in home)
   - Chat detail with message bubbles, sender avatars, optimistic sending
   - Share location in chat (MapPin button)
   - Start chat from map marker popup ("Message" button on user markers)
   - New Chat sheet with nearby-user search
-  - Bottom navigation: Map / Chats tabs on both home and chats pages
   - Group chat: named groups, add members, leave group
 - **Notifications Center**: Bell icon in header with unread badge, dropdown panel with notification list, mark-read/mark-all-read
   - Auto-generated from: reactions on messages, replies to messages, event RSVP joins
