@@ -158,18 +158,30 @@ function makeEventMarker(event: NearbyEvent) {
   });
 }
 
-// ── Map center updater ─────────────────────────────────────────────────────
+// ── Map center updater — uses setView (sync) to avoid rAF animation NaN bug ─
 function MapCenterUpdater({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap();
-  const didFly = useRef(false);
+  const didSet = useRef(false);
   useEffect(() => {
-    if (didFly.current) return;
+    if (didSet.current) return;
     if (isNaN(center[0]) || isNaN(center[1])) return;
     try {
-      map.flyTo(center, zoom, { duration: 1.4 });
-      didFly.current = true;
+      map.setView(center, zoom, { animate: false });
+      didSet.current = true;
     } catch {}
   }, [center, zoom, map]);
+  return null;
+}
+
+// ── Map size invalidator — recalculates Leaflet dims after panel resizes ───
+function MapSizeInvalidator({ deps }: { deps: unknown[] }) {
+  const map = useMap();
+  useEffect(() => {
+    const t = setTimeout(() => { try { map.invalidateSize(); } catch {} }, 80);
+    return () => clearTimeout(t);
+  // deps intentionally spread for comparison
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
   return null;
 }
 
@@ -1005,6 +1017,7 @@ export default function HomePage() {
           {pos && !isNaN(pos.lat) && !isNaN(pos.lng) && (
             <MapCenterUpdater center={[pos.lat, pos.lng]} zoom={17} />
           )}
+          <MapSizeInvalidator deps={[activeTab, feedOpen]} />
 
           {/* User position marker */}
           {pos && (
