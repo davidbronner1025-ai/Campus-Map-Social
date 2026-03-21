@@ -3,9 +3,14 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import AuthPage from "@/pages/auth";
 import HomePage from "@/pages/home";
 import ProfilePage from "@/pages/profile";
+import PublicMapPage from "@/pages/map-public";
 
 function Router() {
   const { token, isLoading } = useAuth();
+  const [loc] = useLocation();
+
+  // Public map — no auth required
+  if (loc === "/map") return <PublicMapPage />;
 
   if (isLoading) {
     return (
