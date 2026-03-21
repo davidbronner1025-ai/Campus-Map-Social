@@ -163,7 +163,12 @@ function MapCenterUpdater({ center, zoom }: { center: [number, number]; zoom: nu
   const map = useMap();
   const didFly = useRef(false);
   useEffect(() => {
-    if (!didFly.current) { map.flyTo(center, zoom, { duration: 1.4 }); didFly.current = true; }
+    if (didFly.current) return;
+    if (isNaN(center[0]) || isNaN(center[1])) return;
+    try {
+      map.flyTo(center, zoom, { duration: 1.4 });
+      didFly.current = true;
+    } catch {}
   }, [center, zoom, map]);
   return null;
 }
@@ -997,7 +1002,9 @@ export default function HomePage() {
             url="https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png"
             attribution=""
           />
-          {pos && <MapCenterUpdater center={[pos.lat, pos.lng]} zoom={17} />}
+          {pos && !isNaN(pos.lat) && !isNaN(pos.lng) && (
+            <MapCenterUpdater center={[pos.lat, pos.lng]} zoom={17} />
+          )}
 
           {/* User position marker */}
           {pos && (
