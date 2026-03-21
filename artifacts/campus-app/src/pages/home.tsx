@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polygon, useMap } from "react-leaflet";
 import L from "leaflet";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,8 +15,10 @@ import {
   pinMessage, deleteMessage, reactToMessage,
   createEvent, deleteEvent, rsvpEvent, unrsvpEvent,
   getReplies, postReply, createConversation, getConversations,
+  getLocations, getLocationAnnouncements, getLocationSchedules, getLocationMenus, getLocationGames,
   type NearbyMessage, type NearbyUser, type NearbyEvent, type Reply,
-  type ConversationListItem,
+  type ConversationListItem, type CampusLocation,
+  type LocationAnnouncement, type LocationSchedule, type LocationMenu, type LocationGame,
 } from "@/lib/api";
 import { ConversationRow, ChatDetail, NewChatSheet } from "@/pages/chats";
 
@@ -183,6 +185,219 @@ function MapSizeInvalidator({ deps }: { deps: unknown[] }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
   return null;
+}
+
+// ── Location helpers ─────────────────────────────────────────────────────────
+const LOC_TYPES: Record<string, { emoji: string; label: string }> = {
+  building:     { emoji: "🏛️", label: "Building" },
+  dining_hall:  { emoji: "🍽️", label: "Dining Hall" },
+  sports_field: { emoji: "⚽", label: "Sports Field" },
+  parking:      { emoji: "🚗", label: "Parking" },
+  green:        { emoji: "🌿", label: "Green Area" },
+  other:        { emoji: "📍", label: "Other" },
+};
+
+const SPORT_LABELS: Record<string, string> = {
+  football:"⚽ Football", basketball:"🏀 Basketball",
+  volleyball:"🏐 Volleyball", tennis:"🎾 Tennis", other:"🏆 Other",
+};
+
+const CAT_EMOJI: Record<string, string> = {
+  starter:"🥗", main:"🍖", side:"🍟", dessert:"🍰", drink:"🥤",
+};
+
+function polygonCentroid(pts: { lat: number; lng: number }[]): [number, number] {
+  const lat = pts.reduce((s, p) => s + p.lat, 0) / pts.length;
+  const lng = pts.reduce((s, p) => s + p.lng, 0) / pts.length;
+  return [lat, lng];
+}
+
+// ── Location Detail Sheet ────────────────────────────────────────────────────
+function LocationDetailSheet({
+  loc,
+  onClose,
+}: {
+  loc: CampusLocation;
+  onClose: () => void;
+}) {
+  const cfg = LOC_TYPES[loc.type] || LOC_TYPES.other;
+  const [anns, setAnns] = useState<LocationAnnouncement[]>([]);
+  const [scheds, setScheds] = useState<LocationSchedule[]>([]);
+  const [menus, setMenus] = useState<LocationMenu[]>([]);
+  const [games, setGames] = useState<LocationGame[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    const today = new Date().toLocaleDateString("en-IL", { weekday: "long" }).toLowerCase();
+
+    const fetchers: Promise<any>[] = [];
+    if (loc.type === "building") {
+      fetchers.push(
+        getLocationAnnouncements(loc.id).then(setAnns),
+        getLocationSchedules(loc.id).then(d => setScheds(d.filter(s => s.dayOfWeek === today))),
+      );
+    } else if (loc.type === "dining_hall") {
+      fetchers.push(getLocationMenus(loc.id).then(setMenus));
+    } else if (loc.type === "sports_field") {
+      fetchers.push(getLocationGames(loc.id).then(setGames));
+    }
+    Promise.all(fetchers).finally(() => setLoading(false));
+  }, [loc.id, loc.type]);
+
+  const PRIORITY_COLOR: Record<string, string> = {
+    normal: "border-primary/40 text-primary",
+    important: "border-yellow-400/60 text-yellow-400",
+    urgent: "border-red-400/60 text-red-400",
+  };
+
+  return (
+    <motion.div
+      initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+      transition={{ type: "spring", damping: 30, stiffness: 300 }}
+      className="fixed inset-x-0 bottom-0 z-50 bg-card border-t border-border rounded-t-2xl max-h-[80vh] flex flex-col shadow-2xl"
+    >
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-4 border-b border-border flex-shrink-0">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+          style={{ background: loc.color + "22", border: `1.5px solid ${loc.color}50` }}>
+          {cfg.emoji}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-base font-bold text-foreground truncate">{loc.name}</h2>
+          <p className="text-xs text-muted-foreground">{cfg.label}{loc.adminName ? ` · ${loc.adminName}` : ""}</p>
+        </div>
+        <button onClick={onClose} className="p-2 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {/* Description */}
+        {loc.description && (
+          <div className="px-4 pt-3 pb-1">
+            <p className="text-sm text-muted-foreground leading-relaxed">{loc.description}</p>
+          </div>
+        )}
+        {loc.managerName && (
+          <div className="px-4 pt-1 pb-2">
+            <span className="inline-flex items-center gap-1.5 text-xs text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-full">
+              👤 {loc.managerName}
+            </span>
+          </div>
+        )}
+
+        {/* Type-specific content */}
+        {loc.type === "building" && (
+          <div className="px-4 pb-6">
+            {loading ? (
+              <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /></div>
+            ) : (
+              <>
+                {/* Today's schedule */}
+                {scheds.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-semibold text-primary mb-2 uppercase tracking-wide">📅 Today's Schedule</p>
+                    <div className="space-y-1.5">
+                      {scheds.map(s => (
+                        <div key={s.id} className="flex items-center gap-3 bg-primary/5 border border-primary/15 rounded-xl px-3 py-2">
+                          <span className="text-xs font-bold text-primary tabular-nums">{s.startTime}–{s.endTime}</span>
+                          <span className="text-sm text-foreground flex-1">{s.label}</span>
+                          {s.instructor && <span className="text-xs text-muted-foreground">{s.instructor}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Announcements */}
+                {anns.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">📢 Announcements</p>
+                    <div className="space-y-2">
+                      {anns.map(a => (
+                        <div key={a.id} className={`border rounded-xl p-3 ${PRIORITY_COLOR[a.priority] || "border-border"}`}>
+                          <p className="text-sm font-semibold text-foreground">{a.title}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{a.content}</p>
+                          <span className={`inline-block text-[10px] font-bold uppercase mt-2 px-2 py-0.5 rounded-full border ${PRIORITY_COLOR[a.priority]}`}>{a.priority}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {anns.length === 0 && scheds.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-8">No announcements or schedule for today</p>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {loc.type === "dining_hall" && (
+          <div className="px-4 pb-6">
+            {loading ? (
+              <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /></div>
+            ) : menus.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No menu available</p>
+            ) : (
+              <div className="space-y-3 pt-3">
+                {menus.slice(0, 3).map(menu => (
+                  <div key={menu.id} className="bg-secondary/30 border border-border rounded-xl p-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-bold text-accent">{new Date(menu.date).toLocaleDateString("en-IL", { day: "numeric", month: "short" })}</span>
+                      <span className="text-xs text-muted-foreground">⭐ {menu.averageRating > 0 ? menu.averageRating.toFixed(1) : "–"} ({menu.ratingCount})</span>
+                    </div>
+                    {(menu.items as any[]).map((it: any, i: number) => (
+                      <div key={i} className="flex items-center gap-2 py-1 text-sm text-foreground">
+                        <span>{CAT_EMOJI[it.category] || "•"}</span>
+                        <span>{it.name}</span>
+                        <span className="text-xs text-muted-foreground ml-auto">{it.category}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {loc.type === "sports_field" && (
+          <div className="px-4 pb-6">
+            {loading ? (
+              <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /></div>
+            ) : games.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No games scheduled</p>
+            ) : (
+              <div className="space-y-3 pt-3">
+                {games.map(g => (
+                  <div key={g.id} className="bg-secondary/30 border border-border rounded-xl p-3">
+                    <div className="flex justify-between items-center mb-1">
+                      <p className="text-sm font-bold text-foreground">{SPORT_LABELS[g.sport] || g.sport}</p>
+                      <span className="text-xs text-muted-foreground tabular-nums">{new Date(g.scheduledAt).toLocaleTimeString("en-IL", { hour: "2-digit", minute: "2-digit" })}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{new Date(g.scheduledAt).toLocaleDateString("en-IL", { day: "numeric", month: "short" })}</p>
+                    {g.description && <p className="text-xs text-foreground mt-1">{g.description}</p>}
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-xs text-muted-foreground">👥 {g.votes.length}/{g.maxPlayers} players</span>
+                      <div className="flex gap-1">
+                        {g.votes.slice(0, 4).map((v, i) => (
+                          <span key={i} className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-1.5 py-0.5 rounded-full">{v.playerName}</span>
+                        ))}
+                        {g.votes.length > 4 && <span className="text-[10px] text-muted-foreground">+{g.votes.length - 4}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {(loc.type === "parking" || loc.type === "green" || loc.type === "other") && !loc.description && (
+          <p className="text-sm text-muted-foreground text-center py-8">{cfg.emoji} {cfg.label}</p>
+        )}
+      </div>
+    </motion.div>
+  );
 }
 
 // ── Time formatter ─────────────────────────────────────────────────────────
@@ -851,6 +1066,8 @@ export default function HomePage() {
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [showPeople, setShowPeople] = useState(true);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const [locations, setLocations] = useState<CampusLocation[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<CampusLocation | null>(null);
 
   // ── Unified app state ──
   const [activeTab, setActiveTab] = useState<"map" | "chats">("map");
@@ -883,6 +1100,13 @@ export default function HomePage() {
       setActiveChatId(parseInt(openChatId));
       window.history.replaceState({}, "", window.location.pathname);
     }
+  }, []);
+
+  // Fetch campus locations once on mount
+  useEffect(() => {
+    getLocations()
+      .then(locs => setLocations(locs.filter(l => l.polygon && l.polygon.length >= 3)))
+      .catch(() => {});
   }, []);
 
   const mapCenter: [number, number] = pos ? [pos.lat, pos.lng] : ISRAEL_CENTER;
@@ -1018,6 +1242,51 @@ export default function HomePage() {
             <MapCenterUpdater center={[pos.lat, pos.lng]} zoom={17} />
           )}
           <MapSizeInvalidator deps={[activeTab, feedOpen]} />
+
+          {/* Campus location polygons */}
+          {locations.map(loc => {
+            const positions = loc.polygon.map(p => [p.lat, p.lng] as [number, number]);
+            const centroid = polygonCentroid(loc.polygon);
+            const cfg = LOC_TYPES[loc.type] || LOC_TYPES.other;
+            const labelIcon = L.divIcon({
+              className: "",
+              html: `<div style="
+                background:rgba(0,0,0,0.72);
+                color:#fff;
+                border:1.5px solid ${loc.color}90;
+                border-radius:10px;
+                padding:2px 8px;
+                font-size:11px;
+                font-weight:700;
+                white-space:nowrap;
+                box-shadow:0 2px 8px rgba(0,0,0,0.5);
+                pointer-events:none;
+                display:flex;align-items:center;gap:4px;
+              ">${cfg.emoji} ${loc.name}</div>`,
+              iconAnchor: [0, 0],
+              iconSize: undefined as any,
+            });
+            return (
+              <React.Fragment key={loc.id}>
+                <Polygon
+                  positions={positions}
+                  pathOptions={{
+                    color: loc.color,
+                    fillColor: loc.color,
+                    fillOpacity: 0.18,
+                    weight: 2,
+                    opacity: 0.7,
+                  }}
+                  eventHandlers={{ click: () => setSelectedLocation(loc) }}
+                />
+                <Marker
+                  position={centroid}
+                  icon={labelIcon}
+                  eventHandlers={{ click: () => setSelectedLocation(loc) }}
+                />
+              </React.Fragment>
+            );
+          })}
 
           {/* User position marker */}
           {pos && (
@@ -1287,6 +1556,16 @@ export default function HomePage() {
           onRefresh={fetchAll}
         />
       )}
+
+      {/* ── Location Detail Sheet ── */}
+      <AnimatePresence>
+        {selectedLocation && (
+          <LocationDetailSheet
+            loc={selectedLocation}
+            onClose={() => setSelectedLocation(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Bottom Navigation ── */}
       <div className="border-t border-border bg-card/90 backdrop-blur-sm flex z-20 flex-shrink-0">

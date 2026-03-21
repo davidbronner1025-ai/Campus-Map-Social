@@ -179,6 +179,69 @@ export const leaveGroup = (convId: number) =>
 export const removeGroupMember = (convId: number, userId: number) =>
   apiFetch<{ ok: boolean }>(`/conversations/${convId}/members?userId=${userId}`, { method: "DELETE" });
 
+// Locations
+export type CampusLocation = {
+  id: number;
+  name: string;
+  description: string | null;
+  type: string;
+  color: string;
+  lat: number;
+  lng: number;
+  polygon: { lat: number; lng: number }[];
+  adminName: string | null;
+  managerName: string | null;
+};
+
+export type LocationAnnouncement = {
+  id: number;
+  title: string;
+  content: string;
+  priority: "normal" | "important" | "urgent";
+  createdAt: string;
+};
+
+export type LocationSchedule = {
+  id: number;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  label: string;
+  instructor: string | null;
+};
+
+export type LocationMenu = {
+  id: number;
+  date: string;
+  items: { name: string; category: string }[];
+  averageRating: number;
+  ratingCount: number;
+};
+
+export type LocationGame = {
+  id: number;
+  sport: string;
+  scheduledAt: string;
+  description: string | null;
+  maxPlayers: number;
+  votes: { playerName: string }[];
+};
+
+export const getLocations = () =>
+  apiFetch<CampusLocation[]>("/locations");
+
+export const getLocationAnnouncements = (locationId: number) =>
+  apiFetch<LocationAnnouncement[]>(`/locations/${locationId}/announcements`);
+
+export const getLocationSchedules = (locationId: number) =>
+  apiFetch<LocationSchedule[]>(`/locations/${locationId}/schedules`);
+
+export const getLocationMenus = (locationId: number) =>
+  apiFetch<LocationMenu[]>(`/locations/${locationId}/menus`);
+
+export const getLocationGames = (locationId: number) =>
+  apiFetch<LocationGame[]>(`/locations/${locationId}/games`);
+
 // Notifications
 export type AppNotification = {
   id: number;
