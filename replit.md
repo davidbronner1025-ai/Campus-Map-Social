@@ -50,6 +50,7 @@ artifacts-monorepo/
   - **Manager assignment** — Assign registered users as location managers (managerId stored in DB, joined from users table)
   - **Edit locations** — Edit name, description, type, color, and manager for existing locations
   - **Multi-location creation** — "Save & Add Another" button to create multiple locations in sequence without returning to list
+  - **📌 Pin Messages on Map** — Admin can pin campus-wide messages that appear as 📌 markers on student maps. Toggle via MessageSquarePlus FAB button (amber when active). Click map to drop a pin, fill in message, submit. Manage/delete pinned messages from the list panel's "Pinned Map Messages" section. Calls `POST /api/admin/messages` (no user auth required, posts as Campus Admin system user)
 - **User Management** (`/users`) — List users, invite by phone (generates OTP), delete users, ghost badge for invisible users
   - **Live Map view** — Toggle between User List and Live Map tabs to see all users on a satellite map with active/inactive indicators
 
@@ -74,6 +75,7 @@ artifacts-monorepo/
   - Two FABs: primary message compose + secondary event create
 - **Unified Map-Centric Layout** (all views share a persistent map):
   - Map is always visible — never hidden when switching between chats or composing
+  - Compose sheet (pin message) and Create Event sheet are transparent-backdrop bottom sheets so the campus map remains visible while writing
   - 3-tab bottom navigation: **Map** | **Chats** | **Profile** (all within the home page)
   - Map tab: map takes 40% height (collapsible), feed (messages/events) in panel below
   - Chats tab: map takes 35% height (always visible), chat list panel below

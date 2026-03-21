@@ -97,7 +97,7 @@ function MapFly({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap();
   useEffect(() => {
     if (isNaN(center[0]) || isNaN(center[1])) return;
-    map.flyTo(center, zoom, { duration: 1 });
+    try { map.setView(center, zoom, { animate: false }); } catch {}
   }, [center, zoom, map]);
   return null;
 }

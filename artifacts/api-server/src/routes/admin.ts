@@ -1,9 +1,11 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db } from "@workspace/db";
-import { usersTable, userOtpsTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { usersTable, userOtpsTable, messagesTable } from "@workspace/db/schema";
+import { eq, desc } from "drizzle-orm";
 
 const router: IRouter = Router();
+
+const ADMIN_PHONE = "+972000000000";
 
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -15,6 +17,17 @@ function formatPhone(phone: string): string {
   if (digits.startsWith("0")) return "+972" + digits.slice(1);
   if (!phone.startsWith("+")) return "+" + digits;
   return phone;
+}
+
+async function getOrCreateAdminUser(): Promise<number> {
+  const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.phone, ADMIN_PHONE)).limit(1);
+  if (existing.length) return existing[0].id;
+  const [u] = await db.insert(usersTable).values({
+    phone: ADMIN_PHONE,
+    displayName: "Campus Admin",
+    visibility: "ghost" as const,
+  }).returning({ id: usersTable.id });
+  return u.id;
 }
 
 // GET /admin/users — list all users
@@ -49,7 +62,6 @@ router.post("/admin/users", async (req: Request, res: Response) => {
   const formatted = formatPhone(phone.trim());
 
   try {
-    // Upsert user
     const existing = await db.select().from(usersTable).where(eq(usersTable.phone, formatted)).limit(1);
     let userId: number;
     if (existing.length) {
@@ -59,9 +71,8 @@ router.post("/admin/users", async (req: Request, res: Response) => {
       userId = u.id;
     }
 
-    // Generate OTP for them to use
     const otp = generateOtp();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await db.delete(userOtpsTable).where(eq(userOtpsTable.phone, formatted));
     await db.insert(userOtpsTable).values({ phone: formatted, otp, expiresAt });
 
@@ -80,6 +91,59 @@ router.delete("/admin/users/:id", async (req: Request, res: Response) => {
     res.json({ ok: true });
   } catch {
     res.status(500).json({ error: "Failed to delete user" });
+  }
+});
+
+// GET /admin/messages — list all admin-pinned map messages
+router.get("/admin/messages", async (_req: Request, res: Response) => {
+  try {
+    const adminId = await getOrCreateAdminUser();
+    const msgs = await db
+      .select()
+      .from(messagesTable)
+      .where(eq(messagesTable.userId, adminId))
+      .orderBy(desc(messagesTable.createdAt));
+    res.json(msgs);
+  } catch {
+    res.status(500).json({ error: "Failed to fetch admin messages" });
+  }
+});
+
+// POST /admin/messages — pin a new message on the map as Campus Admin
+router.post("/admin/messages", async (req: Request, res: Response) => {
+  const { lat, lng, content, type, expiresInMinutes } = req.body;
+  if (!lat || !lng || !content) {
+    res.status(400).json({ error: "lat, lng, content required" });
+    return;
+  }
+  try {
+    const adminId = await getOrCreateAdminUser();
+    const expiresAt = expiresInMinutes
+      ? new Date(Date.now() + expiresInMinutes * 60 * 1000)
+      : null;
+    const [created] = await db.insert(messagesTable).values({
+      userId: adminId,
+      lat: parseFloat(lat),
+      lng: parseFloat(lng),
+      content,
+      type: type || "regular",
+      expiresAt,
+    }).returning();
+    res.status(201).json(created);
+  } catch {
+    res.status(500).json({ error: "Failed to create admin message" });
+  }
+});
+
+// DELETE /admin/messages/:id — remove an admin-pinned message
+router.delete("/admin/messages/:id", async (req: Request, res: Response) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    await db.delete(messagesTable).where(eq(messagesTable.id, id));
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: "Failed to delete message" });
   }
 });
 

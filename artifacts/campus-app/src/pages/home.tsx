@@ -1257,13 +1257,11 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ── Compose Sheet ── */}
+      {/* ── Compose Sheet ── (transparent click-catcher keeps map visible) */}
       <AnimatePresence>
         {compose && pos && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
-              onClick={() => setCompose(false)} />
+            <div className="fixed inset-0 z-40" onClick={() => setCompose(false)} />
             {composeMode === "message" ? (
               <ComposeSheet onClose={() => setCompose(false)} onPosted={fetchAll} userLat={pos.lat} userLng={pos.lng} />
             ) : (

@@ -7,7 +7,7 @@ import {
   Plus, Trash2, X, Save, Building2, UtensilsCrossed, Trophy, Car, Trees,
   MapPin, Star, Calendar, Users, Bell, Clock, Undo2, ChevronLeft,
   Megaphone, Loader2, AlertTriangle, ChevronRight, Search, Edit2, UserCheck,
-  Layers, PlusCircle,
+  Layers, PlusCircle, MessageSquarePlus,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -439,14 +439,35 @@ function SportsPanel({ locationId }: { locationId:number }) {
 }
 
 // ── Map helpers ────────────────────────────────────────────────────────────────
-function MapClick({ drawing, onPoint }: { drawing:boolean; onPoint:(lat:number,lng:number)=>void }) {
-  useMapEvents({ click: e => { if (drawing) onPoint(e.latlng.lat, e.latlng.lng); } });
+function MapClick({ drawing, pinMode, onPoint, onPinClick }: {
+  drawing: boolean;
+  pinMode: boolean;
+  onPoint: (lat: number, lng: number) => void;
+  onPinClick: (lat: number, lng: number) => void;
+}) {
+  useMapEvents({ click: e => {
+    if (drawing) onPoint(e.latlng.lat, e.latlng.lng);
+    else if (pinMode) onPinClick(e.latlng.lat, e.latlng.lng);
+  } });
   return null;
 }
 function MapFly({ lat, lng, zoom }: { lat:number; lng:number; zoom:number }) {
   const map = useMap();
-  useEffect(() => { map.flyTo([lat, lng], zoom, { duration: 1 }); }, [lat, lng, zoom, map]);
+  useEffect(() => {
+    if (isNaN(lat) || isNaN(lng)) return;
+    try { map.setView([lat, lng], zoom, { animate: false }); } catch {}
+  }, [lat, lng, zoom, map]);
   return null;
+}
+
+function makePinIcon(emoji: string, color: string, pulse = false) {
+  return L.divIcon({
+    className: "",
+    html: `<div style="background:${color};border:2px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);width:32px;height:32px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);${pulse ? "animation:pulse 1.5s infinite" : ""}"><span style="transform:rotate(45deg);font-size:14px;line-height:1">${emoji}</span></div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+  });
 }
 
 // ── Location Form Schema ───────────────────────────────────────────────────────
@@ -479,10 +500,54 @@ export default function LocationsPage() {
   const [editManagerId, setEditManagerId] = useState<number | null>(null);
   const [mapStyle, setMapStyle] = useState("satellite");
 
+  const [pinMode, setPinMode] = useState(false);
+  const [pendingPin, setPendingPin] = useState<{ lat: number; lng: number } | null>(null);
+  const [pinContent, setPinContent] = useState("");
+  const [pinSubmitting, setPinSubmitting] = useState(false);
+  const [adminMsgs, setAdminMsgs] = useState<any[]>([]);
+  const [deletingMsgId, setDeletingMsgId] = useState<number | null>(null);
+
   const [users, setUsers] = useState<AdminUser[]>([]);
   useEffect(() => {
     fetch("/api/admin/users").then(r => r.json()).then(setUsers).catch(() => {});
   }, []);
+
+  const fetchAdminMsgs = useCallback(async () => {
+    try {
+      const r = await fetch("/api/admin/messages");
+      if (r.ok) setAdminMsgs(await r.json());
+    } catch {}
+  }, []);
+  useEffect(() => { fetchAdminMsgs(); }, [fetchAdminMsgs]);
+
+  const submitPin = async () => {
+    if (!pendingPin || !pinContent.trim()) return;
+    setPinSubmitting(true);
+    try {
+      const r = await fetch("/api/admin/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lat: pendingPin.lat, lng: pendingPin.lng, content: pinContent.trim(), type: "regular" }),
+      });
+      if (r.ok) {
+        setPendingPin(null);
+        setPinContent("");
+        fetchAdminMsgs();
+      }
+    } finally {
+      setPinSubmitting(false);
+    }
+  };
+
+  const deleteAdminMsg = async (id: number) => {
+    setDeletingMsgId(id);
+    try {
+      await fetch(`/api/admin/messages/${id}`, { method: "DELETE" });
+      setAdminMsgs(p => p.filter(m => m.id !== id));
+    } finally {
+      setDeletingMsgId(null);
+    }
+  };
 
   const lForm = useForm<LocForm>({
     resolver: zodResolver(locSchema),
@@ -529,6 +594,7 @@ export default function LocationsPage() {
   const startAdd = () => {
     setMode("add"); setDrawing(true); setPts([]); setDetected(""); setManagerId(null);
     setSheetOpen(false); setSelectedId(null);
+    setPinMode(false); setPendingPin(null); setPinContent("");
     lForm.reset({ name:"", description:"", type: LocationType.building, color:"#60a5fa", adminName:"" });
   };
 
@@ -607,7 +673,7 @@ export default function LocationsPage() {
       <div className="relative flex-shrink-0 transition-all duration-300" style={{ height: mapHeight }}>
         <MapContainer center={[campus.lat, campus.lng]} zoom={campus.defaultZoom} style={{ width:"100%", height:"100%" }}>
           <DynamicTiles styleKey={mapStyle} />
-          <MapClick drawing={drawing} onPoint={handleMapClick} />
+          <MapClick drawing={drawing} pinMode={pinMode} onPoint={handleMapClick} onPinClick={(lat, lng) => { setPendingPin({ lat, lng }); setPinContent(""); }} />
           {flyTarget && <MapFly lat={flyTarget.lat} lng={flyTarget.lng} zoom={flyTarget.zoom} />}
 
           {locs.map(loc => {
@@ -628,6 +694,15 @@ export default function LocationsPage() {
           {drawing && pts.length >= 3 && <Polygon positions={pts} pathOptions={{ color: watchedColor, fillColor: watchedColor, fillOpacity: 0.3, weight: 2, dashArray: "6 6" }} />}
           {drawing && pts.length === 2 && <Polyline positions={pts} pathOptions={{ color: watchedColor, weight: 2, dashArray: "6 6" }} />}
           {drawing && pts.map((p, i) => <Marker key={i} position={p} />)}
+
+          {adminMsgs.map(msg => (
+            <Marker key={msg.id} position={[msg.lat, msg.lng]} icon={makePinIcon("📌", "#f59e0b")}>
+            </Marker>
+          ))}
+
+          {pendingPin && (
+            <Marker position={[pendingPin.lat, pendingPin.lng]} icon={makePinIcon("📍", "#3b82f6", true)} />
+          )}
         </MapContainer>
 
         <MapSearchBar onSelect={handleSearchSelect} />
@@ -644,6 +719,45 @@ export default function LocationsPage() {
                 <Undo2 className="w-3 h-3" /> Undo
               </button>
             )}
+          </div>
+        )}
+
+        {pinMode && !drawing && (
+          <div className="absolute top-14 left-3 right-3 z-[400] bg-amber-500/90 backdrop-blur-sm text-white rounded-xl px-4 py-2.5 text-sm font-medium flex items-center justify-between shadow-xl">
+            <div className="flex items-center gap-2">
+              <MessageSquarePlus className="w-4 h-4 flex-shrink-0" />
+              <span>Click anywhere on the map to pin a message</span>
+            </div>
+            <button onClick={() => { setPinMode(false); setPendingPin(null); }} className="text-xs bg-white/20 px-2 py-1 rounded-lg hover:bg-white/30">
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {pendingPin && (
+          <div className="absolute bottom-3 left-3 right-16 z-[500] bg-card/98 backdrop-blur-md border border-border rounded-2xl p-4 shadow-2xl">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <MessageSquarePlus className="w-4 h-4 text-primary" /> Pin Campus Message
+              </h3>
+              <button onClick={() => { setPendingPin(null); setPinContent(""); }}
+                className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <textarea value={pinContent} onChange={e => setPinContent(e.target.value)}
+              placeholder="Message for students on the map..." rows={3}
+              className="w-full px-3 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-primary resize-none" />
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => { setPendingPin(null); setPinContent(""); }}
+                className="px-4 py-2 rounded-xl bg-secondary text-foreground text-sm font-medium hover:bg-secondary/80">
+                Cancel
+              </button>
+              <button onClick={submitPin} disabled={!pinContent.trim() || pinSubmitting}
+                className="flex-1 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2">
+                {pinSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><MessageSquarePlus className="w-4 h-4" /> Pin Message</>}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -694,6 +808,29 @@ export default function LocationsPage() {
                 </div>
               );
             })}
+
+            {adminMsgs.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-semibold text-amber-500 mb-2 flex items-center gap-1.5">
+                  <MessageSquarePlus className="w-3.5 h-3.5" /> Pinned Map Messages ({adminMsgs.length})
+                </p>
+                <div className="space-y-2">
+                  {adminMsgs.map(msg => (
+                    <div key={msg.id} className="bg-amber-500/8 border border-amber-500/20 rounded-xl p-3 flex items-start gap-3">
+                      <span className="text-lg flex-shrink-0">📌</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-foreground leading-snug">{msg.content}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">{new Date(msg.createdAt).toLocaleString("en-IL", { day:"numeric",month:"short",hour:"2-digit",minute:"2-digit" })}</p>
+                      </div>
+                      <button onClick={() => deleteAdminMsg(msg.id)} disabled={deletingMsgId === msg.id}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0 disabled:opacity-40">
+                        {deletingMsgId === msg.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -860,13 +997,22 @@ export default function LocationsPage() {
         )}
       </AnimatePresence>
 
-      {/* FAB */}
+      {/* FABs */}
       {mode === "list" && (
-        <motion.button initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.1 }}
-          onClick={startAdd}
-          className="fixed bottom-20 right-5 z-20 w-14 h-14 rounded-2xl bg-primary text-primary-foreground shadow-xl shadow-primary/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">
-          <Plus className="w-6 h-6" />
-        </motion.button>
+        <>
+          <motion.button initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.2 }}
+            onClick={() => { setPinMode(p => !p); setPendingPin(null); setPinContent(""); }}
+            className={`fixed bottom-36 right-5 z-20 w-12 h-12 rounded-xl shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all border ${
+              pinMode ? "bg-amber-500 text-white border-amber-600 shadow-amber-500/40" : "bg-card text-foreground border-border shadow-black/20"
+            }`}>
+            <MessageSquarePlus className="w-5 h-5" />
+          </motion.button>
+          <motion.button initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.1 }}
+            onClick={startAdd}
+            className="fixed bottom-20 right-5 z-20 w-14 h-14 rounded-2xl bg-primary text-primary-foreground shadow-xl shadow-primary/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">
+            <Plus className="w-6 h-6" />
+          </motion.button>
+        </>
       )}
     </div>
   );
