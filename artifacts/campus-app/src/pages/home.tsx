@@ -179,8 +179,9 @@ function MapCenterUpdater({ center, zoom }: { center: [number, number]; zoom: nu
 function MapSizeInvalidator({ deps }: { deps: unknown[] }) {
   const map = useMap();
   useEffect(() => {
-    const t = setTimeout(() => { try { map.invalidateSize(); } catch {} }, 80);
-    return () => clearTimeout(t);
+    const t1 = setTimeout(() => { try { map.invalidateSize(); } catch {} }, 80);
+    const t2 = setTimeout(() => { try { map.invalidateSize(); } catch {} }, 400);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   // deps intentionally spread for comparison
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
@@ -1303,8 +1304,10 @@ export default function HomePage() {
       {/* ── MAP ── */}
       <div className="relative" style={{
         height: activeTab === "chats"
-          ? "35%"
-          : feedOpen ? "40%" : "calc(100% - 56px)"
+          ? "35dvh"
+          : feedOpen ? "40dvh" : "calc(100dvh - 113px)",
+        minHeight: 180,
+        flexShrink: 0,
       }}>
         <MapContainer center={mapCenter} zoom={mapZoom} style={{ width: "100%", height: "100%" }}>
           <TileLayer
