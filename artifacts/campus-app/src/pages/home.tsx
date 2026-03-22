@@ -212,6 +212,20 @@ function polygonCentroid(pts: { lat: number; lng: number }[]): [number, number] 
   return [lat, lng];
 }
 
+// ── Time formatter ─────────────────────────────────────────────────────────
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+// Day-of-week lookup — matches schema enum exactly
+const DOW = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"] as const;
+
 // ── Location Detail Sheet ────────────────────────────────────────────────────
 function LocationDetailSheet({
   loc,
@@ -227,13 +241,16 @@ function LocationDetailSheet({
   const [scheds, setScheds] = useState<LocationSchedule[]>([]);
   const [menus, setMenus] = useState<LocationMenu[]>([]);
   const [games, setGames] = useState<LocationGame[]>([]);
+  const [locMsgs, setLocMsgs] = useState<NearbyMessage[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
-    const today = new Date().toLocaleDateString("en-IL", { weekday: "long" }).toLowerCase();
+    const today = DOW[new Date().getDay()];
 
-    const fetchers: Promise<any>[] = [];
+    const fetchers: Promise<any>[] = [
+      getNearbyMessages(loc.lat, loc.lng, 120).then(setLocMsgs).catch(() => setLocMsgs([])),
+    ];
     if (loc.type === "building") {
       fetchers.push(
         getLocationAnnouncements(loc.id).then(setAnns),
@@ -245,7 +262,7 @@ function LocationDetailSheet({
       fetchers.push(getLocationGames(loc.id).then(setGames));
     }
     Promise.all(fetchers).finally(() => setLoading(false));
-  }, [loc.id, loc.type]);
+  }, [loc.id, loc.type, loc.lat, loc.lng]);
 
   const PRIORITY_COLOR: Record<string, string> = {
     normal: "border-primary/40 text-primary",
@@ -408,20 +425,42 @@ function LocationDetailSheet({
         {(loc.type === "parking" || loc.type === "green" || loc.type === "other") && !loc.description && (
           <p className="text-sm text-muted-foreground text-center py-8">{cfg.emoji} {cfg.label}</p>
         )}
+
+        {/* ── Pinned Messages at this Location ── */}
+        {locMsgs.length > 0 && (
+          <div className="px-4 pb-6">
+            <div className="border-t border-border pt-4">
+              <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">📌 Pinned Here</p>
+              <div className="space-y-2">
+                {locMsgs.map(msg => {
+                  const isPermanent = msg.expiresAt === null;
+                  return (
+                    <div key={msg.id} className={`rounded-xl p-3 border ${isPermanent ? "bg-primary/5 border-primary/25" : "bg-secondary/30 border-border"}`}>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        {isPermanent && <span className="text-[10px] font-bold text-primary bg-primary/15 border border-primary/30 px-1.5 py-0.5 rounded-full">📌 Pinned</span>}
+                        <span className="text-xs font-semibold text-foreground">{msg.author?.displayName || "Campus"}</span>
+                        <span className="text-[10px] text-muted-foreground ml-auto">{timeAgo(msg.createdAt)}</span>
+                      </div>
+                      <p className="text-sm text-foreground leading-relaxed">{msg.content}</p>
+                      {msg.reactions.length > 0 && (
+                        <div className="flex gap-2 mt-2">
+                          {(["yes","no"] as const).map(t => {
+                            const count = msg.reactions.filter(r => r.type === t).length;
+                            if (!count) return null;
+                            return <span key={t} className="text-[11px] text-muted-foreground">{t === "yes" ? "👍" : "👎"} {count}</span>;
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );
-}
-
-// ── Time formatter ─────────────────────────────────────────────────────────
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 // ── Avatar ─────────────────────────────────────────────────────────────────
@@ -1140,14 +1179,23 @@ export default function HomePage() {
   const mapCenter: [number, number] = pos ? [pos.lat, pos.lng] : (locationCenter ?? ISRAEL_CENTER);
   const mapZoom = pos ? 17 : (locationCenter ? 16 : FALLBACK_ZOOM);
 
+  const locationCenterRef = useRef(locationCenter);
+  useEffect(() => { locationCenterRef.current = locationCenter; }, [locationCenter]);
+
   const fetchAll = useCallback(async () => {
-    if (!pos) return;
+    const coord = pos
+      ? { lat: pos.lat, lng: pos.lng }
+      : locationCenterRef.current
+        ? { lat: locationCenterRef.current[0], lng: locationCenterRef.current[1] }
+        : null;
+    if (!coord) return;
+    const radius = pos ? 300 : 800;
     setLoading(true);
     try {
       const [msgs, users, evts] = await Promise.allSettled([
-        getNearbyMessages(pos.lat, pos.lng, 300),
-        getNearbyUsers(pos.lat, pos.lng, 500),
-        getNearbyEvents(pos.lat, pos.lng, 1000),
+        getNearbyMessages(coord.lat, coord.lng, radius),
+        pos ? getNearbyUsers(coord.lat, coord.lng, 500) : Promise.resolve<NearbyUser[]>([]),
+        getNearbyEvents(coord.lat, coord.lng, 1000),
       ]);
       if (msgs.status === "fulfilled") setMessages(msgs.value);
       if (users.status === "fulfilled") setNearbyUsers(users.value);
@@ -1163,13 +1211,15 @@ export default function HomePage() {
     } catch {} finally { setLoading(false); }
   }, [pos]);
 
-  // Initial fetch + periodic refresh every 15s
+  // Initial fetch + periodic refresh every 15s (runs when GPS or campus center becomes available)
   useEffect(() => {
-    if (!pos) return;
+    const coord = pos || locationCenter;
+    if (!coord) return;
     fetchAll();
     const interval = setInterval(fetchAll, 15_000);
     return () => clearInterval(interval);
-  }, [pos, fetchAll]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pos, locationCenter, fetchAll]);
 
   // Deep-link from notifications: ?viewEvent=ID or ?viewMessage=ID
   useEffect(() => {
@@ -1235,7 +1285,7 @@ export default function HomePage() {
             <p className="text-sm font-semibold text-foreground leading-tight">{user.displayName || "Set your name"}</p>
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <MapPin className="w-2.5 h-2.5" />
-              {pos ? `${messages.length} messages nearby` : locError ? "Location unavailable" : "Locating..."}
+              {pos ? `${messages.length} messages nearby` : locError ? (locationCenter ? "Campus view" : "Location unavailable") : locationCenter ? "Campus view" : "Locating..."}
             </p>
           </div>
         </div>
@@ -1380,8 +1430,8 @@ export default function HomePage() {
           {nearbyUsers.length > 0 ? nearbyUsers.length : ""} People
         </button>
 
-        {/* Location permission notice */}
-        {!pos && !locError && (
+        {/* Location permission notice — only shown when no GPS AND no campus center yet */}
+        {!pos && !locError && !locationCenter && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm z-10">
             <div className="bg-card border border-border rounded-2xl p-5 text-center max-w-xs mx-4 shadow-xl">
               <Navigation className="w-10 h-10 text-primary mx-auto mb-3" />
@@ -1542,7 +1592,7 @@ export default function HomePage() {
       )}
 
       {/* ── FAB: Compose ── */}
-      {!compose && !replyTarget && !eventDetail && pos && activeTab === "map" && (
+      {!compose && !replyTarget && !eventDetail && (pos || locationCenter) && activeTab === "map" && (
         <div className="fixed bottom-6 right-5 z-30 flex flex-col gap-2.5 items-end">
           <motion.button initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.3 }}
             onClick={() => { setComposeMode("event"); setCompose(true); }}
@@ -1559,23 +1609,23 @@ export default function HomePage() {
 
       {/* ── Compose Sheet ── (transparent click-catcher keeps map visible) */}
       <AnimatePresence>
-        {compose && (pos || composeLocationOverride) && (
+        {compose && (pos || composeLocationOverride || locationCenter) && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => { setCompose(false); setComposeLocationOverride(null); }} />
             {composeMode === "message" ? (
               <ComposeSheet
                 onClose={() => { setCompose(false); setComposeLocationOverride(null); }}
                 onPosted={() => { fetchAll(); setComposeLocationOverride(null); }}
-                userLat={composeLocationOverride?.lat ?? pos!.lat}
-                userLng={composeLocationOverride?.lng ?? pos!.lng}
+                userLat={composeLocationOverride?.lat ?? pos?.lat ?? locationCenter?.[0] ?? 0}
+                userLng={composeLocationOverride?.lng ?? pos?.lng ?? locationCenter?.[1] ?? 0}
                 locationLabel={composeLocationOverride?.name}
               />
             ) : (
               <CreateEventSheet
                 onClose={() => { setCompose(false); setComposeLocationOverride(null); }}
                 onCreated={() => { fetchAll(); setComposeLocationOverride(null); }}
-                userLat={composeLocationOverride?.lat ?? pos!.lat}
-                userLng={composeLocationOverride?.lng ?? pos!.lng}
+                userLat={composeLocationOverride?.lat ?? pos?.lat ?? locationCenter?.[0] ?? 0}
+                userLng={composeLocationOverride?.lng ?? pos?.lng ?? locationCenter?.[1] ?? 0}
               />
             )}
           </>
