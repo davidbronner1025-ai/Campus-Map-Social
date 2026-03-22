@@ -9,8 +9,11 @@ function Router() {
   const { token, isLoading } = useAuth();
   const [loc] = useLocation();
 
-  // Public map — no auth required
+  // Public map — no auth required (also the default landing page when not logged in)
   if (loc === "/map") return <PublicMapPage />;
+
+  // Auth page — for the sign-in flow
+  if (loc === "/auth") return <AuthPage />;
 
   if (isLoading) {
     return (
@@ -20,7 +23,8 @@ function Router() {
     );
   }
 
-  if (!token) return <AuthPage />;
+  // Not logged in → show map with a sign-in prompt overlay
+  if (!token) return <PublicMapPage showLoginPrompt />;
 
   return (
     <Switch>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { MapContainer, TileLayer, Polygon, Marker, Popup } from "react-leaflet";
-import { useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Polygon, Marker, useMap } from "react-leaflet";
+import { useLocation } from "wouter";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { getLocations, type CampusLocation } from "@/lib/api";
@@ -43,10 +43,11 @@ function AutoCenter({ locations }: { locations: CampusLocation[] }) {
   return null;
 }
 
-export default function PublicMapPage() {
+export default function PublicMapPage({ showLoginPrompt = false }: { showLoginPrompt?: boolean }) {
   const [locations, setLocations] = useState<CampusLocation[]>([]);
   const [selected, setSelected] = useState<CampusLocation | null>(null);
   const [loading, setLoading] = useState(true);
+  const [, navigate] = useLocation();
 
   useEffect(() => {
     getLocations()
@@ -177,6 +178,32 @@ export default function PublicMapPage() {
         }}>
           No campus locations defined yet.<br />
           <span style={{ fontSize: 11 }}>Use the Admin Panel to draw location polygons.</span>
+        </div>
+      )}
+
+      {/* Sign-in prompt — shown when user hasn't logged in yet */}
+      {showLoginPrompt && (
+        <div style={{
+          position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)",
+          zIndex: 600, display: "flex", alignItems: "center", gap: 10,
+          background: "rgba(15,23,42,0.92)", border: "1px solid rgba(99,102,241,0.4)",
+          borderRadius: 40, padding: "8px 14px 8px 12px",
+          boxShadow: "0 4px 24px rgba(0,0,0,0.5)", backdropFilter: "blur(12px)",
+          whiteSpace: "nowrap",
+        }}>
+          <span style={{ fontSize: 20 }}>🎓</span>
+          <span style={{ color: "#cbd5e1", fontSize: 13, fontWeight: 600 }}>Campus</span>
+          <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.15)", margin: "0 2px" }} />
+          <button
+            onClick={() => navigate("/auth")}
+            style={{
+              background: "rgba(99,102,241,1)", border: "none", borderRadius: 20,
+              color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer",
+              padding: "5px 14px", letterSpacing: 0.2,
+            }}
+          >
+            Sign in →
+          </button>
         </div>
       )}
     </div>
