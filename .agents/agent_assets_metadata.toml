@@ -6,3 +6,9 @@ id = "ITrE9oui2OnUjc9mkl0PS"
 uri = "file://.canvas/assets/campus-project.zip"
 type = "unspecified"
 title = "campus-project.zip"
+
+[[outputs]]
+id = "S27_x1OE4Fxom3hHLi12V"
+uri = "file://artifacts/campus-app/public/campus-app-source.tar.gz"
+type = "unspecified"
+title = "Campus App — Full Source Code"
