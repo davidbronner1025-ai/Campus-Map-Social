@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Camera, Save, Loader2, LogOut, Pencil, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Camera, Save, Loader2, LogOut, Pencil, Eye, EyeOff, MessageSquare, CalendarCheck, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
-import { updateMe } from "@/lib/api";
+import { updateMe, getMyStats, type UserStats } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 
 const BANNER_COLORS = [
@@ -27,6 +27,11 @@ export default function ProfilePage() {
   const [visibility, setVisibility] = useState<"campus" | "ghost">(user?.visibility || "campus");
   const [saving, setSaving] = useState(false);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [stats, setStats] = useState<UserStats | null>(null);
+
+  useEffect(() => {
+    getMyStats().then(setStats).catch(() => {});
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
@@ -142,6 +147,30 @@ export default function ProfilePage() {
             </div>
           </button>
         </div>
+
+        {/* Activity Stats */}
+        {stats && (
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Campus Activity</label>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-card border border-border rounded-xl p-3 text-center">
+                <MessageSquare className="w-4 h-4 text-primary mx-auto mb-1" />
+                <p className="text-lg font-bold text-foreground">{stats.messagesPosted}</p>
+                <p className="text-[10px] text-muted-foreground">Messages</p>
+              </div>
+              <div className="bg-card border border-border rounded-xl p-3 text-center">
+                <CalendarCheck className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
+                <p className="text-lg font-bold text-foreground">{stats.eventsJoined}</p>
+                <p className="text-[10px] text-muted-foreground">Events</p>
+              </div>
+              <div className="bg-card border border-border rounded-xl p-3 text-center">
+                <AlertTriangle className="w-4 h-4 text-orange-400 mx-auto mb-1" />
+                <p className="text-lg font-bold text-foreground">{stats.issuesReported}</p>
+                <p className="text-[10px] text-muted-foreground">Reports</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Save */}
         <button onClick={handleSave} disabled={saving || !displayName.trim()}

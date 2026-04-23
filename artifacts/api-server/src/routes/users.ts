@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { db } from "@workspace/db";
-import { usersTable } from "@workspace/db/schema";
+import { usersTable, messagesTable, eventRsvpsTable, issueReportsTable } from "@workspace/db/schema";
 import { eq, and, ne, isNotNull, gte, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -125,6 +125,25 @@ router.get("/users/nearby", requireAuth, async (req: Request, res: Response) => 
   }));
 
   res.json(result);
+});
+
+// GET /users/me/stats — activity stats (messages posted, events rsvped, issues reported)
+router.get("/users/me/stats", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const [msgCount, rsvpCount, issueCount] = await Promise.all([
+      db.select({ count: sql<number>`count(*)::int` }).from(messagesTable).where(eq(messagesTable.userId, user.id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(eventRsvpsTable).where(eq(eventRsvpsTable.userId, user.id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(issueReportsTable).where(eq(issueReportsTable.userId, user.id)),
+    ]);
+    res.json({
+      messagesPosted: msgCount[0]?.count ?? 0,
+      eventsJoined: rsvpCount[0]?.count ?? 0,
+      issuesReported: issueCount[0]?.count ?? 0,
+    });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 export { requireAuth };

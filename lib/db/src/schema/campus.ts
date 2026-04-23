@@ -26,6 +26,17 @@ export type Campus = typeof campusTable.$inferSelect;
 export const locationTypeEnum = ["building", "dining_hall", "sports_field", "parking", "green", "other"] as const;
 export type LocationType = typeof locationTypeEnum[number];
 
+// Floor data type for a single floor
+export type FloorRoom = { name: string; room: string; type: "class" | "lab" | "admin" | "quiet" | "service" | "wc" | "other" };
+export type FloorEntry = {
+  floor: number;
+  label: string;
+  rooms: FloorRoom[];
+  notes?: string;
+  available?: number;   // e.g. library seats
+  waitTime?: number;    // e.g. cafeteria wait minutes
+};
+
 export const locationsTable = pgTable("locations", {
   id: serial("id").primaryKey(),
   campusId: integer("campus_id").notNull().references(() => campusTable.id, { onDelete: "cascade" }),
@@ -39,6 +50,7 @@ export const locationsTable = pgTable("locations", {
   lng: doublePrecision("lng").notNull(),
   polygon: jsonb("polygon").$type<{ lat: number; lng: number }[]>().notNull().default([]),
   osmName: text("osm_name"),
+  floorData: jsonb("floor_data").$type<FloorEntry[]>().default([]),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -292,3 +304,45 @@ export const messageRepliesTable = pgTable("message_replies", {
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// ─── Issue Reports ──────────────────────────────────────────────────────────
+export const issueStatusEnum = ["open", "in_progress", "resolved"] as const;
+export type IssueStatus = typeof issueStatusEnum[number];
+
+export const issueReportsTable = pgTable("issue_reports", {
+  id: serial("id").primaryKey(),
+  locationId: integer("location_id").references(() => locationsTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").references(() => usersTable.id, { onDelete: "set null" }),
+  floor: integer("floor"),
+  category: text("category").notNull(),
+  description: text("description"),
+  status: text("status").$type<IssueStatus>().notNull().default("open"),
+  isPublic: boolean("is_public").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertIssueReportSchema = createInsertSchema(issueReportsTable).omit({ id: true, createdAt: true, updatedAt: true, status: true });
+export type IssueReport = typeof issueReportsTable.$inferSelect;
+
+// ─── Campus Shops ───────────────────────────────────────────────────────────
+export type ShopMenuItem = { name: string; price: string; tag?: string };
+
+export const campusShopsTable = pgTable("campus_shops", {
+  id: serial("id").primaryKey(),
+  campusId: integer("campus_id").notNull().references(() => campusTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  icon: text("icon").notNull().default("🏪"),
+  description: text("description"),
+  hours: text("hours"),
+  discount: text("discount"),
+  color: text("color").notNull().default("#6366f1"),
+  menuItems: jsonb("menu_items").$type<ShopMenuItem[]>().default([]),
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertShopSchema = createInsertSchema(campusShopsTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type CampusShop = typeof campusShopsTable.$inferSelect;

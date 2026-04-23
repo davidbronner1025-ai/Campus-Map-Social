@@ -1,16 +1,18 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { Settings, MapPin, Users, Map, LogOut } from "lucide-react";
+import { Settings, MapPin, Users, Map, LogOut, AlertTriangle, ShoppingBag } from "lucide-react";
 
 interface LayoutProps {
   children: React.ReactNode;
-  active: "setup" | "locations" | "users";
+  active: "setup" | "locations" | "users" | "issues" | "shops";
 }
 
 const NAV = [
   { key: "setup",     href: "/setup",     label: "Setup",     icon: Settings },
   { key: "locations", href: "/locations", label: "Locations", icon: MapPin },
   { key: "users",     href: "/users",     label: "Users",     icon: Users },
+  { key: "issues",    href: "/issues",    label: "Issues",    icon: AlertTriangle },
+  { key: "shops",     href: "/shops",     label: "Shops",     icon: ShoppingBag },
 ];
 
 export function Layout({ children, active }: LayoutProps) {
@@ -43,7 +45,7 @@ export function Layout({ children, active }: LayoutProps) {
       </main>
 
       {/* Bottom tab navigation */}
-      <nav className="flex-shrink-0 bg-card border-t border-border grid grid-cols-3" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+      <nav className="flex-shrink-0 bg-card border-t border-border grid grid-cols-5" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {NAV.map(item => {
           const isActive = active === item.key;
           return (

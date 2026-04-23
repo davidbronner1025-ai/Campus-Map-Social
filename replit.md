@@ -39,18 +39,21 @@ artifacts-monorepo/
 ## Admin Panel Features
 
 - **PIN Security** — Default PIN `1234` (override via `VITE_ADMIN_PIN` env var), session stored in `sessionStorage`, expires on browser close
-- **Bottom Navigation** — Setup / Locations / Users tabs
+- **Bottom Navigation** — Setup / Locations / Users / Issues / Shops (5 tabs)
 - **Campus Setup** (`/setup`) — Configure campus name, center coordinates via satellite map click, Israel-centered by default (31.5°N, 35.0°E), Nominatim search restricted to Israel
 - **Locations Management** (`/locations`) — Draw polygons for locations with per-type panels:
   - Buildings: announcements + schedule
   - Dining Halls: daily menus + ratings
   - Sports Fields: game sessions + voting
+  - **Floor Data Editor** — Add/edit floors with rooms, labels, available seats, wait times
   - **Map style switcher** — Toggle between Satellite, Street, Terrain, and Dark map styles (bottom-right layers button)
   - **Map search bar** — Nominatim geocoding search on the map for finding places
   - **Manager assignment** — Assign registered users as location managers (managerId stored in DB, joined from users table)
-  - **Edit locations** — Edit name, description, type, color, and manager for existing locations
-  - **Multi-location creation** — "Save & Add Another" button to create multiple locations in sequence without returning to list
-  - **📌 Pin Messages on Map** — Admin can pin campus-wide messages that appear as 📌 markers on student maps. Toggle via MessageSquarePlus FAB button (amber when active). Click map to drop a pin, fill in message, submit. Manage/delete pinned messages from the list panel's "Pinned Map Messages" section. Calls `POST /api/admin/messages` (no user auth required, posts as Campus Admin system user)
+- **Issues Management** (`/issues`) — View/filter all issue reports by status, cycle status (open → in_progress → resolved), delete
+- **Shops & Deals** (`/shops`) — Full CRUD: create/edit shops with icon, name, description, hours, deals, color, menu items; toggle active/inactive
+- **Edit locations** — Edit name, description, type, color, and manager for existing locations
+- **Multi-location creation** — "Save & Add Another" button to create multiple locations in sequence without returning to list
+- **📌 Pin Messages on Map** — Admin can pin campus-wide messages that appear as 📌 markers on student maps
 - **User Management** (`/users`) — List users, invite by phone (generates OTP), delete users, ghost badge for invisible users
   - **Live Map view** — Toggle between User List and Live Map tabs to see all users on a satellite map with active/inactive indicators
 
@@ -76,7 +79,7 @@ artifacts-monorepo/
 - **Unified Map-Centric Layout** (all views share a persistent map):
   - Map is always visible — never hidden when switching between chats or composing
   - Compose sheet (pin message) and Create Event sheet are transparent-backdrop bottom sheets so the campus map remains visible while writing
-  - 3-tab bottom navigation: **Map** | **Chats** | **Profile** (all within the home page)
+  - 4-tab bottom navigation: **Map** | **Chats** | **Shops** | **Profile** (all within the home page)
   - Map tab: map takes 40% height (collapsible), feed (messages/events) in panel below
   - Chats tab: map takes 35% height (always visible), chat list panel below
   - Chat detail: full-screen overlay (back button returns to chat list)
@@ -94,6 +97,12 @@ artifacts-monorepo/
   - Auto-generated from: reactions on messages, replies to messages, event RSVP joins
   - Notification types: reaction, reply, event_join, nearby_event, chat_message
   - 15-second polling for new notifications, tap-to-navigate to source
+- **Floor Navigator**: When a location has floor data configured, a floor-by-floor browser appears in the location detail sheet with room listings, available seats, and wait times
+- **Issue Reporting**: Tap any location → Report an Issue with category picker (maintenance/cleanliness/safety/noise/lighting/other), floor selector, and description; active open issues are shown in the sheet
+- **Pulse Ticker**: Live activity strip at top of map showing recent nearby messages rotating every 4s
+- **Crowd Density**: Colored activity bar in each location's detail header showing real-time busyness (based on message activity in the last 2h)
+- **Shops & Deals Tab** (`/campus-app` → Shops nav): Browse all campus shops with name, icon, hours, deals/discounts, and expandable menu items
+- **Activity Stats on Profile**: Messages posted, events joined, and issues reported shown as stat cards on the profile page
 - **UX Polish**: Loading skeleton placeholders on chats list, empty states with helpful prompts
 - **Location engine**: Battery-optimized (network-accuracy, 30s server push, paused when backgrounded)
 
@@ -112,6 +121,9 @@ artifacts-monorepo/
 - `conversation_members` — Members of each conversation, unique(conversationId, userId)
 - `chat_messages` — Messages in conversations (text or location type, with optional lat/lng)
 - `notifications` — User notifications (type, referenceId, referenceType, content, read status)
+- `issue_reports` — Campus issue reports (userId, locationId, floor, category, description, status: open/in_progress/resolved, isPublic)
+- `campus_shops` — Campus shops/deals (campusId, name, icon, description, hours, discount, color, menuItems JSON, active, sortOrder)
+- `locations.floorData` — JSON array of floor entries (floor#, label, rooms[], notes, available seats, wait time)
 
 ## API Endpoints
 
@@ -157,6 +169,29 @@ artifacts-monorepo/
 - `GET /api/notifications?limit=&before=` — List notifications with unread count (cursor pagination)
 - `PUT /api/notifications/:id/read` — Mark single notification as read
 - `PUT /api/notifications/read-all` — Mark all notifications as read
+
+### Issues (requires Bearer token)
+- `GET /api/issues?locationId=` — List issue reports (filtered by location)
+- `POST /api/issues` — Submit a new issue report
+- `PATCH /api/issues/:id/status` — Update issue status (open/in_progress/resolved)
+- `DELETE /api/issues/:id` — Delete an issue report
+
+### Shops
+- `GET /api/shops` — List active campus shops (public)
+- `GET /api/shops/all` — List all shops including inactive (requires auth)
+- `POST /api/shops` · `PATCH /api/shops/:id` · `DELETE /api/shops/:id`
+
+### Locations (new endpoints)
+- `PATCH /api/locations/:id/floors` — Update floor data JSON for a location (requires auth)
+- `GET /api/locations/:id/crowd` — Get crowd density (message count in last 2h, returns { count, density })
+
+### Users (new endpoint)
+- `GET /api/users/me/stats` — Get own activity stats: messagesPosted, eventsJoined, issuesReported
+
+### Admin (no auth required)
+- `GET/PATCH/DELETE /api/admin/issues/:id` — Admin issues management
+- `GET/POST/PATCH/DELETE /api/admin/shops/:id` — Admin shops management
+- `PATCH /api/admin/locations/:id/floors` — Admin floor data update
 
 ## Key Notes
 

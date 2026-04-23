@@ -5,7 +5,8 @@ import L from "leaflet";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageSquarePlus, User, RefreshCw, X, Send, ThumbsUp, ThumbsDown,
-  MessageCircle, Trash2, ChevronDown, MapPin, Clock, Smile, Navigation, Users, Plus
+  MessageCircle, Trash2, ChevronDown, MapPin, Clock, Smile, Navigation, Users, Plus,
+  ShoppingBag, AlertTriangle, ChevronUp, ChevronRight, Activity, Layers
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationEngine } from "@/hooks/useLocationEngine";
@@ -16,9 +17,11 @@ import {
   createEvent, deleteEvent, rsvpEvent, unrsvpEvent,
   getReplies, postReply, createConversation, getConversations,
   getLocations, getLocationAnnouncements, getLocationSchedules, getLocationMenus, getLocationGames,
+  getLocationIssues, submitIssue, getLocationCrowd, getShops,
   type NearbyMessage, type NearbyUser, type NearbyEvent, type Reply,
   type ConversationListItem, type CampusLocation,
   type LocationAnnouncement, type LocationSchedule, type LocationMenu, type LocationGame,
+  type IssueReport, type CrowdData, type CampusShop, type FloorEntry,
 } from "@/lib/api";
 import { ConversationRow, ChatDetail, NewChatSheet } from "@/pages/chats";
 
@@ -228,6 +231,91 @@ function timeAgo(dateStr: string): string {
 const DOW = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"] as const;
 
 // ── Location Detail Sheet ────────────────────────────────────────────────────
+const ISSUE_CATEGORIES = [
+  { key: "maintenance", label: "Maintenance", emoji: "🔧" },
+  { key: "cleanliness", label: "Cleanliness", emoji: "🧹" },
+  { key: "safety", label: "Safety", emoji: "⚠️" },
+  { key: "noise", label: "Noise", emoji: "🔊" },
+  { key: "lighting", label: "Lighting", emoji: "💡" },
+  { key: "other", label: "Other", emoji: "📝" },
+];
+
+function CrowdBar({ density }: { density: number }) {
+  const level = density === 0 ? { label: "Quiet", color: "#22c55e" }
+    : density < 0.4 ? { label: "Low", color: "#84cc16" }
+    : density < 0.65 ? { label: "Moderate", color: "#eab308" }
+    : density < 0.85 ? { label: "Busy", color: "#f97316" }
+    : { label: "Packed", color: "#ef4444" };
+  return (
+    <div className="flex items-center gap-2">
+      <Activity className="w-3.5 h-3.5 flex-shrink-0" style={{ color: level.color }} />
+      <div className="flex-1 h-1.5 bg-secondary/50 rounded-full overflow-hidden">
+        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.max(density * 100, 4)}%`, background: level.color }} />
+      </div>
+      <span className="text-[11px] font-medium" style={{ color: level.color }}>{level.label}</span>
+    </div>
+  );
+}
+
+function FloorNavigator({ floors }: { floors: FloorEntry[] }) {
+  const sorted = [...floors].sort((a, b) => b.floor - a.floor);
+  const [activeFloor, setActiveFloor] = useState(sorted[0]?.floor ?? 0);
+  const current = sorted.find(f => f.floor === activeFloor) ?? sorted[0];
+  if (!current) return null;
+  const ROOM_COLORS: Record<string, string> = {
+    lecture: "#6366f1", lab: "#0ea5e9", office: "#8b5cf6",
+    bathroom: "#64748b", lounge: "#10b981", study: "#f59e0b", other: "#94a3b8",
+  };
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-3">
+        <Layers className="w-3.5 h-3.5 text-primary" />
+        <span className="text-xs font-semibold text-foreground uppercase tracking-wide">Floor Navigator</span>
+        {current.available !== undefined && (
+          <span className="ml-auto text-[11px] text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full">
+            {current.available} seats free
+          </span>
+        )}
+        {current.waitTime !== undefined && (
+          <span className="text-[11px] text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 px-2 py-0.5 rounded-full">
+            ~{current.waitTime}min wait
+          </span>
+        )}
+      </div>
+      {/* Floor selector */}
+      <div className="flex gap-1.5 mb-3 flex-wrap">
+        {sorted.map(f => (
+          <button key={f.floor}
+            onClick={() => setActiveFloor(f.floor)}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all ${
+              f.floor === activeFloor
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-secondary/40 text-muted-foreground border-border hover:bg-secondary"
+            }`}
+          >
+            {f.floor === 0 ? "G" : f.floor > 0 ? `+${f.floor}` : f.floor}
+          </button>
+        ))}
+      </div>
+      {current.label && <p className="text-xs text-muted-foreground mb-2">{current.label}</p>}
+      {current.notes && <p className="text-xs text-amber-400 mb-2">ℹ️ {current.notes}</p>}
+      {current.rooms.length > 0 && (
+        <div className="grid grid-cols-2 gap-1.5">
+          {current.rooms.map((r, i) => (
+            <div key={i} className="flex items-center gap-2 bg-secondary/30 border border-border rounded-lg px-2.5 py-2">
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: ROOM_COLORS[r.type] || ROOM_COLORS.other }} />
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-foreground truncate">{r.room}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{r.name}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LocationDetailSheet({
   loc,
   onClose,
@@ -244,13 +332,22 @@ function LocationDetailSheet({
   const [games, setGames] = useState<LocationGame[]>([]);
   const [locMsgs, setLocMsgs] = useState<NearbyMessage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [crowd, setCrowd] = useState<CrowdData | null>(null);
+  const [issues, setIssues] = useState<IssueReport[]>([]);
+  const [issueOpen, setIssueOpen] = useState(false);
+  const [issueCategory, setIssueCategory] = useState("maintenance");
+  const [issueDesc, setIssueDesc] = useState("");
+  const [issueFloor, setIssueFloor] = useState<number | undefined>();
+  const [issueSending, setIssueSending] = useState(false);
+  const [issueSuccess, setIssueSuccess] = useState(false);
 
   useEffect(() => {
     setLoading(true);
     const today = DOW[new Date().getDay()];
-
     const fetchers: Promise<any>[] = [
       getNearbyMessages(loc.lat, loc.lng, 120).then(setLocMsgs).catch(() => setLocMsgs([])),
+      getLocationCrowd(loc.id).then(setCrowd).catch(() => {}),
+      getLocationIssues(loc.id).then(rows => setIssues(rows.filter(r => r.isPublic && r.status !== "resolved"))).catch(() => {}),
     ];
     if (loc.type === "building") {
       fetchers.push(
@@ -265,17 +362,37 @@ function LocationDetailSheet({
     Promise.all(fetchers).finally(() => setLoading(false));
   }, [loc.id, loc.type, loc.lat, loc.lng]);
 
+  const handleSubmitIssue = async () => {
+    if (!issueCategory) return;
+    setIssueSending(true);
+    try {
+      await submitIssue({
+        locationId: loc.id,
+        floor: issueFloor,
+        category: issueCategory,
+        description: issueDesc || undefined,
+        isPublic: true,
+      });
+      setIssueSuccess(true);
+      setIssueOpen(false);
+      setIssueDesc("");
+      setTimeout(() => setIssueSuccess(false), 3000);
+    } catch {} finally { setIssueSending(false); }
+  };
+
   const PRIORITY_COLOR: Record<string, string> = {
     normal: "border-primary/40 text-primary",
     important: "border-yellow-400/60 text-yellow-400",
     urgent: "border-red-400/60 text-red-400",
   };
 
+  const floors = loc.floorData && loc.floorData.length > 0 ? loc.floorData : null;
+
   return (
     <motion.div
       initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      className="fixed inset-x-0 bottom-0 z-50 bg-card border-t border-border rounded-t-2xl max-h-[80vh] flex flex-col shadow-2xl"
+      className="fixed inset-x-0 bottom-0 z-50 bg-card border-t border-border rounded-t-2xl max-h-[82vh] flex flex-col shadow-2xl"
     >
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-4 border-b border-border flex-shrink-0">
@@ -286,6 +403,7 @@ function LocationDetailSheet({
         <div className="flex-1 min-w-0">
           <h2 className="text-base font-bold text-foreground truncate">{loc.name}</h2>
           <p className="text-xs text-muted-foreground">{cfg.label}{loc.adminName ? ` · ${loc.adminName}` : ""}</p>
+          {crowd && <div className="mt-1.5"><CrowdBar density={crowd.density} /></div>}
         </div>
         <div className="flex items-center gap-2">
           {onComposeHere && (
@@ -318,16 +436,22 @@ function LocationDetailSheet({
           </div>
         )}
 
+        {/* ── Floor Navigator ── */}
+        {floors && (
+          <div className="px-4 pt-3 pb-4 border-b border-border/50">
+            <FloorNavigator floors={floors} />
+          </div>
+        )}
+
         {/* Type-specific content */}
         {loc.type === "building" && (
-          <div className="px-4 pb-6">
+          <div className="px-4 pb-4">
             {loading ? (
               <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /></div>
             ) : (
               <>
-                {/* Today's schedule */}
                 {scheds.length > 0 && (
-                  <div className="mb-4">
+                  <div className="mb-4 pt-3">
                     <p className="text-xs font-semibold text-primary mb-2 uppercase tracking-wide">📅 Today's Schedule</p>
                     <div className="space-y-1.5">
                       {scheds.map(s => (
@@ -340,7 +464,6 @@ function LocationDetailSheet({
                     </div>
                   </div>
                 )}
-                {/* Announcements */}
                 {anns.length > 0 && (
                   <div>
                     <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">📢 Announcements</p>
@@ -356,7 +479,7 @@ function LocationDetailSheet({
                   </div>
                 )}
                 {anns.length === 0 && scheds.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-8">No announcements or schedule for today</p>
+                  <p className="text-sm text-muted-foreground text-center py-6">No announcements or schedule for today</p>
                 )}
               </>
             )}
@@ -364,7 +487,7 @@ function LocationDetailSheet({
         )}
 
         {loc.type === "dining_hall" && (
-          <div className="px-4 pb-6">
+          <div className="px-4 pb-4">
             {loading ? (
               <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /></div>
             ) : menus.length === 0 ? (
@@ -392,7 +515,7 @@ function LocationDetailSheet({
         )}
 
         {loc.type === "sports_field" && (
-          <div className="px-4 pb-6">
+          <div className="px-4 pb-4">
             {loading ? (
               <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /></div>
             ) : games.length === 0 ? (
@@ -424,12 +547,12 @@ function LocationDetailSheet({
         )}
 
         {(loc.type === "parking" || loc.type === "green" || loc.type === "other") && !loc.description && (
-          <p className="text-sm text-muted-foreground text-center py-8">{cfg.emoji} {cfg.label}</p>
+          <p className="text-sm text-muted-foreground text-center py-6">{cfg.emoji} {cfg.label}</p>
         )}
 
-        {/* ── Pinned Messages at this Location ── */}
+        {/* ── Pinned Messages ── */}
         {locMsgs.length > 0 && (
-          <div className="px-4 pb-6">
+          <div className="px-4 pb-4">
             <div className="border-t border-border pt-4">
               <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">📌 Pinned Here</p>
               <div className="space-y-2">
@@ -459,6 +582,104 @@ function LocationDetailSheet({
             </div>
           </div>
         )}
+
+        {/* ── Active Issues ── */}
+        {issues.length > 0 && (
+          <div className="px-4 pb-4">
+            <div className="border-t border-border pt-4">
+              <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">⚠️ Active Issues</p>
+              <div className="space-y-1.5">
+                {issues.map(iss => (
+                  <div key={iss.id} className="flex items-center gap-2.5 bg-orange-500/5 border border-orange-500/20 rounded-xl px-3 py-2">
+                    <span className="text-base">{ISSUE_CATEGORIES.find(c => c.key === iss.category)?.emoji || "⚠️"}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-foreground capitalize">{iss.category}</p>
+                      {iss.description && <p className="text-[11px] text-muted-foreground truncate">{iss.description}</p>}
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${iss.status === "open" ? "text-red-400 border-red-400/30 bg-red-400/10" : "text-yellow-400 border-yellow-400/30 bg-yellow-400/10"}`}>
+                      {iss.status === "in_progress" ? "In Progress" : "Open"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Report Issue ── */}
+        <div className="px-4 pb-6">
+          <div className="border-t border-border pt-4">
+            {issueSuccess ? (
+              <div className="flex items-center gap-2 text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded-xl px-4 py-3">
+                <span className="text-base">✅</span>
+                <p className="text-sm font-medium">Issue reported — thanks!</p>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => setIssueOpen(o => !o)}
+                  className="flex items-center gap-2 w-full text-left group"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5 text-orange-400" />
+                  <span className="text-xs font-semibold text-foreground uppercase tracking-wide">Report an Issue</span>
+                  {issueOpen ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground ml-auto" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground ml-auto" />}
+                </button>
+                {issueOpen && (
+                  <div className="mt-3 space-y-3">
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {ISSUE_CATEGORIES.map(c => (
+                        <button
+                          key={c.key}
+                          onClick={() => setIssueCategory(c.key)}
+                          className={`flex flex-col items-center gap-1 p-2 rounded-xl border text-center transition-all ${
+                            issueCategory === c.key
+                              ? "bg-orange-500/15 border-orange-500/40 text-orange-400"
+                              : "bg-secondary/30 border-border text-muted-foreground hover:bg-secondary"
+                          }`}
+                        >
+                          <span className="text-base">{c.emoji}</span>
+                          <span className="text-[10px] font-medium">{c.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {floors && (
+                      <div>
+                        <label className="text-[11px] text-muted-foreground mb-1.5 block">Floor (optional)</label>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {floors.map(f => (
+                            <button
+                              key={f.floor}
+                              onClick={() => setIssueFloor(issueFloor === f.floor ? undefined : f.floor)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all ${
+                                issueFloor === f.floor ? "bg-primary text-primary-foreground border-primary" : "bg-secondary/40 text-muted-foreground border-border"
+                              }`}
+                            >
+                              {f.floor === 0 ? "G" : f.floor > 0 ? `+${f.floor}` : f.floor}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <textarea
+                      value={issueDesc}
+                      onChange={e => setIssueDesc(e.target.value)}
+                      placeholder="Describe the issue (optional)…"
+                      rows={2}
+                      className="w-full bg-secondary/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:border-primary/50"
+                    />
+                    <button
+                      onClick={handleSubmitIssue}
+                      disabled={issueSending}
+                      className="w-full py-2.5 rounded-xl bg-orange-500/90 text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-orange-500 active:scale-95 transition-all disabled:opacity-60"
+                    >
+                      {issueSending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><AlertTriangle className="w-4 h-4" /> Submit Report</>}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </motion.div>
   );
@@ -1106,6 +1327,128 @@ function CreateEventSheet({ onClose, onCreated, userLat, userLng }: {
   );
 }
 
+// ── Pulse Ticker ─────────────────────────────────────────────────────────────
+function PulseTicker({ messages }: { messages: NearbyMessage[] }) {
+  const recent = messages.slice(0, 8);
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    if (recent.length < 2) return;
+    const t = setInterval(() => setIdx(i => (i + 1) % recent.length), 4000);
+    return () => clearInterval(t);
+  }, [recent.length]);
+  if (recent.length === 0) return null;
+  const msg = recent[idx];
+  return (
+    <div className="absolute top-0 inset-x-0 z-20 pointer-events-none">
+      <div className="mx-3 mt-2">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={msg.id}
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.35 }}
+            className="flex items-center gap-2 bg-card/80 backdrop-blur-sm border border-border/60 rounded-full px-3 py-1.5 shadow-sm"
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0 animate-pulse" />
+            <span className="text-[11px] font-semibold text-primary truncate max-w-[80px]">{msg.author?.displayName || "Someone"}</span>
+            <span className="text-[11px] text-muted-foreground truncate flex-1">{msg.content}</span>
+            <span className="text-[10px] text-muted-foreground flex-shrink-0">{timeAgo(msg.createdAt)}</span>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+// ── Shops Tab ─────────────────────────────────────────────────────────────────
+function ShopsTab() {
+  const [shops, setShops] = useState<CampusShop[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<number | null>(null);
+
+  useEffect(() => {
+    getShops().then(setShops).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+  if (shops.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6">
+        <ShoppingBag className="w-12 h-12 text-muted-foreground/40" />
+        <p className="text-sm text-muted-foreground text-center">No shops or deals added yet.<br />Check back soon!</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="px-4 pt-4 pb-2">
+        <h2 className="text-base font-bold text-foreground">Campus Shops & Deals</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">Food, services & special offers on campus</p>
+      </div>
+      <div className="px-4 pb-6 space-y-3">
+        {shops.map(shop => {
+          const isOpen = expanded === shop.id;
+          return (
+            <div
+              key={shop.id}
+              className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm"
+              style={{ borderTopColor: shop.color + "60" }}
+            >
+              <button
+                onClick={() => setExpanded(isOpen ? null : shop.id)}
+                className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
+              >
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+                  style={{ background: shop.color + "20" }}>
+                  {shop.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold text-foreground truncate">{shop.name}</p>
+                    {shop.discount && (
+                      <span className="text-[10px] font-bold text-white px-2 py-0.5 rounded-full flex-shrink-0"
+                        style={{ background: shop.color }}>
+                        {shop.discount}
+                      </span>
+                    )}
+                  </div>
+                  {shop.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{shop.description}</p>}
+                  {shop.hours && <p className="text-[11px] text-primary mt-0.5">🕐 {shop.hours}</p>}
+                </div>
+                {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
+              </button>
+              {isOpen && shop.menuItems.length > 0 && (
+                <div className="px-4 pb-4 border-t border-border/50">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mt-3 mb-2">Menu</p>
+                  <div className="space-y-2">
+                    {(shop.menuItems as any[]).map((item: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-foreground font-medium truncate">{item.name}</p>
+                          {item.description && <p className="text-[11px] text-muted-foreground truncate">{item.description}</p>}
+                        </div>
+                        {item.price && <span className="text-sm font-bold text-foreground flex-shrink-0">{item.price}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Home Page ─────────────────────────────────────────────────────────
 export default function HomePage() {
   const [, navigate] = useLocation();
@@ -1131,7 +1474,7 @@ export default function HomePage() {
   const [composeLocationOverride, setComposeLocationOverride] = useState<{ lat: number; lng: number; name: string } | null>(null);
 
   // ── Unified app state ──
-  const [activeTab, setActiveTab] = useState<"map" | "chats">("map");
+  const [activeTab, setActiveTab] = useState<"map" | "chats" | "shops">("map");
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
   const [showNewChat, setShowNewChat] = useState(false);
   const [convs, setConvs] = useState<ConversationListItem[]>([]);
@@ -1301,13 +1644,23 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* ── SHOPS TAB ── */}
+      {activeTab === "shops" && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <ShopsTab />
+        </div>
+      )}
+
       {/* ── MAP ── */}
       <div className="relative" style={{
         height: activeTab === "chats"
           ? "35dvh"
+          : activeTab === "shops"
+          ? "0"
           : feedOpen ? "40dvh" : "calc(100dvh - 113px)",
-        minHeight: 180,
+        minHeight: activeTab === "shops" ? 0 : 180,
         flexShrink: 0,
+        display: activeTab === "shops" ? "none" : undefined,
       }}>
         <MapContainer center={mapCenter} zoom={mapZoom} style={{ width: "100%", height: "100%" }}>
           <TileLayer
@@ -1419,6 +1772,9 @@ export default function HomePage() {
             </Marker>
           ))}
         </MapContainer>
+
+        {/* Pulse Ticker */}
+        {activeTab === "map" && <PulseTicker messages={messages} />}
 
         {/* People toggle */}
         <button
@@ -1687,6 +2043,11 @@ export default function HomePage() {
             )}
           </div>
           <span className="text-[10px] font-medium">Chats</span>
+        </button>
+        <button onClick={() => setActiveTab("shops")}
+          className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${activeTab === "shops" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+          <ShoppingBag className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Shops</span>
         </button>
         <button onClick={() => navigate("/profile")}
           className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-muted-foreground hover:text-foreground transition-colors">

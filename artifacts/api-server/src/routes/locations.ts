@@ -3,9 +3,9 @@ import { db } from "@workspace/db";
 import {
   locationsTable, announcementsTable, schedulesTable,
   menusTable, menuRatingsTable, gameSessionsTable, gameVotesTable,
-  usersTable,
+  usersTable, messagesTable,
 } from "@workspace/db/schema";
-import { eq, desc, avg } from "drizzle-orm";
+import { eq, desc, avg, and, gte, sql } from "drizzle-orm";
 import {
   CreateLocationBody, UpdateLocationBody, GetLocationParams,
   UpdateLocationParams, DeleteLocationParams,
@@ -103,6 +103,51 @@ router.delete("/locations/:locationId", async (req, res) => {
     res.json({ success: true, message: "Deleted" });
   } catch (err) {
     res.status(400).json({ error: String(err) });
+  }
+});
+
+// PATCH /locations/:locationId/floors — update floor data for a location
+router.patch("/locations/:locationId/floors", async (req, res) => {
+  try {
+    const locationId = Number(req.params.locationId);
+    const { floorData } = req.body;
+    if (!Array.isArray(floorData)) {
+      res.status(400).json({ error: "floorData must be an array" });
+      return;
+    }
+    const updated = await db.update(locationsTable)
+      .set({ floorData, updatedAt: new Date() })
+      .where(eq(locationsTable.id, locationId))
+      .returning();
+    if (!updated.length) { res.status(404).json({ error: "Location not found" }); return; }
+    res.json(updated[0]);
+  } catch (err) {
+    res.status(400).json({ error: String(err) });
+  }
+});
+
+// GET /locations/:locationId/crowd — returns message count in last 2h as crowd proxy
+router.get("/locations/:locationId/crowd", async (req, res) => {
+  try {
+    const locationId = Number(req.params.locationId);
+    const loc = await db.select().from(locationsTable).where(eq(locationsTable.id, locationId)).limit(1);
+    if (!loc.length) { res.status(404).json({ error: "Not found" }); return; }
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    const { lat, lng } = loc[0];
+    const radius = 150; // metres
+    const haversine = sql`(6371000 * acos(
+      cos(radians(${lat})) * cos(radians(${messagesTable.lat})) *
+      cos(radians(${messagesTable.lng}) - radians(${lng})) +
+      sin(radians(${lat})) * sin(radians(${messagesTable.lat}))
+    ))`;
+    const rows = await db.select({ count: sql<number>`count(*)::int` })
+      .from(messagesTable)
+      .where(and(gte(messagesTable.createdAt, twoHoursAgo), sql`${haversine} < ${radius}`));
+    const count = rows[0]?.count ?? 0;
+    const density = count === 0 ? 0 : count < 3 ? 0.25 : count < 7 ? 0.55 : count < 15 ? 0.8 : 1.0;
+    res.json({ count, density });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
   }
 });
 

@@ -480,6 +480,150 @@ const locSchema = z.object({
 });
 type LocForm = z.infer<typeof locSchema>;
 
+// ── Floor Data Editor ─────────────────────────────────────────────────────────
+type FloorRoom = { name: string; room: string; type: string };
+type FloorEntry = { floor: number; label: string; rooms: FloorRoom[]; notes?: string; available?: number; waitTime?: number };
+const ROOM_TYPES = ["lecture","lab","office","bathroom","lounge","study","other"];
+
+function FloorDataEditor({ locationId, initialFloors }: { locationId: number; initialFloors: FloorEntry[] }) {
+  const [floors, setFloors] = useState<FloorEntry[]>(initialFloors);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [activeFloor, setActiveFloor] = useState<number | null>(floors[0]?.floor ?? null);
+  const [newFloorNum, setNewFloorNum] = useState(0);
+  const [newRoom, setNewRoom] = useState<FloorRoom>({ name: "", room: "", type: "lecture" });
+  const sortedFloors = [...floors].sort((a, b) => b.floor - a.floor);
+
+  const saveFloors = async () => {
+    setSaving(true);
+    try {
+      await fetch(`/api/admin/locations/${locationId}/floors`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ floorData: floors }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {} finally { setSaving(false); }
+  };
+
+  const addFloor = () => {
+    if (floors.find(f => f.floor === newFloorNum)) return;
+    const newF: FloorEntry = { floor: newFloorNum, label: `Floor ${newFloorNum}`, rooms: [] };
+    setFloors([...floors, newF]);
+    setActiveFloor(newFloorNum);
+    setNewFloorNum(0);
+  };
+
+  const removeFloor = (floorNum: number) => {
+    setFloors(floors.filter(f => f.floor !== floorNum));
+    if (activeFloor === floorNum) setActiveFloor(null);
+  };
+
+  const updateFloor = (floorNum: number, updates: Partial<FloorEntry>) => {
+    setFloors(floors.map(f => f.floor === floorNum ? { ...f, ...updates } : f));
+  };
+
+  const addRoom = (floorNum: number) => {
+    if (!newRoom.room || !newRoom.name) return;
+    updateFloor(floorNum, { rooms: [...(floors.find(f => f.floor === floorNum)?.rooms || []), { ...newRoom }] });
+    setNewRoom({ name: "", room: "", type: "lecture" });
+  };
+
+  const removeRoom = (floorNum: number, idx: number) => {
+    const floor = floors.find(f => f.floor === floorNum);
+    if (!floor) return;
+    updateFloor(floorNum, { rooms: floor.rooms.filter((_, i) => i !== idx) });
+  };
+
+  const activeFl = floors.find(f => f.floor === activeFloor);
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Layers className="w-4 h-4 text-primary" />
+          <span className="text-xs font-semibold text-foreground uppercase tracking-wide">Floor Navigator</span>
+        </div>
+        <button onClick={saveFloors} disabled={saving}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${saved ? "text-emerald-400 border-emerald-400/30 bg-emerald-400/10" : "text-primary border-primary/30 bg-primary/10 hover:bg-primary/20"}`}>
+          {saving ? <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" /> : saved ? "✅ Saved!" : <><Save className="w-3 h-3" /> Save Floors</>}
+        </button>
+      </div>
+
+      {/* Floor tabs */}
+      <div className="flex gap-1.5 mb-3 flex-wrap items-center">
+        {sortedFloors.map(f => (
+          <button key={f.floor}
+            onClick={() => setActiveFloor(f.floor)}
+            className={`px-2 py-1 rounded-lg text-xs font-bold border transition-all flex items-center gap-1 ${
+              f.floor === activeFloor ? "bg-primary text-primary-foreground border-primary" : "bg-secondary/40 text-muted-foreground border-border"
+            }`}
+          >
+            {f.floor === 0 ? "G" : f.floor > 0 ? `+${f.floor}` : f.floor}
+            <X className="w-2.5 h-2.5 opacity-50 hover:opacity-100" onClick={e => { e.stopPropagation(); removeFloor(f.floor); }} />
+          </button>
+        ))}
+        {/* Add floor */}
+        <div className="flex gap-1 ml-1">
+          <input type="number" value={newFloorNum} onChange={e => setNewFloorNum(Number(e.target.value))}
+            className="w-14 px-2 py-1 rounded-lg bg-card border border-border text-xs text-foreground focus:outline-none focus:border-primary text-center" />
+          <button onClick={addFloor} className="p-1.5 rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors">
+            <PlusCircle className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {activeFl && (
+        <div className="space-y-3 bg-secondary/20 border border-border rounded-xl p-3">
+          {/* Label */}
+          <input value={activeFl.label} onChange={e => updateFloor(activeFl.floor, { label: e.target.value })}
+            placeholder="Floor label" className="w-full px-2.5 py-1.5 rounded-lg bg-card border border-border text-xs text-foreground focus:outline-none focus:border-primary" />
+          {/* Notes */}
+          <input value={activeFl.notes || ""} onChange={e => updateFloor(activeFl.floor, { notes: e.target.value || undefined })}
+            placeholder="Notes (optional)" className="w-full px-2.5 py-1.5 rounded-lg bg-card border border-border text-xs text-foreground focus:outline-none focus:border-primary" />
+          {/* Available seats / wait time */}
+          <div className="flex gap-2">
+            <input type="number" value={activeFl.available ?? ""} onChange={e => updateFloor(activeFl.floor, { available: e.target.value ? Number(e.target.value) : undefined })}
+              placeholder="Free seats" className="flex-1 px-2.5 py-1.5 rounded-lg bg-card border border-border text-xs text-foreground focus:outline-none focus:border-primary" />
+            <input type="number" value={activeFl.waitTime ?? ""} onChange={e => updateFloor(activeFl.floor, { waitTime: e.target.value ? Number(e.target.value) : undefined })}
+              placeholder="Wait (min)" className="flex-1 px-2.5 py-1.5 rounded-lg bg-card border border-border text-xs text-foreground focus:outline-none focus:border-primary" />
+          </div>
+          {/* Rooms list */}
+          {activeFl.rooms.length > 0 && (
+            <div className="space-y-1.5">
+              {activeFl.rooms.map((r, i) => (
+                <div key={i} className="flex items-center gap-2 bg-card border border-border rounded-lg px-2 py-1.5">
+                  <span className="text-[10px] font-mono text-primary bg-primary/10 px-1 py-0.5 rounded flex-shrink-0">{r.room}</span>
+                  <span className="text-xs text-foreground flex-1 truncate">{r.name}</span>
+                  <span className="text-[10px] text-muted-foreground">{r.type}</span>
+                  <button onClick={() => removeRoom(activeFl.floor, i)} className="text-muted-foreground hover:text-red-400 transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Add room */}
+          <div className="flex gap-1.5 flex-wrap">
+            <input value={newRoom.room} onChange={e => setNewRoom(v => ({ ...v, room: e.target.value }))}
+              placeholder="Room #" className="w-16 px-2 py-1.5 rounded-lg bg-card border border-border text-xs text-foreground focus:outline-none focus:border-primary" />
+            <input value={newRoom.name} onChange={e => setNewRoom(v => ({ ...v, name: e.target.value }))}
+              placeholder="Room name" className="flex-1 min-w-[100px] px-2 py-1.5 rounded-lg bg-card border border-border text-xs text-foreground focus:outline-none focus:border-primary" />
+            <select value={newRoom.type} onChange={e => setNewRoom(v => ({ ...v, type: e.target.value }))}
+              className="w-24 px-2 py-1.5 rounded-lg bg-card border border-border text-xs text-foreground focus:outline-none focus:border-primary">
+              {ROOM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <button onClick={() => addRoom(activeFl.floor)} className="px-2.5 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium flex-shrink-0">
+              Add
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Locations Page ────────────────────────────────────────────────────────
 export default function LocationsPage() {
   const [, nav] = useLocation();
@@ -931,6 +1075,10 @@ export default function LocationsPage() {
               {!["building","dining_hall","sports_field"].includes(selectedLoc.type) && (
                 <div className="text-center py-8"><MapPin className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2"/><p className="text-sm text-muted-foreground">No management features for this type</p></div>
               )}
+              <FloorDataEditor
+                locationId={selectedLoc.id}
+                initialFloors={((selectedLoc as any).floorData as FloorEntry[]) || []}
+              />
             </div>
           </motion.div>
         )}

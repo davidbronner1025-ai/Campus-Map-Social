@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db } from "@workspace/db";
-import { usersTable, userOtpsTable, messagesTable } from "@workspace/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { usersTable, userOtpsTable, messagesTable, issueReportsTable, campusShopsTable, locationsTable, campusTable } from "@workspace/db/schema";
+import { eq, desc, asc } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -145,6 +145,132 @@ router.delete("/admin/messages/:id", async (req: Request, res: Response) => {
   } catch {
     res.status(500).json({ error: "Failed to delete message" });
   }
+});
+
+// ─── Admin Issues ────────────────────────────────────────────────────────────
+
+// GET /admin/issues
+router.get("/admin/issues", async (_req: Request, res: Response) => {
+  try {
+    const rows = await db.select({
+      id: issueReportsTable.id,
+      locationId: issueReportsTable.locationId,
+      floor: issueReportsTable.floor,
+      category: issueReportsTable.category,
+      description: issueReportsTable.description,
+      status: issueReportsTable.status,
+      isPublic: issueReportsTable.isPublic,
+      createdAt: issueReportsTable.createdAt,
+      updatedAt: issueReportsTable.updatedAt,
+      locationName: locationsTable.name,
+      reporterName: usersTable.displayName,
+    }).from(issueReportsTable)
+      .leftJoin(locationsTable, eq(issueReportsTable.locationId, locationsTable.id))
+      .leftJoin(usersTable, eq(issueReportsTable.userId, usersTable.id))
+      .orderBy(desc(issueReportsTable.createdAt));
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: String(err) }); }
+});
+
+// PATCH /admin/issues/:id/status
+router.patch("/admin/issues/:id/status", async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  const { status } = req.body;
+  if (!["open","in_progress","resolved"].includes(status)) { res.status(400).json({ error: "Invalid status" }); return; }
+  try {
+    const updated = await db.update(issueReportsTable)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(issueReportsTable.id, id)).returning();
+    if (!updated.length) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(updated[0]);
+  } catch (err) { res.status(500).json({ error: String(err) }); }
+});
+
+// DELETE /admin/issues/:id
+router.delete("/admin/issues/:id", async (req: Request, res: Response) => {
+  try {
+    await db.delete(issueReportsTable).where(eq(issueReportsTable.id, Number(req.params.id)));
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: String(err) }); }
+});
+
+// ─── Admin Shops ─────────────────────────────────────────────────────────────
+
+// GET /admin/shops
+router.get("/admin/shops", async (_req: Request, res: Response) => {
+  try {
+    const rows = await db.select().from(campusShopsTable).orderBy(asc(campusShopsTable.sortOrder), asc(campusShopsTable.id));
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: String(err) }); }
+});
+
+// POST /admin/shops
+router.post("/admin/shops", async (req: Request, res: Response) => {
+  try {
+    const campus = await db.select().from(campusTable).limit(1);
+    if (!campus.length) { res.status(400).json({ error: "Campus not configured" }); return; }
+    const { name, icon, description, hours, discount, color, menuItems, active, sortOrder } = req.body;
+    if (!name) { res.status(400).json({ error: "name required" }); return; }
+    const created = await db.insert(campusShopsTable).values({
+      campusId: campus[0].id,
+      name: String(name),
+      icon: icon ? String(icon) : "🏪",
+      description: description || null,
+      hours: hours || null,
+      discount: discount || null,
+      color: color || "#6366f1",
+      menuItems: Array.isArray(menuItems) ? menuItems : [],
+      active: active !== false,
+      sortOrder: sortOrder ? Number(sortOrder) : 0,
+    }).returning();
+    res.status(201).json(created[0]);
+  } catch (err) { res.status(500).json({ error: String(err) }); }
+});
+
+// PATCH /admin/shops/:id
+router.patch("/admin/shops/:id", async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const { name, icon, description, hours, discount, color, menuItems, active, sortOrder } = req.body;
+    const updated = await db.update(campusShopsTable).set({
+      ...(name !== undefined && { name: String(name) }),
+      ...(icon !== undefined && { icon: String(icon) }),
+      ...(description !== undefined && { description: description || null }),
+      ...(hours !== undefined && { hours: hours || null }),
+      ...(discount !== undefined && { discount: discount || null }),
+      ...(color !== undefined && { color: String(color) }),
+      ...(menuItems !== undefined && { menuItems: Array.isArray(menuItems) ? menuItems : [] }),
+      ...(active !== undefined && { active: Boolean(active) }),
+      ...(sortOrder !== undefined && { sortOrder: Number(sortOrder) }),
+      updatedAt: new Date(),
+    }).where(eq(campusShopsTable.id, id)).returning();
+    if (!updated.length) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(updated[0]);
+  } catch (err) { res.status(500).json({ error: String(err) }); }
+});
+
+// DELETE /admin/shops/:id
+router.delete("/admin/shops/:id", async (req: Request, res: Response) => {
+  try {
+    await db.delete(campusShopsTable).where(eq(campusShopsTable.id, Number(req.params.id)));
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: String(err) }); }
+});
+
+// ─── Admin Floor Data ─────────────────────────────────────────────────────────
+
+// PATCH /admin/locations/:id/floors
+router.patch("/admin/locations/:id/floors", async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  const { floorData } = req.body;
+  if (!Array.isArray(floorData)) { res.status(400).json({ error: "floorData must be an array" }); return; }
+  try {
+    const updated = await db.update(locationsTable)
+      .set({ floorData, updatedAt: new Date() })
+      .where(eq(locationsTable.id, id)).returning();
+    if (!updated.length) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(updated[0]);
+  } catch (err) { res.status(500).json({ error: String(err) }); }
 });
 
 export default router;

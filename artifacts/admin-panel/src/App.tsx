@@ -9,6 +9,8 @@ import { Layout } from "@/components/layout";
 import SetupPage from "@/pages/setup";
 import LocationsPage from "@/pages/locations";
 import UsersPage from "@/pages/users";
+import IssuesPage from "@/pages/issues";
+import ShopsAdminPage from "@/pages/shops";
 
 const queryClient = new QueryClient();
 
@@ -102,6 +104,12 @@ function AppRouter() {
       </Route>
       <Route path="/users">
         <Layout active="users"><UsersPage /></Layout>
+      </Route>
+      <Route path="/issues">
+        <Layout active="issues"><IssuesPage /></Layout>
+      </Route>
+      <Route path="/shops">
+        <Layout active="shops"><ShopsAdminPage /></Layout>
       </Route>
       <Route>
         <Layout active="setup"><SetupPage /></Layout>

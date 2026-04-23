@@ -180,6 +180,16 @@ export const removeGroupMember = (convId: number, userId: number) =>
   apiFetch<{ ok: boolean }>(`/conversations/${convId}/members?userId=${userId}`, { method: "DELETE" });
 
 // Locations
+export type FloorRoom = { name: string; room: string; type: string };
+export type FloorEntry = {
+  floor: number;
+  label: string;
+  rooms: FloorRoom[];
+  notes?: string;
+  available?: number;
+  waitTime?: number;
+};
+
 export type CampusLocation = {
   id: number;
   name: string;
@@ -191,6 +201,7 @@ export type CampusLocation = {
   polygon: { lat: number; lng: number }[];
   adminName: string | null;
   managerName: string | null;
+  floorData?: FloorEntry[] | null;
 };
 
 export type LocationAnnouncement = {
@@ -262,3 +273,62 @@ export const markNotificationRead = (id: number) =>
 
 export const markAllNotificationsRead = () =>
   apiFetch<{ ok: boolean }>(`/notifications/read-all`, { method: "PUT" });
+
+// Issue Reports
+export type IssueReport = {
+  id: number;
+  locationId: number | null;
+  floor: number | null;
+  category: string;
+  description: string | null;
+  status: "open" | "in_progress" | "resolved";
+  isPublic: boolean;
+  createdAt: string;
+  locationName: string | null;
+  reporterName: string | null;
+};
+
+export const getLocationIssues = (locationId: number) =>
+  apiFetch<IssueReport[]>(`/issues?locationId=${locationId}`);
+
+export const submitIssue = (data: {
+  locationId?: number;
+  floor?: number;
+  category: string;
+  description?: string;
+  isPublic?: boolean;
+}) => apiFetch<IssueReport>("/issues", { method: "POST", body: JSON.stringify(data) });
+
+// Shops / Deals
+export type ShopMenuItem = { name: string; price: string; description?: string };
+export type CampusShop = {
+  id: number;
+  name: string;
+  icon: string;
+  description: string | null;
+  hours: string | null;
+  discount: string | null;
+  color: string;
+  menuItems: ShopMenuItem[];
+  active: boolean;
+  sortOrder: number;
+};
+
+export const getShops = () =>
+  apiFetch<CampusShop[]>("/shops");
+
+// Crowd Density
+export type CrowdData = { count: number; density: number };
+
+export const getLocationCrowd = (locationId: number) =>
+  apiFetch<CrowdData>(`/locations/${locationId}/crowd`);
+
+// User Activity Stats
+export type UserStats = {
+  messagesPosted: number;
+  eventsJoined: number;
+  issuesReported: number;
+};
+
+export const getMyStats = () =>
+  apiFetch<UserStats>("/users/me/stats");
