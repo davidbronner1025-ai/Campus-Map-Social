@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Phone, KeyRound, ArrowRight, Loader2, CheckCircle } from "lucide-react";
+import { useLocation } from "wouter";
 import { requestOtp, verifyOtp } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -15,6 +16,7 @@ const DEMO_PHONE = "+972501234567";
 
 export default function AuthPage() {
   const { setToken, refreshUser } = useAuth();
+  const [, navigate] = useLocation();
   const [step, setStep] = useState<"phone" | "otp" | "done">("phone");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -33,6 +35,7 @@ export default function AuthPage() {
       setTimeout(async () => {
         setToken(verify.token);
         await refreshUser();
+        navigate("/");
       }, 600);
     } catch (err: any) {
       setError(err.message || "Demo login failed");
@@ -70,6 +73,7 @@ export default function AuthPage() {
       setTimeout(async () => {
         setToken(res.token);
         await refreshUser();
+        navigate("/");
       }, 800);
     } catch (err: any) {
       setError(err.message || "Invalid OTP");

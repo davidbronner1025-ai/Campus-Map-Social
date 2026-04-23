@@ -392,7 +392,7 @@ function LocationDetailSheet({
     <motion.div
       initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      className="fixed inset-x-0 bottom-0 z-50 bg-card border-t border-border rounded-t-2xl max-h-[82vh] flex flex-col shadow-2xl"
+      className="flex flex-col h-full bg-card border-t border-border overflow-hidden"
     >
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-4 border-b border-border flex-shrink-0">
@@ -911,10 +911,10 @@ function ComposeSheet({ onClose, onPosted, userLat, userLng, locationLabel }: {
 
   return (
     <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 300 }}
-      className="fixed inset-x-0 bottom-0 z-50 bg-card rounded-t-3xl border-t border-border shadow-2xl" style={{ maxWidth: 480, margin: "0 auto" }}>
+      className="flex flex-col h-full bg-card border-t border-border overflow-y-auto">
 
       {/* Handle */}
-      <div className="flex justify-center pt-3 pb-2">
+      <div className="flex justify-center pt-3 pb-2 flex-shrink-0">
         <div className="w-10 h-1 rounded-full bg-border" />
       </div>
 
@@ -1247,9 +1247,9 @@ function CreateEventSheet({ onClose, onCreated, userLat, userLng }: {
 
   return (
     <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 300 }}
-      className="fixed inset-x-0 bottom-0 z-50 bg-card rounded-t-3xl border-t border-border shadow-2xl max-h-[90vh] overflow-y-auto" style={{ maxWidth: 480, margin: "0 auto" }}>
+      className="flex flex-col h-full bg-card border-t border-border overflow-y-auto">
 
-      <div className="flex justify-center pt-3 pb-2">
+      <div className="flex justify-center pt-3 pb-2 flex-shrink-0">
         <div className="w-10 h-1 rounded-full bg-border" />
       </div>
 
@@ -1653,10 +1653,12 @@ export default function HomePage() {
 
       {/* ── MAP ── */}
       <div className="relative" style={{
-        height: activeTab === "chats"
-          ? "35dvh"
-          : activeTab === "shops"
+        height: activeTab === "shops"
           ? "0"
+          : activeTab === "chats"
+          ? "35dvh"
+          : (selectedLocation || compose)
+          ? "38dvh"
           : feedOpen ? "40dvh" : "calc(100dvh - 113px)",
         minHeight: activeTab === "shops" ? 0 : 180,
         flexShrink: 0,
@@ -1678,7 +1680,7 @@ export default function HomePage() {
           {!pos && locationCenter && (
             <MapCenterUpdater center={locationCenter} zoom={16} />
           )}
-          <MapSizeInvalidator deps={[activeTab, feedOpen]} />
+          <MapSizeInvalidator deps={[activeTab, feedOpen, !!selectedLocation, compose]} />
 
           {/* Campus location polygons */}
           {locations.map(loc => {
@@ -1811,8 +1813,51 @@ export default function HomePage() {
         </button>
       </div>
 
+      {/* ── LOCATION DETAIL (inline, below map) ── */}
+      <AnimatePresence>
+        {selectedLocation && (
+          <div className="flex-1 overflow-hidden">
+            <LocationDetailSheet
+              loc={selectedLocation}
+              onClose={() => setSelectedLocation(null)}
+              onComposeHere={() => {
+                const ctr = polygonCentroid(selectedLocation.polygon);
+                setComposeLocationOverride({ lat: ctr[0], lng: ctr[1], name: selectedLocation.name });
+                setSelectedLocation(null);
+                setComposeMode("message");
+                setCompose(true);
+              }}
+            />
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── COMPOSE / EVENT SHEET (inline, below map) ── */}
+      <AnimatePresence>
+        {compose && !selectedLocation && (pos || composeLocationOverride || locationCenter) && (
+          <div className="flex-1 overflow-hidden">
+            {composeMode === "message" ? (
+              <ComposeSheet
+                onClose={() => { setCompose(false); setComposeLocationOverride(null); }}
+                onPosted={() => { fetchAll(); setComposeLocationOverride(null); }}
+                userLat={composeLocationOverride?.lat ?? pos?.lat ?? locationCenter?.[0] ?? 0}
+                userLng={composeLocationOverride?.lng ?? pos?.lng ?? locationCenter?.[1] ?? 0}
+                locationLabel={composeLocationOverride?.name}
+              />
+            ) : (
+              <CreateEventSheet
+                onClose={() => { setCompose(false); setComposeLocationOverride(null); }}
+                onCreated={() => { fetchAll(); setComposeLocationOverride(null); }}
+                userLat={composeLocationOverride?.lat ?? pos?.lat ?? locationCenter?.[0] ?? 0}
+                userLng={composeLocationOverride?.lng ?? pos?.lng ?? locationCenter?.[1] ?? 0}
+              />
+            )}
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* ── FEED (map tab only) ── */}
-      {feedOpen && activeTab === "map" && (
+      {!selectedLocation && !compose && feedOpen && activeTab === "map" && (
         <div className="flex-1 overflow-y-auto"
           onTouchStart={(e) => {
             const el = e.currentTarget;
@@ -1907,7 +1952,7 @@ export default function HomePage() {
       )}
 
       {/* ── CHATS PANEL (chats tab) ── */}
-      {activeTab === "chats" && (
+      {!selectedLocation && !compose && activeTab === "chats" && (
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/80 backdrop-blur-sm flex-shrink-0">
             <p className="font-bold text-base text-foreground">Chats</p>
@@ -1966,31 +2011,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ── Compose Sheet ── (transparent click-catcher keeps map visible) */}
-      <AnimatePresence>
-        {compose && (pos || composeLocationOverride || locationCenter) && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => { setCompose(false); setComposeLocationOverride(null); }} />
-            {composeMode === "message" ? (
-              <ComposeSheet
-                onClose={() => { setCompose(false); setComposeLocationOverride(null); }}
-                onPosted={() => { fetchAll(); setComposeLocationOverride(null); }}
-                userLat={composeLocationOverride?.lat ?? pos?.lat ?? locationCenter?.[0] ?? 0}
-                userLng={composeLocationOverride?.lng ?? pos?.lng ?? locationCenter?.[1] ?? 0}
-                locationLabel={composeLocationOverride?.name}
-              />
-            ) : (
-              <CreateEventSheet
-                onClose={() => { setCompose(false); setComposeLocationOverride(null); }}
-                onCreated={() => { fetchAll(); setComposeLocationOverride(null); }}
-                userLat={composeLocationOverride?.lat ?? pos?.lat ?? locationCenter?.[0] ?? 0}
-                userLng={composeLocationOverride?.lng ?? pos?.lng ?? locationCenter?.[1] ?? 0}
-              />
-            )}
-          </>
-        )}
-      </AnimatePresence>
-
       {/* ── Replies Sheet ── */}
       <AnimatePresence>
         {replyTarget && (
@@ -2007,23 +2027,6 @@ export default function HomePage() {
           onRefresh={fetchAll}
         />
       )}
-
-      {/* ── Location Detail Sheet ── */}
-      <AnimatePresence>
-        {selectedLocation && (
-          <LocationDetailSheet
-            loc={selectedLocation}
-            onClose={() => setSelectedLocation(null)}
-            onComposeHere={() => {
-              const ctr = polygonCentroid(selectedLocation.polygon);
-              setComposeLocationOverride({ lat: ctr[0], lng: ctr[1], name: selectedLocation.name });
-              setComposeMode("message");
-              setCompose(true);
-              setSelectedLocation(null);
-            }}
-          />
-        )}
-      </AnimatePresence>
 
       {/* ── Bottom Navigation ── */}
       <div className="border-t border-border bg-card/90 backdrop-blur-sm flex z-20 flex-shrink-0">

@@ -808,7 +808,7 @@ export default function LocationsPage() {
   );
   if (!campus) return null;
 
-  const mapHeight = mode === "list" ? "45dvh" : "55dvh";
+  const mapHeight = mode === "list" ? "45dvh" : "35dvh";
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden relative">
@@ -1026,12 +1026,11 @@ export default function LocationsPage() {
         </div>
       )}
 
-      {/* ── DETAIL BOTTOM SHEET ── */}
+      {/* ── DETAIL PANEL (inline below map) ── */}
       <AnimatePresence>
         {mode === "detail" && selectedLoc && sheetOpen && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="absolute bottom-0 left-0 right-0 z-30 bg-card border-t border-border rounded-t-3xl shadow-2xl overflow-hidden"
-            style={{ maxHeight: "65dvh", display: "flex", flexDirection: "column" }}>
+            className="flex-1 flex flex-col overflow-hidden bg-card border-t border-border">
 
             <div className="flex-shrink-0 px-4 pt-3 pb-3 border-b border-border">
               <div className="w-10 h-1 rounded-full bg-border mx-auto mb-3" />
@@ -1084,12 +1083,11 @@ export default function LocationsPage() {
         )}
       </AnimatePresence>
 
-      {/* ── EDIT BOTTOM SHEET ── */}
+      {/* ── EDIT PANEL (inline below map) ── */}
       <AnimatePresence>
         {mode === "edit" && selectedLoc && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="absolute bottom-0 left-0 right-0 z-30 bg-card border-t border-border rounded-t-3xl shadow-2xl overflow-hidden"
-            style={{ maxHeight: "75dvh", display: "flex", flexDirection: "column" }}>
+            className="flex-1 flex flex-col overflow-hidden bg-card border-t border-border">
 
             <div className="flex-shrink-0 px-4 pt-3 pb-3 border-b border-border">
               <div className="w-10 h-1 rounded-full bg-border mx-auto mb-3" />

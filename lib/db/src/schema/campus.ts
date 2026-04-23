@@ -331,6 +331,7 @@ export type ShopMenuItem = { name: string; price: string; tag?: string };
 export const campusShopsTable = pgTable("campus_shops", {
   id: serial("id").primaryKey(),
   campusId: integer("campus_id").notNull().references(() => campusTable.id, { onDelete: "cascade" }),
+  locationId: integer("location_id").references(() => locationsTable.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   icon: text("icon").notNull().default("🏪"),
   description: text("description"),

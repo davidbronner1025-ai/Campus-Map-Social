@@ -47,10 +47,11 @@ router.post("/shops", requireAuth, async (req: Request, res: Response) => {
   try {
     const campusId = await getCampusId();
     if (!campusId) { res.status(400).json({ error: "Campus not configured" }); return; }
-    const { name, icon, description, hours, discount, color, menuItems, active, sortOrder } = req.body;
+    const { name, icon, description, hours, discount, color, menuItems, active, sortOrder, locationId } = req.body;
     if (!name) { res.status(400).json({ error: "name required" }); return; }
     const created = await db.insert(campusShopsTable).values({
       campusId,
+      locationId: locationId ? Number(locationId) : null,
       name: String(name),
       icon: icon ? String(icon) : "🏪",
       description: description ? String(description) : null,
@@ -71,7 +72,7 @@ router.post("/shops", requireAuth, async (req: Request, res: Response) => {
 router.patch("/shops/:id", requireAuth, async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    const { name, icon, description, hours, discount, color, menuItems, active, sortOrder } = req.body;
+    const { name, icon, description, hours, discount, color, menuItems, active, sortOrder, locationId } = req.body;
     const updated = await db.update(campusShopsTable).set({
       ...(name !== undefined && { name: String(name) }),
       ...(icon !== undefined && { icon: String(icon) }),
@@ -82,6 +83,7 @@ router.patch("/shops/:id", requireAuth, async (req: Request, res: Response) => {
       ...(menuItems !== undefined && { menuItems: Array.isArray(menuItems) ? menuItems : [] }),
       ...(active !== undefined && { active: Boolean(active) }),
       ...(sortOrder !== undefined && { sortOrder: Number(sortOrder) }),
+      ...(locationId !== undefined && { locationId: locationId ? Number(locationId) : null }),
       updatedAt: new Date(),
     }).where(eq(campusShopsTable.id, id)).returning();
     if (!updated.length) { res.status(404).json({ error: "Not found" }); return; }
