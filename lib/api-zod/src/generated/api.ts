@@ -420,7 +420,7 @@ export const CreateMenuParams = zod.object({
 });
 
 export const CreateMenuBody = zod.object({
-  date: zod.date(),
+  date: zod.string(),
   items: zod.array(
     zod.object({
       name: zod.string(),
@@ -483,7 +483,7 @@ export const createGameBodyMaxPlayersDefault = 10;
 
 export const CreateGameBody = zod.object({
   sport: zod.enum(["football", "basketball", "volleyball", "tennis", "other"]),
-  scheduledAt: zod.date(),
+  scheduledAt: zod.coerce.date(),
   description: zod.string().optional(),
   maxPlayers: zod.number().default(createGameBodyMaxPlayersDefault),
 });
