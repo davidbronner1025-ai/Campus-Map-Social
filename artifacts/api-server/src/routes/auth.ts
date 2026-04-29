@@ -28,8 +28,15 @@ router.post("/auth/request-otp", async (req, res) => {
 
   await db.insert(userOtpsTable).values({ phone: cleaned, otp, expiresAt });
 
-  // In production, you'd send via SMS. For demo, return it in response.
-  res.json({ success: true, otp, message: "OTP generated (demo: returned in response)" });
+  // In production we never echo the OTP back. In dev we return it for testing.
+  const isProd = process.env["NODE_ENV"] === "production";
+  if (isProd) {
+    // TODO: integrate SMS provider here
+    console.log(`[auth] OTP for ${cleaned}: ${otp}`);
+    res.json({ success: true, message: "קוד אימות נשלח" });
+  } else {
+    res.json({ success: true, otp, message: "OTP generated (dev mode)" });
+  }
 });
 
 // POST /auth/verify-otp

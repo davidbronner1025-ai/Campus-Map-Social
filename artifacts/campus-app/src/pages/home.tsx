@@ -2334,7 +2334,7 @@ export default function HomePage() {
         <button onClick={() => setActiveTab("map")}
           className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${activeTab === "map" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
           <MapPin className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Map</span>
+          <span className="text-[10px] font-medium">מפה</span>
         </button>
         <button onClick={() => setActiveTab("chats")}
           className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors relative ${activeTab === "chats" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
@@ -2346,22 +2346,22 @@ export default function HomePage() {
               </div>
             )}
           </div>
-          <span className="text-[10px] font-medium">Chats</span>
+          <span className="text-[10px] font-medium">צ'אטים</span>
         </button>
         <button onClick={() => setActiveTab("bulletin")}
           className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${activeTab === "bulletin" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
           <ClipboardList className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Board</span>
+          <span className="text-[10px] font-medium">לוח</span>
         </button>
         <button onClick={() => setActiveTab("shops")}
           className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${activeTab === "shops" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
           <ShoppingBag className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Shops</span>
+          <span className="text-[10px] font-medium">חנויות</span>
         </button>
         <button onClick={() => navigate("/profile")}
           className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-muted-foreground hover:text-foreground transition-colors">
           <User className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Profile</span>
+          <span className="text-[10px] font-medium">פרופיל</span>
         </button>
       </div>
 

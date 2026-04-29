@@ -1,0 +1,319 @@
+You are preparing this application for **real-world production use**.
+
+Your mission is to transform the current prototype into a **stable, scalable, secure, and fully localized mobile application** capable of supporting **at least 100 concurrent active users** without performance degradation, data corruption, UI freezes, or state inconsistency.
+
+This is a full-system hardening and production-readiness initiative.
+
+---
+
+# PRIMARY OBJECTIVES
+
+1. Support 100+ simultaneous active users
+2. Eliminate all critical bugs, freezes, and race conditions
+3. Harden all domain engines and data flows
+4. Ensure full data integrity and consistency
+5. Deliver a polished, fully localized Hebrew user experience
+6. Optimize for reliability, responsiveness, and maintainability
+
+---
+
+# PHASE 1 — SYSTEM AUDIT (MANDATORY)
+
+Perform a complete architectural audit of:
+
+* Authentication flow
+* Firestore read/write pipeline
+* DataEngine
+* VisibilityEngine
+* GeoEngine
+* ActivityEngine
+* Zustand state management
+* Map rendering pipeline
+* Real-time listeners
+* Navigation state
+* Error handling
+* Offline/reconnect behavior
+
+Identify:
+
+* race conditions
+* memory leaks
+* async deadlocks
+* duplicate listeners
+* stale state risks
+* unhandled promise rejections
+* unnecessary re-renders
+* performance bottlenecks
+* security weaknesses
+
+Return a categorized report before major refactoring.
+
+---
+
+# PHASE 2 — WRITE PATH HARDENING
+
+All write operations must follow this exact pattern:
+
+```ts
+setLocalLoading(true)
+try {
+  await firestoreWrite()
+  showSuccess()
+} catch (error) {
+  handleError(error)
+} finally {
+  setLocalLoading(false)
+}
+```
+
+Requirements:
+
+* No write operation may depend on listener confirmation
+* No UI state may wait for DataEngine processing
+* No global loading lock may block the entire app
+* Every async action must always resolve or fail gracefully
+
+Validate all:
+
+* location creation
+* post creation
+* post editing
+* location editing
+* deletion flows
+* profile updates
+
+---
+
+# PHASE 3 — ENGINE HARDENING
+
+Strengthen all domain engines.
+
+## DataEngine
+
+* deterministic ingestion
+* strict schema validation
+* graceful rejection of invalid data
+* zero UI coupling
+
+## VisibilityEngine
+
+* consistent filtering rules
+* privacy-safe rendering
+* optimized spatial filtering
+
+## GeoEngine
+
+* reliable enter/exit detection
+* debounce rapid transitions
+* prevent duplicate events
+
+## ActivityEngine
+
+* automatic expiration handling
+* stale-content cleanup
+* efficient lifecycle management
+
+Rules:
+
+* engines must never control UI loading
+* engines must never block rendering
+* engines must never throw uncaught errors
+
+---
+
+# PHASE 4 — STATE MANAGEMENT OPTIMIZATION
+
+Refactor Zustand architecture:
+
+* store as pure state container
+* remove business logic from store
+* remove async operations from store
+* normalize entities by ID
+* prevent redundant updates
+* minimize rerenders
+* ensure atomic state transitions
+
+Implement:
+
+* selector optimization
+* shallow comparison where appropriate
+* immutable update guarantees
+
+---
+
+# PHASE 5 — REAL-TIME PERFORMANCE
+
+Optimize Firestore listeners for 100 concurrent users.
+
+Requirements:
+
+* prevent duplicate subscriptions
+* ensure proper unsubscribe cleanup
+* batch updates where possible
+* minimize read amplification
+* avoid unnecessary full collection reloads
+* throttle high-frequency updates
+
+Target:
+
+* low latency
+* minimal bandwidth usage
+* stable real-time synchronization
+
+---
+
+# PHASE 6 — SECURITY HARDENING
+
+Audit and secure:
+
+* Firestore security rules
+* authentication boundaries
+* role-based access controls
+* admin-only operations
+* input validation
+* data sanitization
+* client-side trust assumptions
+
+Prevent:
+
+* unauthorized writes
+* privilege escalation
+* malformed data injection
+* abuse of real-time endpoints
+
+---
+
+# PHASE 7 — UI/UX STABILIZATION
+
+Fix all UI issues:
+
+* stuck loading states
+* blocked interactions
+* overlapping elements
+* broken navigation flows
+* inconsistent modals
+* rendering glitches
+* unresponsive controls
+
+Requirements:
+
+* every user action must complete
+* no frozen screens
+* no orphaned loading states
+* graceful error recovery
+
+---
+
+# PHASE 8 — FULL HEBREW LOCALIZATION
+
+Translate the entire application into clear, natural, professional Hebrew.
+
+Requirements:
+
+* all buttons
+* menus
+* labels
+* notifications
+* validation messages
+* errors
+* onboarding flows
+* admin tools
+
+Rules:
+
+* use modern, intuitive Hebrew
+* maintain consistency across all screens
+* support RTL layout everywhere
+* verify spacing, alignment, and typography for Hebrew
+
+---
+
+# PHASE 9 — MOBILE PRODUCTION READINESS
+
+Ensure Expo mobile readiness:
+
+* smooth performance on iOS and Android
+* optimized memory usage
+* proper background/foreground handling
+* resilient network recovery
+* location permission reliability
+* battery-conscious location updates
+
+---
+
+# PHASE 10 — TESTING & VALIDATION
+
+Execute comprehensive testing:
+
+## Functional
+
+* all CRUD operations
+* authentication flows
+* map interactions
+* real-time updates
+
+## Performance
+
+* 100 concurrent simulated users
+* burst activity
+* rapid create/update/delete cycles
+
+## Reliability
+
+* network interruptions
+* reconnect scenarios
+* slow Firestore responses
+* invalid data injection
+
+## Stability
+
+* prolonged session testing
+* memory leak detection
+* listener cleanup verification
+
+---
+
+# SUCCESS CRITERIA
+
+The application must:
+
+* support 100 concurrent active users
+* maintain responsive UI under load
+* complete all actions reliably
+* never freeze
+* never lose user data
+* never leave loading states stuck
+* remain synchronized with Firestore
+* recover gracefully from failures
+* provide a polished Hebrew experience
+
+---
+
+# NON-NEGOTIABLE RULES
+
+* No async function without try/catch/finally
+* No global loading locks
+* No UI dependency on listener acknowledgment
+* No business logic inside UI components
+* No business logic inside Zustand store
+* No uncaught runtime errors
+* No placeholder or fake production data
+
+---
+
+# FINAL DELIVERABLES
+
+1. Full audit report
+2. List of all issues found
+3. All fixes implemented
+4. Performance optimization summary
+5. Security hardening summary
+6. Localization completion report
+7. Load-test results for 100 concurrent users
+8. Final production readiness assessment
+
+Do not stop at partial fixes.
+Do not patch symptoms.
+Identify root causes and resolve them completely.
+
+The final result must be a robust, production-ready Expo mobile application.

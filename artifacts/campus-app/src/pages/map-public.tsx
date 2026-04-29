@@ -64,7 +64,7 @@ export default function PublicMapPage({ showLoginPrompt = false }: { showLoginPr
           display: "flex", alignItems: "center", justifyContent: "center",
           background: "#0f172a", color: "#94a3b8", fontSize: 14
         }}>
-          Loading campus map…
+          טוען מפת קמפוס…
         </div>
       )}
 
@@ -192,7 +192,7 @@ export default function PublicMapPage({ showLoginPrompt = false }: { showLoginPr
           whiteSpace: "nowrap",
         }}>
           <span style={{ fontSize: 20 }}>🎓</span>
-          <span style={{ color: "#cbd5e1", fontSize: 13, fontWeight: 600 }}>Campus</span>
+          <span style={{ color: "#cbd5e1", fontSize: 13, fontWeight: 600 }}>קמפוס</span>
           <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.15)", margin: "0 2px" }} />
           <button
             onClick={() => navigate("/auth")}
@@ -202,7 +202,7 @@ export default function PublicMapPage({ showLoginPrompt = false }: { showLoginPr
               padding: "5px 14px", letterSpacing: 0.2,
             }}
           >
-            Sign in →
+            ← התחברות
           </button>
         </div>
       )}

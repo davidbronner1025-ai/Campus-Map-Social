@@ -205,8 +205,30 @@ Tables: `bulletin_posts`, `bulletin_post_likes` (unique on postId+userId). Anony
 
 - **Leaflet CSS** must be imported before `index.css` in `main.tsx` to avoid Tailwind v4 processing conflicts
 - **JWT secret** stored as `JWT_SECRET` environment variable
-- **OTP demo mode**: No SMS provider; OTP shown in auth page banner for testing
+- **OTP demo mode**: In dev only, OTP is echoed in `/api/auth/request-otp` response body and stored in `lastOtpForDev` (gated by `NODE_ENV !== "production"`); production never leaks the code
 - **API base URL**: All campus-app API calls use absolute `/api` path (no base path prefix)
+
+## Production Hardening (April 2026)
+
+Backend (`artifacts/api-server/src/app.ts` + `index.ts`):
+- `helmet()` for security headers (HSTS, X-Frame-Options, nosniff, …)
+- CORS allowlist via `CORS_ORIGINS` env (comma-separated); defaults open in dev
+- `trust proxy = 1` (required for Replit reverse proxy + rate-limit)
+- Body limit: 256kb on `express.json` and `urlencoded`
+- Rate limits: global 300 req / 15min, `/api/auth/*` 20 req / 15min, write methods 120 req / 15min
+- `GET /health` → `{ ok, ts }` (skipped by rate-limiter)
+- 404 + sanitized error middleware: Hebrew messages, never echoes SQL or stack traces
+- Graceful shutdown on SIGTERM/SIGINT closes the PG pool
+
+Database (`lib/db/src/index.ts` + `schema/campus.ts`):
+- PG pool tuned: `max=20`, `idleTimeoutMillis=30s`, `connectionTimeoutMillis=10s`, error handler on pool
+- Indexes added on `messages(createdAt,userId)`, `chat_messages(convId,createdAt)`, `notifications(userId,createdAt)` + `(userId,read)`, `bulletin_posts(category,createdAt)` + `(userId)`
+
+Frontend localization:
+- `auth.tsx` fully Hebrew + RTL (icons mirrored to right side, arrows rotated)
+- `map-public.tsx` guest banner translated ("קמפוס · ← התחברות", "טוען מפת קמפוס…")
+- Bottom nav in `home.tsx` Hebrew (מפה / צ'אטים / לוח / חנויות / פרופיל)
+- Remaining English strings (chats, profile, notifications, home compose) — to translate as a follow-up
 
 ## Root Scripts
 

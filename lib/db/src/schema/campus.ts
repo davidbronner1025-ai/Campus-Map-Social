@@ -1,6 +1,6 @@
 import {
   pgTable, serial, text, doublePrecision, integer,
-  timestamp, jsonb, real, date, boolean, uniqueIndex
+  timestamp, jsonb, real, date, boolean, uniqueIndex, index
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -228,7 +228,10 @@ export const messagesTable = pgTable("messages", {
   maxParticipants: integer("max_participants"),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("messages_created_at_idx").on(table.createdAt),
+  index("messages_user_id_idx").on(table.userId),
+]);
 
 export type Message = typeof messagesTable.$inferSelect;
 
@@ -268,7 +271,9 @@ export const chatMessagesTable = pgTable("chat_messages", {
   lat: doublePrecision("lat"),
   lng: doublePrecision("lng"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("chat_msgs_conv_created_idx").on(table.conversationId, table.createdAt),
+]);
 
 export type ChatMessage = typeof chatMessagesTable.$inferSelect;
 
@@ -282,7 +287,10 @@ export const notificationsTable = pgTable("notifications", {
   content: text("content").notNull(),
   read: boolean("read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("notifications_user_created_idx").on(table.userId, table.createdAt),
+  index("notifications_user_read_idx").on(table.userId, table.read),
+]);
 
 export type Notification = typeof notificationsTable.$inferSelect;
 
@@ -367,7 +375,10 @@ export const bulletinPostsTable = pgTable("bulletin_posts", {
   isAnonymous: boolean("is_anonymous").notNull().default(false),
   likesCount: integer("likes_count").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("bulletin_category_created_idx").on(table.category, table.createdAt),
+  index("bulletin_user_idx").on(table.userId),
+]);
 
 export type BulletinPost = typeof bulletinPostsTable.$inferSelect;
 
