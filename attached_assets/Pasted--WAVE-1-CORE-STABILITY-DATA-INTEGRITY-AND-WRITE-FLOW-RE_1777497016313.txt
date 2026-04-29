@@ -1,0 +1,197 @@
+# WAVE 1 — CORE STABILITY, DATA INTEGRITY, AND WRITE-FLOW RECOVERY
+
+## Mission
+Stabilize the application’s core infrastructure so that all critical user actions complete reliably. The app must successfully save locations, create posts, update data, and synchronize state without freezing, hanging, or requiring a manual refresh.
+
+This wave is strictly limited to backend/frontend write-flow stability, state synchronization, and data integrity. Do not implement new features, redesign UI, or modify unrelated functionality.
+
+---
+
+## Primary Objectives
+
+1. Eliminate all infinite loading states.
+2. Restore reliable save functionality for:
+   - Location creation and updates
+   - Post creation
+   - Profile updates
+3. Ensure all successful writes immediately update the UI.
+4. Prevent duplicate writes, stale state, and race conditions.
+5. Remove all fake, mocked, or hardcoded live-data indicators.
+6. Guarantee frontend and backend state consistency at all times.
+
+---
+
+## Required Diagnostic Process
+
+### Step 1 — Full Write-Flow Audit
+Trace every critical write operation end-to-end:
+
+- UI action trigger
+- Form validation
+- Client-side state mutation
+- API/service invocation
+- Database write
+- Success/error response handling
+- State reconciliation
+- UI re-render
+
+Audit these flows specifically:
+- Save Location
+- Create Post
+- Edit Profile
+- Any other persistent user-generated content
+
+Identify exactly where each flow stalls, fails, or loses synchronization.
+
+---
+
+### Step 2 — Root Cause Analysis
+For every broken flow, determine whether the failure originates from:
+
+- Unresolved Promise
+- Missing `await`
+- Improper async error handling
+- State management deadlock
+- Firestore write failure
+- Network timeout
+- Subscription listener issue
+- Optimistic update rollback failure
+- Invalid loading state reset
+- Race condition between concurrent updates
+- Cache/store synchronization failure
+
+Document the exact root cause before applying any fix.
+
+---
+
+## Mandatory Technical Corrections
+
+### Loading State Reliability
+- Every async operation must implement:
+  - `try`
+  - `catch`
+  - `finally`
+- Loading indicators must always terminate.
+- No loading state may persist after success or failure.
+
+### Async Safety
+- Ensure every Promise is properly awaited.
+- Remove orphaned async calls.
+- Prevent silent Promise failures.
+- Add timeout protection where appropriate.
+
+### State Synchronization
+- Ensure local state updates only after confirmed successful writes.
+- Reconcile optimistic updates correctly.
+- Force state refresh after write completion.
+- Eliminate stale cache artifacts.
+
+### Data Integrity
+- Prevent duplicate submissions.
+- Enforce idempotent write operations.
+- Validate payloads before submission.
+- Verify backend acknowledgement before UI confirmation.
+
+### Mock Data Removal
+- Remove all fake counters, simulated online users, placeholder statistics, and fabricated real-time metrics.
+- Replace with actual backend-driven values only.
+- If no real data exists, display empty or zero states honestly.
+
+---
+
+## Backend Verification Requirements
+
+Audit and validate:
+- Firestore write permissions
+- Collection paths
+- Document schemas
+- Index dependencies
+- Security rule compatibility
+- Write latency handling
+- Retry logic
+
+Confirm all writes succeed under normal and intermittent network conditions.
+
+---
+
+## Frontend Verification Requirements
+
+Validate:
+- Form submission lifecycle
+- Disabled-state handling during submission
+- Error surfacing to users
+- Success confirmation
+- Automatic UI refresh
+- State-store synchronization
+- Cleanup on component unmount
+
+---
+
+## Deliverables
+
+Provide a complete implementation report including:
+
+### 1. Issues Found
+For each issue:
+- Component/file
+- Exact failure point
+- Root cause
+- Severity
+
+### 2. Fixes Applied
+For each fix:
+- What changed
+- Why it was necessary
+- How it resolves the issue
+
+### 3. Validation Results
+Demonstrate successful execution of:
+- Save Location
+- Create Post
+- Edit Profile
+- Data refresh without page reload
+- Proper loading-state termination
+- Error recovery handling
+
+### 4. Remaining Risks
+List any unresolved concerns or recommended next steps.
+
+---
+
+## Acceptance Criteria (Must All Pass)
+
+- Saving a location completes successfully every time.
+- Creating a post completes successfully every time.
+- Profile updates persist immediately.
+- No screen remains stuck in loading state.
+- No manual refresh is ever required.
+- UI reflects backend changes instantly.
+- No duplicate writes occur.
+- No fake data remains in production paths.
+- All write operations are resilient to transient failures.
+
+---
+
+## Non-Negotiable Constraints
+
+- Do not add new features.
+- Do not redesign the UI.
+- Do not refactor unrelated modules.
+- Do not introduce placeholder fixes.
+- Do not leave any mocked production data.
+
+Focus exclusively on stability, reliability, and correctness.
+
+---
+
+## Final Success Definition
+
+The application must function as a dependable transactional system:
+every user action either:
+- completes successfully and updates immediately, or
+- fails gracefully with clear feedback and full recovery.
+
+No hanging states.
+No silent failures.
+No fake success.
+No refresh required.

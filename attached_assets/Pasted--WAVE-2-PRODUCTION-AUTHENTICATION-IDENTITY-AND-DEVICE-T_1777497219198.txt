@@ -1,0 +1,228 @@
+# WAVE 2 — PRODUCTION AUTHENTICATION, IDENTITY, AND DEVICE TRUST
+
+## Mission
+
+Replace all demo or mock authentication systems with a fully production-ready identity platform. Authentication must be fast, secure, reliable, and scalable. Every user must have a verified identity, secure account ownership, and controlled access to data.
+
+This wave focuses exclusively on authentication, authorization, account security, and trusted-device identity.
+
+---
+
+## Core Objectives
+
+1. Replace all demo authentication flows with real production authentication.
+2. Implement secure phone-number verification using OTP.
+3. Establish persistent user identity across devices and sessions.
+4. Enforce strict backend authorization rules.
+5. Ensure fast sign-in, low friction, and high reliability.
+6. Build a trusted-device framework for account security and session integrity.
+
+---
+
+## Mandatory Authentication Stack
+
+### Identity Provider
+
+* Use Firebase Authentication as the primary authentication provider.
+* Enable Phone Number Authentication.
+* Support future extensibility for:
+
+  * Email/password
+  * Google Sign-In
+  * Apple Sign-In
+
+### Authentication Flow
+
+* Phone number entry
+* OTP delivery via SMS
+* OTP verification
+* Secure account creation or sign-in
+* Automatic session persistence
+* Silent re-authentication on app relaunch
+
+---
+
+## Critical Security Requirements
+
+### Account Ownership Verification
+
+* Every account must be tied to a verified phone number.
+* No anonymous production users.
+* No mock accounts.
+* No bypass paths.
+
+### Trusted Device Framework
+
+* Generate a secure device identifier.
+* Associate verified devices with each account.
+* Store device metadata:
+
+  * Device ID
+  * Platform
+  * App version
+  * Last active timestamp
+* Detect new-device logins.
+* Optionally require re-verification for suspicious device changes.
+
+### Session Security
+
+* Secure token handling
+* Automatic token refresh
+* Proper session invalidation on logout
+* Revoke stale or compromised sessions
+
+---
+
+## Authorization and Access Control
+
+### Firestore Security Rules
+
+Implement strict least-privilege rules:
+
+* Users may only read/write their own private data.
+* Users may only edit their own profiles.
+* Users may only create content as themselves.
+* Sensitive collections must require authenticated access.
+* Administrative actions must be role-restricted.
+
+### Role-Based Access Control (RBAC)
+
+Define roles:
+
+* user
+* moderator
+* admin
+
+Enforce role validation both:
+
+* client-side (UX only)
+* server-side (mandatory)
+
+---
+
+## Performance Requirements
+
+* Authentication flow must complete in under 3 seconds under normal conditions.
+* Session restoration must occur automatically on app launch.
+* OTP verification must handle retries gracefully.
+* Failed authentication must return clear, actionable errors.
+
+---
+
+## Data Model Requirements
+
+### User Record
+
+* uid
+* verifiedPhoneNumber
+* displayName
+* profilePhoto
+* roles
+* createdAt
+* lastLoginAt
+* lastActiveAt
+* trustedDevices
+* accountStatus
+
+### Device Record
+
+* deviceId
+* userId
+* platform
+* appVersion
+* firstSeenAt
+* lastSeenAt
+* trustStatus
+
+---
+
+## Privacy and Compliance Constraints
+
+* Collect only the minimum necessary device and account information.
+* Do not track or expose phone location through authentication.
+* Do not use phone numbers for location inference.
+* Store phone numbers securely.
+* Restrict access to phone numbers via backend rules.
+* Comply with privacy best practices and applicable regulations.
+
+---
+
+## Required Diagnostic and Validation Tasks
+
+1. Audit all existing authentication code.
+2. Remove all mock authentication logic.
+3. Replace all fake user/session objects.
+4. Verify secure token lifecycle.
+5. Test sign-up, sign-in, sign-out, and session recovery.
+6. Test failed OTP scenarios.
+7. Test multi-device login behavior.
+8. Validate Firestore security rules.
+
+---
+
+## Deliverables
+
+### 1. Authentication Audit Report
+
+* Existing weaknesses
+* Security gaps
+* Removed mock components
+
+### 2. Implementation Summary
+
+* Authentication architecture
+* Security model
+* Device trust model
+
+### 3. Validation Results
+
+* New user registration
+* Returning user login
+* OTP verification success/failure
+* Session persistence
+* Logout and token revocation
+* Multi-device handling
+
+### 4. Remaining Risks
+
+* Any unresolved issues
+* Recommended hardening steps
+
+---
+
+## Acceptance Criteria
+
+* All users authenticate using real phone verification.
+* Authentication is fast and reliable.
+* Sessions persist securely across app restarts.
+* Unauthorized access is impossible.
+* Users can access only their own protected resources.
+* Demo authentication is completely removed.
+* Trusted-device registration is operational.
+* Firestore security rules fully enforce ownership and roles.
+
+---
+
+## Non-Negotiable Constraints
+
+* Do not implement any mock authentication.
+* Do not store sensitive tokens insecurely.
+* Do not expose phone numbers unnecessarily.
+* Do not track user location through authentication.
+* Do not weaken security for convenience.
+
+---
+
+## Final Success Definition
+
+The application must have a production-grade identity and access layer:
+
+* fast
+* secure
+* scalable
+* privacy-respecting
+* resilient
+
+Every user is real.
+Every session is trusted.
+Every action is authorized.

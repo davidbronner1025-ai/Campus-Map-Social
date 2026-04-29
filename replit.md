@@ -208,6 +208,49 @@ Tables: `bulletin_posts`, `bulletin_post_likes` (unique on postId+userId). Anony
 - **OTP demo mode**: In dev only, OTP is echoed in `/api/auth/request-otp` response body and stored in `lastOtpForDev` (gated by `NODE_ENV !== "production"`); production never leaks the code
 - **API base URL**: All campus-app API calls use absolute `/api` path (no base path prefix)
 
+## Wave 1 — Write-Flow Stability (April 2026)
+
+Audit objective: every save/post/update either completes and updates the UI, or fails with explicit user feedback and full state recovery. No silent swallowing, no orphaned loading states, no duplicate writes.
+
+### Issues Found & Fixed
+
+| # | File | Issue | Fix |
+|---|------|-------|-----|
+| 1 | `campus-app/pages/profile.tsx` | `handleSave` had `try/finally` only — failures swallowed silently | Added `try/catch/finally` + inline `saveError` UI + duplicate-click guard (`if (saving) return`) |
+| 2 | `campus-app/pages/home.tsx` `handleSubmitIssue` | `} catch {}` ate all errors | Added `console.error` + `alert` with Hebrew fallback message + duplicate guard |
+| 3 | `campus-app/pages/home.tsx` `ComposeSheet.send` (pin message) | No `catch` block at all — modal stayed open on error | Added catch with alert + duplicate-click guard |
+| 4 | `campus-app/pages/home.tsx` `CreateEventSheet.send` | Same — no catch | Same fix pattern |
+| 5 | `campus-app/pages/chats.tsx` `shareLocation` | No catch | Added catch with alert + guard |
+| 6 | `campus-app/pages/home.tsx` `BulletinTab.handleLike` | Race condition — concurrent toggles corrupted likesCount | Added `pendingLikesRef: Set<number>` guard, snapshot pre-state for rollback, reconcile with server response |
+| 7 | `campus-app/pages/home.tsx` `BulletinTab.handleDelete` | Could fire concurrently | Added `pendingDeleteRef: Set<number>` guard; only remove from list AFTER server confirms |
+| 8 | `campus-app/pages/home.tsx` `BulletinTab.load` | `.catch(() => {})` masked outages | Added `loadError` state + retry button in empty-state UI |
+| 9 | `admin-panel/pages/locations.tsx` `saveFloors` | Showed ✅ Saved even on HTTP 500 (didn't check `r.ok`) | Now throws on `!r.ok`, displays "⚠ Save failed" + inline `saveError` |
+| 10 | `admin-panel/pages/locations.tsx` `submitPin` / `deleteAdminMsg` | Didn't check `r.ok`; deleteAdminMsg removed from UI even on failure | Both now check `r.ok`, alert on failure; delete only updates UI after server confirms |
+| 11 | `admin-panel/pages/locations.tsx` `submit` / `submitEdit` (location create/update) | TanStack Query mutations had no `onError` | Added `onError` callbacks with alert + `isPending` guard |
+
+### Mock/Fake Data Audit
+Searched the entire codebase for `mock|fake|placeholder|hardcoded|Math.random|simulated|onlineCount|liveUsers|fakeData`. **No occurrences found** — all visible counters and stats come from real backend queries.
+
+### Loading State Termination
+All async fetchers verified to use `.finally()` for state reset:
+- `BulletinTab.load`, `BulletinTab.handleSubmit`, `BulletinTab.handleLike`, `BulletinTab.handleDelete`
+- `profile.handleSave`, `profile.getMyStats`
+- `ComposeSheet.send`, `CreateEventSheet.send`, `handleSubmitIssue`
+- `chats.send`, `chats.shareLocation`, `chats.fetchMessages`
+- `admin saveFloors`, `submitPin`, `deleteAdminMsg`
+
+### Smoke Test Results
+- Create bulletin post: 201 with full record ✓
+- Toggle like: increments/decrements + returns server-confirmed `likesCount` and `liked` ✓
+- Delete post: 200 ✓
+- Update profile: 200, returns updated user ✓
+- Helmet headers + rate-limit headers active on all responses ✓
+
+### Remaining Risks (out-of-scope for Wave 1)
+- `chats.tsx`, `profile.tsx` UI labels still in English — defer to Wave 2 (UI/i18n)
+- `admin-panel/pages/zones.tsx` has pre-existing TS errors (missing exports from `@workspace/api-client-react`) — defer to its own task
+- Background polling intervals (NotificationBell 15s, chats 10s, home 15s) — already verified to clean up on unmount
+
 ## Production Hardening (April 2026)
 
 Backend (`artifacts/api-server/src/app.ts` + `index.ts`):

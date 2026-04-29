@@ -26,19 +26,27 @@ export default function ProfilePage() {
   const [bannerColor, setBannerColor] = useState(user?.bannerColor || "#1a2233");
   const [visibility, setVisibility] = useState<"campus" | "ghost">(user?.visibility || "campus");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [stats, setStats] = useState<UserStats | null>(null);
 
   useEffect(() => {
-    getMyStats().then(setStats).catch(() => {});
+    getMyStats().then(setStats).catch((err) => {
+      console.warn("[profile] failed to load stats", err);
+    });
   }, []);
 
   const handleSave = async () => {
+    if (saving) return;
     setSaving(true);
+    setSaveError(null);
     try {
       await updateMe({ displayName, title: title || null, avatarUrl: avatarUrl || null, bannerColor, visibility });
       await refreshUser();
       navigate("/");
+    } catch (err: any) {
+      console.error("[profile] save failed", err);
+      setSaveError(err?.message || "שמירת הפרופיל נכשלה. נסו שוב.");
     } finally {
       setSaving(false);
     }
@@ -177,6 +185,9 @@ export default function ProfilePage() {
           className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50 mt-4">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4" /> Save Profile</>}
         </button>
+        {saveError && (
+          <p role="alert" className="text-xs text-red-400 text-center -mt-2" dir="rtl">{saveError}</p>
+        )}
 
         {/* Logout */}
         <button onClick={logout} className="w-full py-3 rounded-xl bg-card border border-border text-muted-foreground text-sm flex items-center justify-center gap-2 hover:text-destructive hover:border-destructive transition-colors">

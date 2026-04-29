@@ -366,7 +366,7 @@ function LocationDetailSheet({
   }, [loc.id, loc.type, loc.lat, loc.lng]);
 
   const handleSubmitIssue = async () => {
-    if (!issueCategory) return;
+    if (!issueCategory || issueSending) return;
     setIssueSending(true);
     try {
       await submitIssue({
@@ -380,7 +380,10 @@ function LocationDetailSheet({
       setIssueOpen(false);
       setIssueDesc("");
       setTimeout(() => setIssueSuccess(false), 3000);
-    } catch {} finally { setIssueSending(false); }
+    } catch (err: any) {
+      console.error("[issue] submit failed", err);
+      alert(err?.message || "שליחת הדיווח נכשלה. נסו שוב.");
+    } finally { setIssueSending(false); }
   };
 
   const PRIORITY_COLOR: Record<string, string> = {
@@ -898,7 +901,7 @@ function ComposeSheet({ onClose, onPosted, userLat, userLng, locationLabel }: {
   const canSend = content.trim().length > 0 && (msgType === "regular" || inviteType);
 
   const send = async () => {
-    if (!canSend) return;
+    if (!canSend || sending) return;
     setSending(true);
     try {
       await pinMessage({
@@ -909,6 +912,9 @@ function ComposeSheet({ onClose, onPosted, userLat, userLng, locationLabel }: {
       });
       onPosted();
       onClose();
+    } catch (err: any) {
+      console.error("[pin] failed", err);
+      alert(err?.message || "פרסום ההודעה נכשל. נסו שוב.");
     } finally { setSending(false); }
   };
 
@@ -1231,7 +1237,7 @@ function CreateEventSheet({ onClose, onCreated, userLat, userLng }: {
   const canSend = title.trim() && date && time;
 
   const send = async () => {
-    if (!canSend) return;
+    if (!canSend || sending) return;
     setSending(true);
     try {
       const startsAt = new Date(`${date}T${time}`).toISOString();
@@ -1245,6 +1251,9 @@ function CreateEventSheet({ onClose, onCreated, userLat, userLng }: {
       });
       onCreated();
       onClose();
+    } catch (err: any) {
+      console.error("[event] create failed", err);
+      alert(err?.message || "יצירת האירוע נכשלה. נסו שוב.");
     } finally { setSending(false); }
   };
 
@@ -1388,6 +1397,7 @@ function BulletinTab({ currentUserId }: { currentUserId: number }) {
   const [cat, setCat] = useState<BulletinCategory>("social");
   const [posts, setPosts] = useState<BulletinPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
   const [text, setText] = useState("");
   const [subType, setSubType] = useState<string>("");
@@ -1395,10 +1405,19 @@ function BulletinTab({ currentUserId }: { currentUserId: number }) {
   const [anon, setAnon] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState("");
+  const pendingLikesRef = useRef<Set<number>>(new Set());
+  const pendingDeleteRef = useRef<Set<number>>(new Set());
 
   const load = useCallback(() => {
     setLoading(true);
-    getBulletinPosts(cat).then(setPosts).catch(() => {}).finally(() => setLoading(false));
+    setLoadError(null);
+    getBulletinPosts(cat)
+      .then(setPosts)
+      .catch((err) => {
+        console.error("[bulletin] load failed", err);
+        setLoadError(err?.message || "טעינת הפוסטים נכשלה");
+      })
+      .finally(() => setLoading(false));
   }, [cat]);
 
   useEffect(() => { load(); }, [load]);
@@ -1437,18 +1456,43 @@ function BulletinTab({ currentUserId }: { currentUserId: number }) {
   }
 
   async function handleLike(p: BulletinPost) {
+    // Prevent concurrent toggles for the same post (race-condition guard)
+    if (pendingLikesRef.current.has(p.id)) return;
+    pendingLikesRef.current.add(p.id);
     // optimistic
+    const prevState = { likedByMe: p.likedByMe, likesCount: p.likesCount };
     setPosts(prev => prev.map(x => x.id === p.id
       ? { ...x, likedByMe: !x.likedByMe, likesCount: x.likesCount + (x.likedByMe ? -1 : 1) }
       : x));
-    try { await toggleBulletinLike(p.id); }
-    catch { load(); }
+    try {
+      const res = await toggleBulletinLike(p.id);
+      // reconcile with server-confirmed values
+      setPosts(prev => prev.map(x => x.id === p.id
+        ? { ...x, likedByMe: res.liked, likesCount: res.likesCount }
+        : x));
+    } catch (err) {
+      console.error("[bulletin] like failed", err);
+      // rollback to pre-click state
+      setPosts(prev => prev.map(x => x.id === p.id ? { ...x, ...prevState } : x));
+    } finally {
+      pendingLikesRef.current.delete(p.id);
+    }
   }
 
   async function handleDelete(p: BulletinPost) {
+    if (pendingDeleteRef.current.has(p.id)) return;
     if (!confirm("למחוק את הפוסט?")) return;
-    try { await deleteBulletinPost(p.id); load(); }
-    catch (e: any) { alert(e?.message || "מחיקה נכשלה"); }
+    pendingDeleteRef.current.add(p.id);
+    try {
+      await deleteBulletinPost(p.id);
+      // Optimistically remove from list to avoid UI flicker; refetch to be safe
+      setPosts(prev => prev.filter(x => x.id !== p.id));
+    } catch (e: any) {
+      console.error("[bulletin] delete failed", e);
+      alert(e?.message || "מחיקה נכשלה");
+    } finally {
+      pendingDeleteRef.current.delete(p.id);
+    }
   }
 
   const accent = BULLETIN_CATS.find(c => c.key === cat)?.color ?? "#a855f7";
@@ -1492,6 +1536,15 @@ function BulletinTab({ currentUserId }: { currentUserId: number }) {
         {loading ? (
           <div className="flex items-center justify-center py-10">
             <div className="w-7 h-7 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          </div>
+        ) : loadError ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <p className="text-sm text-red-400 text-center">{loadError}</p>
+            <button onClick={load}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-white"
+              style={{ background: accent }}>
+              נסו שוב
+            </button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3">

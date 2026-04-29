@@ -494,17 +494,28 @@ function FloorDataEditor({ locationId, initialFloors }: { locationId: number; in
   const [newRoom, setNewRoom] = useState<FloorRoom>({ name: "", room: "", type: "lecture" });
   const sortedFloors = [...floors].sort((a, b) => b.floor - a.floor);
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const saveFloors = async () => {
+    if (saving) return;
     setSaving(true);
+    setSaveError(null);
     try {
-      await fetch(`/api/admin/locations/${locationId}/floors`, {
+      const r = await fetch(`/api/admin/locations/${locationId}/floors`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ floorData: floors }),
       });
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        throw new Error(body?.error || `Save failed (${r.status})`);
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch {} finally { setSaving(false); }
+    } catch (e: any) {
+      console.error("[admin floors] save failed", e);
+      setSaveError(e?.message || "Floor save failed");
+    } finally { setSaving(false); }
   };
 
   const addFloor = () => {
@@ -546,10 +557,20 @@ function FloorDataEditor({ locationId, initialFloors }: { locationId: number; in
           <span className="text-xs font-semibold text-foreground uppercase tracking-wide">Floor Navigator</span>
         </div>
         <button onClick={saveFloors} disabled={saving}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${saved ? "text-emerald-400 border-emerald-400/30 bg-emerald-400/10" : "text-primary border-primary/30 bg-primary/10 hover:bg-primary/20"}`}>
-          {saving ? <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" /> : saved ? "✅ Saved!" : <><Save className="w-3 h-3" /> Save Floors</>}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+            saveError ? "text-red-400 border-red-400/30 bg-red-400/10"
+            : saved ? "text-emerald-400 border-emerald-400/30 bg-emerald-400/10"
+            : "text-primary border-primary/30 bg-primary/10 hover:bg-primary/20"
+          }`}>
+          {saving ? <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+            : saveError ? "⚠ Save failed"
+            : saved ? "✅ Saved!"
+            : <><Save className="w-3 h-3" /> Save Floors</>}
         </button>
       </div>
+      {saveError && (
+        <p role="alert" className="text-xs text-red-400 mb-2 -mt-1">{saveError}</p>
+      )}
 
       {/* Floor tabs */}
       <div className="flex gap-1.5 mb-3 flex-wrap items-center">
@@ -665,7 +686,7 @@ export default function LocationsPage() {
   useEffect(() => { fetchAdminMsgs(); }, [fetchAdminMsgs]);
 
   const submitPin = async () => {
-    if (!pendingPin || !pinContent.trim()) return;
+    if (!pendingPin || !pinContent.trim() || pinSubmitting) return;
     setPinSubmitting(true);
     try {
       const r = await fetch("/api/admin/messages", {
@@ -673,21 +694,35 @@ export default function LocationsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lat: pendingPin.lat, lng: pendingPin.lng, content: pinContent.trim(), type: "regular" }),
       });
-      if (r.ok) {
-        setPendingPin(null);
-        setPinContent("");
-        fetchAdminMsgs();
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        throw new Error(body?.error || `Pin failed (${r.status})`);
       }
+      setPendingPin(null);
+      setPinContent("");
+      fetchAdminMsgs();
+    } catch (e: any) {
+      console.error("[admin pin] failed", e);
+      alert(e?.message || "Failed to pin message");
     } finally {
       setPinSubmitting(false);
     }
   };
 
   const deleteAdminMsg = async (id: number) => {
+    if (deletingMsgId === id) return;
     setDeletingMsgId(id);
     try {
-      await fetch(`/api/admin/messages/${id}`, { method: "DELETE" });
+      const r = await fetch(`/api/admin/messages/${id}`, { method: "DELETE" });
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        throw new Error(body?.error || `Delete failed (${r.status})`);
+      }
+      // Only remove from UI after server confirms
       setAdminMsgs(p => p.filter(m => m.id !== id));
+    } catch (e: any) {
+      console.error("[admin msg] delete failed", e);
+      alert(e?.message || "Failed to delete message");
     } finally {
       setDeletingMsgId(null);
     }
@@ -745,22 +780,28 @@ export default function LocationsPage() {
   const cancelAdd = () => { setMode("list"); setDrawing(false); setPts([]); };
 
   const submit = (data: LocForm, addAnother = false) => {
-    if (pts.length === 0) return;
+    if (pts.length === 0 || createLoc.isPending) return;
     const center = pts[0];
     createLoc.mutate({
       data: { ...data, lat: center[0], lng: center[1], polygon: pts.map(p => ({ lat: p[0], lng: p[1] })), managerId: managerId as any }
-    }, { onSuccess: () => {
-      refetch();
-      if (addAnother) {
-        setPts([]);
-        setDetected("");
-        setManagerId(null);
-        setDrawing(true);
-        lForm.reset({ name:"", description:"", type: LocationType.building, color:"#60a5fa", adminName:"" });
-      } else {
-        cancelAdd();
-      }
-    } });
+    }, {
+      onSuccess: () => {
+        refetch();
+        if (addAnother) {
+          setPts([]);
+          setDetected("");
+          setManagerId(null);
+          setDrawing(true);
+          lForm.reset({ name:"", description:"", type: LocationType.building, color:"#60a5fa", adminName:"" });
+        } else {
+          cancelAdd();
+        }
+      },
+      onError: (err: any) => {
+        console.error("[admin location] create failed", err);
+        alert(err?.message || "Failed to create location. Please try again.");
+      },
+    });
   };
 
   const openDetail = (id: number) => {
@@ -786,7 +827,7 @@ export default function LocationsPage() {
   };
 
   const submitEdit = (data: LocForm) => {
-    if (!selectedLoc) return;
+    if (!selectedLoc || updateLoc.isPending) return;
     updateLoc.mutate({
       locationId: selectedLoc.id,
       data: {
@@ -796,7 +837,13 @@ export default function LocationsPage() {
         polygon: (selectedLoc.polygon as any[]).map((p: any) => ({ lat: p.lat, lng: p.lng })),
         managerId: editManagerId as any,
       },
-    }, { onSuccess: () => { setMode("detail"); refetch(); } });
+    }, {
+      onSuccess: () => { setMode("detail"); refetch(); },
+      onError: (err: any) => {
+        console.error("[admin location] update failed", err);
+        alert(err?.message || "Failed to update location. Please try again.");
+      },
+    });
   };
 
   const selectedLoc = locs.find(l => l.id === selectedId);

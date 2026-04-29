@@ -258,7 +258,7 @@ export function ChatDetail({ convId, currentUserId, onBack }: {
   };
 
   const shareLocation = async () => {
-    if (!pos) return;
+    if (!pos || sending) return;
     setSending(true);
     try {
       await sendChatMessage(convId, {
@@ -266,6 +266,9 @@ export function ChatDetail({ convId, currentUserId, onBack }: {
         messageType: "location", lat: pos.lat, lng: pos.lng,
       });
       fetchMessages();
+    } catch (err: any) {
+      console.error("[chat] shareLocation failed", err);
+      alert(err?.message || "שיתוף המיקום נכשל. נסו שוב.");
     } finally { setSending(false); }
   };
 
