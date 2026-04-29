@@ -188,6 +188,14 @@ artifacts-monorepo/
 ### Users (new endpoint)
 - `GET /api/users/me/stats` — Get own activity stats: messagesPosted, eventsJoined, issuesReported
 
+### Bulletin Board (requires Bearer token)
+- `GET /api/bulletin?category=` — List bulletin posts (newest first) joined with author; includes `likedByMe` and `isMine`. category ∈ social|lostfound|market
+- `POST /api/bulletin` — Create a post: { category, subType?, text, price?, isAnonymous? }. Validates per-category (lostfound requires subType lost|found; price only for market)
+- `DELETE /api/bulletin/:id` — Delete own post
+- `POST /api/bulletin/:id/like` — Toggle like (returns { liked, likesCount })
+
+Tables: `bulletin_posts`, `bulletin_post_likes` (unique on postId+userId). Anonymous posts hide author identity in API response.
+
 ### Admin (no auth required)
 - `GET/PATCH/DELETE /api/admin/issues/:id` — Admin issues management
 - `GET/POST/PATCH/DELETE /api/admin/shops/:id` — Admin shops management

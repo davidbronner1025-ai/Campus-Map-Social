@@ -332,3 +332,41 @@ export type UserStats = {
 
 export const getMyStats = () =>
   apiFetch<UserStats>("/users/me/stats");
+
+// Bulletin Board
+export type BulletinCategory = "social" | "lostfound" | "market";
+
+export type BulletinPost = {
+  id: number;
+  campusId: number;
+  userId: number;
+  category: BulletinCategory;
+  subType: string | null;
+  text: string;
+  price: string | null;
+  isAnonymous: boolean;
+  likesCount: number;
+  createdAt: string;
+  authorName: string | null;
+  authorAvatarUrl: string | null;
+  authorBannerColor: string | null;
+  likedByMe: boolean;
+  isMine: boolean;
+};
+
+export const getBulletinPosts = (category?: BulletinCategory) =>
+  apiFetch<BulletinPost[]>(`/bulletin${category ? `?category=${category}` : ""}`);
+
+export const createBulletinPost = (data: {
+  category: BulletinCategory;
+  subType?: string | null;
+  text: string;
+  price?: string | null;
+  isAnonymous?: boolean;
+}) => apiFetch<BulletinPost>("/bulletin", { method: "POST", body: JSON.stringify(data) });
+
+export const deleteBulletinPost = (id: number) =>
+  apiFetch<{ ok: boolean }>(`/bulletin/${id}`, { method: "DELETE" });
+
+export const toggleBulletinLike = (id: number) =>
+  apiFetch<{ ok: boolean; liked: boolean; likesCount: number }>(`/bulletin/${id}/like`, { method: "POST" });

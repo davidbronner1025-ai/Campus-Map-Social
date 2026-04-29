@@ -347,3 +347,37 @@ export const campusShopsTable = pgTable("campus_shops", {
 
 export const insertShopSchema = createInsertSchema(campusShopsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type CampusShop = typeof campusShopsTable.$inferSelect;
+
+// ─── Bulletin Board ────────────────────────────────────────────────────────
+export const bulletinCategoryEnum = ["social", "lostfound", "market"] as const;
+export type BulletinCategory = typeof bulletinCategoryEnum[number];
+
+// subType usage:
+//   social    -> null
+//   lostfound -> "lost" | "found"
+//   market    -> free-form item tag (e.g. "ספרים", "ריהוט", "שירותים")
+export const bulletinPostsTable = pgTable("bulletin_posts", {
+  id: serial("id").primaryKey(),
+  campusId: integer("campus_id").notNull().references(() => campusTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  category: text("category").$type<BulletinCategory>().notNull(),
+  subType: text("sub_type"),
+  text: text("text").notNull(),
+  price: text("price"),
+  isAnonymous: boolean("is_anonymous").notNull().default(false),
+  likesCount: integer("likes_count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type BulletinPost = typeof bulletinPostsTable.$inferSelect;
+
+export const bulletinPostLikesTable = pgTable("bulletin_post_likes", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id").notNull().references(() => bulletinPostsTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("bulletin_likes_post_user_unique").on(table.postId, table.userId),
+]);
+
+export type BulletinPostLike = typeof bulletinPostLikesTable.$inferSelect;

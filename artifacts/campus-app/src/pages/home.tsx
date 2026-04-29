@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageSquarePlus, User, RefreshCw, X, Send, ThumbsUp, ThumbsDown,
   MessageCircle, Trash2, ChevronDown, MapPin, Clock, Smile, Navigation, Users, Plus,
-  ShoppingBag, AlertTriangle, ChevronUp, ChevronRight, Activity, Layers
+  ShoppingBag, AlertTriangle, ChevronUp, ChevronRight, Activity, Layers,
+  ClipboardList, Heart, Search, Tag, EyeOff
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationEngine } from "@/hooks/useLocationEngine";
@@ -18,10 +19,12 @@ import {
   getReplies, postReply, createConversation, getConversations,
   getLocations, getLocationAnnouncements, getLocationSchedules, getLocationMenus, getLocationGames,
   getLocationIssues, submitIssue, getLocationCrowd, getShops,
+  getBulletinPosts, createBulletinPost, deleteBulletinPost, toggleBulletinLike,
   type NearbyMessage, type NearbyUser, type NearbyEvent, type Reply,
   type ConversationListItem, type CampusLocation,
   type LocationAnnouncement, type LocationSchedule, type LocationMenu, type LocationGame,
   type IssueReport, type CrowdData, type CampusShop, type FloorEntry,
+  type BulletinPost, type BulletinCategory,
 } from "@/lib/api";
 import { ConversationRow, ChatDetail, NewChatSheet } from "@/pages/chats";
 
@@ -1362,6 +1365,297 @@ function PulseTicker({ messages }: { messages: NearbyMessage[] }) {
 }
 
 // ── Shops Tab ─────────────────────────────────────────────────────────────────
+// ── Bulletin Board Tab ─────────────────────────────────────────────────────
+const BULLETIN_CATS: { key: BulletinCategory; label: string; icon: string; color: string }[] = [
+  { key: "social",    label: "פוסטים",    icon: "💬", color: "#a855f7" },
+  { key: "lostfound", label: "אבידות",    icon: "🔍", color: "#f59e0b" },
+  { key: "market",    label: "יד שנייה", icon: "🏷️", color: "#10b981" },
+];
+
+function timeAgoHe(iso: string): string {
+  const t = new Date(iso).getTime();
+  const diffMin = Math.max(0, Math.floor((Date.now() - t) / 60000));
+  if (diffMin < 1) return "עכשיו";
+  if (diffMin < 60) return `לפני ${diffMin} דק׳`;
+  const h = Math.floor(diffMin / 60);
+  if (h < 24) return `לפני ${h} שע׳`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `לפני ${d} ימים`;
+  return new Date(iso).toLocaleDateString("he-IL");
+}
+
+function BulletinTab({ currentUserId }: { currentUserId: number }) {
+  const [cat, setCat] = useState<BulletinCategory>("social");
+  const [posts, setPosts] = useState<BulletinPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [composing, setComposing] = useState(false);
+  const [text, setText] = useState("");
+  const [subType, setSubType] = useState<string>("");
+  const [price, setPrice] = useState("");
+  const [anon, setAnon] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const load = useCallback(() => {
+    setLoading(true);
+    getBulletinPosts(cat).then(setPosts).catch(() => {}).finally(() => setLoading(false));
+  }, [cat]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Reset compose form whenever the category changes
+  useEffect(() => {
+    setText(""); setSubType(""); setPrice(""); setAnon(false);
+  }, [cat, composing]);
+
+  const filtered = search.trim()
+    ? posts.filter(p =>
+        p.text.toLowerCase().includes(search.toLowerCase()) ||
+        (p.subType ?? "").toLowerCase().includes(search.toLowerCase())
+      )
+    : posts;
+
+  async function handleSubmit() {
+    if (!text.trim() || submitting) return;
+    if (cat === "lostfound" && subType !== "lost" && subType !== "found") return;
+    setSubmitting(true);
+    try {
+      await createBulletinPost({
+        category: cat,
+        text: text.trim(),
+        subType: cat === "social" ? null : (subType.trim() || null),
+        price: cat === "market" ? (price.trim() || null) : null,
+        isAnonymous: anon,
+      });
+      setComposing(false);
+      load();
+    } catch (e: any) {
+      alert(e?.message || "לא ניתן לפרסם כרגע");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleLike(p: BulletinPost) {
+    // optimistic
+    setPosts(prev => prev.map(x => x.id === p.id
+      ? { ...x, likedByMe: !x.likedByMe, likesCount: x.likesCount + (x.likedByMe ? -1 : 1) }
+      : x));
+    try { await toggleBulletinLike(p.id); }
+    catch { load(); }
+  }
+
+  async function handleDelete(p: BulletinPost) {
+    if (!confirm("למחוק את הפוסט?")) return;
+    try { await deleteBulletinPost(p.id); load(); }
+    catch (e: any) { alert(e?.message || "מחיקה נכשלה"); }
+  }
+
+  const accent = BULLETIN_CATS.find(c => c.key === cat)?.color ?? "#a855f7";
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden" dir="rtl">
+      {/* Category sub-tabs */}
+      <div className="flex gap-2 px-4 pt-3 pb-2 flex-shrink-0">
+        {BULLETIN_CATS.map(c => (
+          <button
+            key={c.key}
+            onClick={() => setCat(c.key)}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
+              cat === c.key
+                ? "text-white shadow-md"
+                : "bg-secondary text-muted-foreground hover:text-foreground"
+            }`}
+            style={cat === c.key ? { background: c.color } : undefined}
+          >
+            <span>{c.icon}</span>
+            <span>{c.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="px-4 pb-2 flex-shrink-0">
+        <div className="relative">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="חיפוש בפוסטים..."
+            className="w-full bg-secondary text-foreground placeholder:text-muted-foreground text-sm rounded-xl pr-9 pl-3 py-2 border border-border focus:outline-none focus:border-primary"
+          />
+        </div>
+      </div>
+
+      {/* Posts list */}
+      <div className="flex-1 overflow-y-auto px-4 pb-24">
+        {loading ? (
+          <div className="flex items-center justify-center py-10">
+            <div className="w-7 h-7 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <ClipboardList className="w-12 h-12 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground text-center">
+              {search ? "לא נמצאו פוסטים תואמים" : "אין פוסטים עדיין. היו הראשונים לפרסם!"}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {filtered.map(p => {
+              const author = p.isAnonymous ? "אנונימי" : (p.authorName || "משתמש");
+              const initials = author.slice(0, 1).toUpperCase();
+              const avColor = p.authorBannerColor || accent;
+              const lostFoundLabel = p.subType === "lost" ? "אבד" : p.subType === "found" ? "נמצא" : null;
+              return (
+                <div key={p.id} className="bg-card border border-border rounded-2xl p-3.5 shadow-sm" style={{ borderRightWidth: 3, borderRightColor: accent + "80" }}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+                      style={{ background: avColor }}>
+                      {p.isAnonymous ? <EyeOff className="w-4 h-4" /> : initials}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-foreground">{author}</span>
+                        <span className="text-[10px] text-muted-foreground">· {timeAgoHe(p.createdAt)}</span>
+                        {lostFoundLabel && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
+                            style={{ background: p.subType === "lost" ? "#ef4444" : "#10b981" }}>
+                            {lostFoundLabel}
+                          </span>
+                        )}
+                        {cat === "market" && p.subType && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-secondary text-foreground inline-flex items-center gap-1">
+                            <Tag className="w-2.5 h-2.5" />{p.subType}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-foreground mt-1 whitespace-pre-wrap break-words">{p.text}</p>
+                      {cat === "market" && p.price && (
+                        <p className="text-base font-bold mt-1.5" style={{ color: accent }}>{p.price}</p>
+                      )}
+                      <div className="flex items-center gap-3 mt-2.5">
+                        <button onClick={() => handleLike(p)}
+                          className="flex items-center gap-1 text-xs transition-colors"
+                          style={{ color: p.likedByMe ? "#ef4444" : "var(--muted-foreground, #71717a)" }}>
+                          <Heart className="w-3.5 h-3.5" fill={p.likedByMe ? "#ef4444" : "none"} />
+                          <span className="font-medium">{p.likesCount}</span>
+                        </button>
+                        {(p.isMine || p.userId === currentUserId) && (
+                          <button onClick={() => handleDelete(p)}
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500 transition-colors mr-auto">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Floating compose button */}
+      <button
+        onClick={() => setComposing(true)}
+        className="absolute bottom-4 left-4 z-30 w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+        style={{ background: accent, color: "#fff" }}
+        aria-label="פוסט חדש"
+      >
+        <Plus className="w-5 h-5" />
+      </button>
+
+      {/* Compose modal */}
+      <AnimatePresence>
+        {composing && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 z-40 bg-black/60 backdrop-blur-sm flex items-end"
+            onClick={() => setComposing(false)}
+          >
+            <motion.div
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 280 }}
+              className="w-full bg-card border-t border-border rounded-t-3xl p-4 pb-6"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="w-10 h-1 bg-border rounded-full mx-auto mb-3" />
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-bold text-foreground">
+                  פוסט חדש · {BULLETIN_CATS.find(c => c.key === cat)?.label}
+                </h3>
+                <button onClick={() => setComposing(false)} className="p-1.5 rounded-lg hover:bg-secondary">
+                  <X className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+
+              {cat === "lostfound" && (
+                <div className="flex gap-2 mb-3">
+                  {[
+                    { v: "lost",  label: "אבד לי",  c: "#ef4444" },
+                    { v: "found", label: "מצאתי",   c: "#10b981" },
+                  ].map(o => (
+                    <button key={o.v} onClick={() => setSubType(o.v)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                        subType === o.v ? "text-white" : "bg-secondary text-muted-foreground"
+                      }`}
+                      style={subType === o.v ? { background: o.c } : undefined}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {cat === "market" && (
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <input value={subType} onChange={e => setSubType(e.target.value.slice(0, 40))}
+                    placeholder="קטגוריה (למשל ספרים)"
+                    className="bg-secondary text-foreground placeholder:text-muted-foreground text-sm rounded-xl px-3 py-2 border border-border focus:outline-none focus:border-primary" />
+                  <input value={price} onChange={e => setPrice(e.target.value.slice(0, 40))}
+                    placeholder="מחיר (למשל ₪50)"
+                    className="bg-secondary text-foreground placeholder:text-muted-foreground text-sm rounded-xl px-3 py-2 border border-border focus:outline-none focus:border-primary" />
+                </div>
+              )}
+
+              <textarea
+                value={text}
+                onChange={e => setText(e.target.value.slice(0, 1000))}
+                placeholder={
+                  cat === "social"    ? "מה קורה בקמפוס?"
+                : cat === "lostfound" ? "תיאור הפריט (איפה, מתי, איך נראה)"
+                                      : "תיאור המכירה / הצעה"
+                }
+                rows={4}
+                className="w-full bg-secondary text-foreground placeholder:text-muted-foreground text-sm rounded-xl px-3 py-2.5 border border-border focus:outline-none focus:border-primary resize-none"
+              />
+
+              <div className="flex items-center justify-between mt-3">
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                  <input type="checkbox" checked={anon} onChange={e => setAnon(e.target.checked)}
+                    className="w-4 h-4 accent-primary" />
+                  פרסום אנונימי
+                </label>
+                <span className="text-[10px] text-muted-foreground">{text.length}/1000</span>
+              </div>
+
+              <button
+                onClick={handleSubmit}
+                disabled={!text.trim() || submitting || (cat === "lostfound" && !subType)}
+                className="w-full mt-4 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50 transition-opacity"
+                style={{ background: accent }}
+              >
+                {submitting ? "מפרסם..." : "פרסום"}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function ShopsTab() {
   const [shops, setShops] = useState<CampusShop[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1474,7 +1768,7 @@ export default function HomePage() {
   const [composeLocationOverride, setComposeLocationOverride] = useState<{ lat: number; lng: number; name: string } | null>(null);
 
   // ── Unified app state ──
-  const [activeTab, setActiveTab] = useState<"map" | "chats" | "shops">("map");
+  const [activeTab, setActiveTab] = useState<"map" | "chats" | "shops" | "bulletin">("map");
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
   const [showNewChat, setShowNewChat] = useState(false);
   const [convs, setConvs] = useState<ConversationListItem[]>([]);
@@ -1651,18 +1945,25 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* ── BULLETIN TAB ── */}
+      {activeTab === "bulletin" && (
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          <BulletinTab currentUserId={user.id} />
+        </div>
+      )}
+
       {/* ── MAP ── */}
       <div className="relative" style={{
-        height: activeTab === "shops"
+        height: (activeTab === "shops" || activeTab === "bulletin")
           ? "0"
           : activeTab === "chats"
           ? "35dvh"
           : (selectedLocation || compose)
           ? "38dvh"
           : feedOpen ? "40dvh" : "calc(100dvh - 113px)",
-        minHeight: activeTab === "shops" ? 0 : 180,
+        minHeight: (activeTab === "shops" || activeTab === "bulletin") ? 0 : 180,
         flexShrink: 0,
-        display: activeTab === "shops" ? "none" : undefined,
+        display: (activeTab === "shops" || activeTab === "bulletin") ? "none" : undefined,
       }}>
         <MapContainer center={mapCenter} zoom={mapZoom} style={{ width: "100%", height: "100%" }}>
           <TileLayer
@@ -2046,6 +2347,11 @@ export default function HomePage() {
             )}
           </div>
           <span className="text-[10px] font-medium">Chats</span>
+        </button>
+        <button onClick={() => setActiveTab("bulletin")}
+          className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${activeTab === "bulletin" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+          <ClipboardList className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Board</span>
         </button>
         <button onClick={() => setActiveTab("shops")}
           className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${activeTab === "shops" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>

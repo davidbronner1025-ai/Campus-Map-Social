@@ -1,0 +1,1827 @@
+import React, { useState, useEffect, useRef } from "react";
+
+// ─── FLOOR DATA PER BUILDING ──────────────────────────────────────────────────
+var FLOOR_DATA = {
+  A: [
+    {
+      floor: 1, label: "כניסה ומנהלה",
+      rooms: [
+          { name: "קבלה ומנהלה", room: "101", type: "admin" },
+          { name: "מעבדת מחשבים א", room: "102", type: "lab" },
+          { name: "שירותים", room: "103", type: "wc" },
+      ],
+      events: [{ time: "14:00", name: "תכנות מערכות", prof: "פרופ׳ גולן", room: "102" }],
+    },
+    {
+      floor: 2, label: "כיתות ומדפסות",
+      rooms: [
+          { name: "כיתה 201", room: "201", type: "class" },
+          { name: "כיתה 204", room: "204", type: "class" },
+          { name: "מדפסות + מכונות", room: "210", type: "service" },
+      ],
+      events: [{ time: "10:00", name: "אלגוריתמים", prof: "ד\"ר כהן", room: "204" }],
+    },
+    {
+      floor: 3, label: "כיתות מחקר",
+      rooms: [
+          { name: "כיתה 301", room: "301", type: "class" },
+          { name: "כיתה 310", room: "310", type: "class" },
+          { name: "חדר מחקר", room: "315", type: "lab" },
+      ],
+      events: [
+          { time: "08:00", name: "מתמטיקה דיסקרטית", prof: "פרופ׳ לוי", room: "301" },
+          { time: "12:00", name: "מבנה נתונים", prof: "ד\"ר שרון", room: "310" },
+      ],
+    },
+    {
+      floor: 4, label: "חדר שקט + מחקר",
+      rooms: [
+          { name: "חדר שקט", room: "401", type: "quiet" },
+          { name: "מעבדת ML", room: "205", type: "lab" },
+      ],
+      events: [{ time: "16:00", name: "למידת מכונה", prof: "ד\"ר מזרחי", room: "205" }],
+    },
+  ],
+  B: [
+    {
+      floor: 1, label: "עיון וקבוצות",
+      rooms: [
+              { name: "אזור קריאה פתוח", room: "—", type: "quiet" },
+              { name: "חדר קבוצות א", room: "G1", type: "class" },
+              { name: "מדפסת צבע", room: "—", type: "service" },
+      ],
+      available: 12,
+    },
+    {
+      floor: 2, label: "עבודה שקטה",
+      rooms: [
+              { name: "אזור שקט מלא", room: "—", type: "quiet" },
+              { name: "תאי עבודה", room: "—", type: "quiet" },
+      ],
+      available: 8,
+    },
+    {
+      floor: 3, label: "חדרים פרטיים",
+      rooms: [
+              { name: "חדר פרטי א-ה", room: "301-305", type: "quiet" },
+      ],
+      available: 5,
+    },
+  ],
+  C: [
+    {
+      floor: 1, label: "מסעדה ראשית",
+      rooms: [
+              { name: "אולם אוכל ראשי", room: "—", type: "class" },
+              { name: "קופות", room: "—", type: "service" },
+              { name: "מזנון קפה", room: "—", type: "service" },
+      ],
+      waitTime: 8,
+    },
+  ],
+  D: [
+    { floor: 1, label: "כניסה ורישום", rooms: [{ name: "מדור רישום", room: "102", type: "admin" }], events: [{ time: "11:00", name: "שעת קבלה — רישום", room: "102" }] },
+    { floor: 2, label: "ייעוץ אקדמי", rooms: [{ name: "ייעוץ", room: "210", type: "admin" }], events: [{ time: "15:00", name: "ייעוץ אקדמי", room: "210" }] },
+    { floor: 3, label: "מועצת סטודנטים", rooms: [{ name: "חדר אגוד", room: "305", type: "class" }], events: [{ time: "17:00", name: "מועצת סטודנטים", room: "305" }] },
+    { floor: 4, label: "מחלקות מנהל", rooms: [{ name: "שכר לימוד", room: "401", type: "admin" }], events: [] },
+    { floor: 5, label: "ועדות והנהלה", rooms: [{ name: "חדר ועדות", room: "501", type: "admin" }], events: [{ time: "09:00", name: "ועדת הוראה", room: "501" }] },
+  ],
+  E: [
+    { floor: 1, label: "מגרשים ובריכה", rooms: [{ name: "מגרש כדורסל", room: "—", type: "lab" }, { name: "בריכה", room: "—", type: "lab" }, { name: "מגרש טניס", room: "—", type: "lab" }], events: [{ time: "16:00", name: "טורניר פינג-פונג", room: "—" }] },
+    { floor: 2, label: "חדר כושר + פינג-פונג", rooms: [{ name: "חדר כושר", room: "—", type: "lab" }, { name: "חדר פינג-פונג", room: "—", type: "lab" }], events: [{ time: "18:00", name: "אימון כדורסל", room: "—" }] },
+  ],
+  F: [
+    { floor: 1, label: "לובי ושירותים", rooms: [{ name: "לובי", room: "—", type: "service" }, { name: "מכונות כביסה", room: "—", type: "service" }, { name: "מטבח משותף", room: "—", type: "service" }], notes: "ניקיון יום חמישי 10:00" },
+    { floor: 2, label: "חדרים 201-210", rooms: [{ name: "10 חדרים", room: "201-210", type: "quiet" }], notes: "" },
+    { floor: 3, label: "חדרים 301-310", rooms: [{ name: "10 חדרים", room: "301-310", type: "quiet" }], notes: "" },
+    { floor: 4, label: "חדרים 401-410", rooms: [{ name: "10 חדרים", room: "401-410", type: "quiet" }], notes: "" },
+    { floor: 5, label: "חדרים 501-510", rooms: [{ name: "10 חדרים", room: "501-510", type: "quiet" }], notes: "" },
+    { floor: 6, label: "גג + חדר לימוד", rooms: [{ name: "חדר לימוד גג", room: "601", type: "quiet" }, { name: "מרפסת גג", room: "—", type: "service" }], notes: "גישה מוגבלת" },
+  ],
+};
+
+// ─── BUILDINGS ────────────────────────────────────────────────────────────────
+var BUILDINGS = [
+  { id: "A", name: "בניין מדעים",      short: "מדעים",   x: 22, y: 28, w: 14, h: 18, floors: 4, density: 0.82, issues: 2, col: "#8AAABB", icon: "🔬" },
+  { id: "B", name: "ספרייה מרכזית",    short: "ספרייה",  x: 63, y: 18, w: 20, h: 16, floors: 3, density: 0.91, issues: 1, col: "#A0B4A8", icon: "📚" },
+  { id: "C", name: "חדר אוכל",         short: "אוכל",    x: 38, y: 60, w: 16, h: 10, floors: 1, density: 0.6,  issues: 0, col: "#B8AC90", icon: "🍽️" },
+  { id: "D", name: "בניין ראשי",        short: "ראשי",    x: 36, y: 28, w: 12, h: 22, floors: 5, density: 0.45, issues: 0, col: "#9AAAC0", icon: "🏛️" },
+  { id: "E", name: "מרכז ספורט",        short: "ספורט",   x: 72, y: 60, w: 18, h: 12, floors: 2, density: 0.38, issues: 1, col: "#AABCB0", icon: "⚽" },
+  { id: "F", name: "מעונות",            short: "מעונות",  x: 14, y: 62, w: 12, h: 16, floors: 6, density: 0.2,  issues: 0, col: "#A0B8C8", icon: "🏠" },
+];
+
+var FRIENDS = [
+  { name: "יונתן", av: "YK", bid: "B", floor: 3, status: "ספרייה קומה 3", active: true, color: "#FF6B6B" },
+  { name: "מאיה", av: "MY", bid: "C", floor: 1, status: "חדר אוכל", active: true, color: "#A8E6CF" },
+  { name: "תום", av: "TR", bid: null, floor: null, status: "Ghost Mode", active: false, color: "#778" },
+  { name: "ליאת", av: "LT", bid: "A", floor: 2, status: "מדעים קומה 2", active: true, color: "#FFB347" },
+  { name: "אור", av: "OR", bid: "E", floor: 1, status: "ספורט", active: true, color: "#CE93D8" },
+];
+
+var REPORTS = [
+  { id: 1, b: "A", floor: 3, cat: "מזגן תקול", status: "בטיפול", t: "לפני שעה", pub: true, col: "#FFB347" },
+  { id: 2, b: "B", floor: 1, cat: "נייר טואלט חסר", status: "פתוח", t: "לפני 20 דק׳", pub: false, col: "#FF6B6B" },
+  { id: 3, b: "E", floor: 1, cat: "תאורה שבורה", status: "טופל", t: "לפני 3 שעות", pub: true, col: "#A8E6CF" },
+];
+
+var LOCATION_CHATS = {
+  A: [
+    { id: 1, u: "דנה כ.", av: "DK", text: "מישהו יודע מה עם המזגן בקומה 3?", t: "14:22", mine: false },
+    { id: 2, u: "עומר ש.", av: "OS", text: "דיווחתי, אמרו שיטפלו", t: "14:23", mine: false },
+    { id: 3, u: "את/ה", av: "ME", text: "תודה! 🙏", t: "14:24", mine: true },
+  ],
+  B: [
+    { id: 1, u: "רון מ.", av: "RM", text: "קומה 2 פקוקה, קומה 3 שקטה", t: "13:10", mine: false },
+    { id: 2, u: "את/ה", av: "ME", text: "הולך/ת לקומה 3!", t: "13:15", mine: true },
+  ],
+  C: [{ id: 1, u: "נועה ב.", av: "NB", text: "יש שניצל! 🎉", t: "12:01", mine: false }],
+  D: [{ id: 1, u: "תמר פ.", av: "TP", text: "מישהו יודע איפה הייעוץ?", t: "11:00", mine: false }],
+  E: [{ id: 1, u: "גיל ש.", av: "GS", text: "חדר הכושר ריק! 💪", t: "09:15", mine: false }],
+  F: [{ id: 1, u: "הנהלה", av: "MN", text: "ניקיון יום חמישי 10:00", t: "08:00", mine: false }],
+};
+
+var PULSE_ITEMS = [
+  { icon: "🍽️", text: "חדר אוכל: תור ~8 דקות — שניצל היום!" },
+  { icon: "📚", text: "ספרייה: 8 מקומות בלבד — מהרו" },
+  { icon: "⚽", text: "מגרש כדורסל: עומס 75% — מגרש טניס פנוי" },
+  { icon: "🔔", text: "פרופ׳ לוי הגיע לבניין מדעים" },
+  { icon: "🎯", text: "הרצאת אורח 13:00 — אולם ראשי" },
+];
+
+var PRIVATE_CHATS = [
+  { id: "p1", name: "יונתן כ.", av: "YK", last: "מה שלומך?", t: "14:55", unread: 2, online: true, msgs: [{ id: 1, u: "יונתן", av: "YK", text: "היי! מה שלומך?", t: "14:50", mine: false }, { id: 2, u: "את/ה", av: "ME", text: "טוב! בספרייה קומה 3", t: "14:52", mine: true }] },
+  { id: "p2", name: "מאיה ל.", av: "MY", last: "אפשר את הסיכום?", t: "13:30", unread: 0, online: true, msgs: [{ id: 1, u: "מאיה", av: "MY", text: "אפשר לשלוח את הסיכום?", t: "13:30", mine: false }] },
+  { id: "p3", name: "תום ר.", av: "TR", last: "נפגשים אחרי שיעור?", t: "12:10", unread: 1, online: false, msgs: [] },
+  { id: "p4", name: "קבוצת מדמח ב׳", av: "קב", last: "מי פתר שאלה 3?", t: "11:00", unread: 5, online: true, group: true, msgs: [{ id: 1, u: "שיר", av: "SR", text: "מי פתר שאלה 3?", t: "11:00", mine: false }] },
+];
+
+// ─── SHOPS DATA ───────────────────────────────────────────────────────────────
+var SHOPS = [
+  {
+    id: "s1", name: "קפה הקמפוס", icon: "☕", x: 105, y: 20, col: "#FFB347",
+    discount: "10% הנחה לסטודנטים עם תעודה",
+    hours: "07:00–20:00",
+    menu: [
+      { name: "אספרסו", price: "₪12", tag: "פופולרי" },
+      { name: "קפה קר", price: "₪16" },
+      { name: "קפה חלב", price: "₪18" },
+      { name: "קרואסון", price: "₪14" },
+      { name: "מאפה יום", price: "₪10", tag: "מבצע" },
+    ],
+  },
+  {
+    id: "s2", name: "ספרי הדעת", icon: "📖", x: 115, y: 20, col: "#A8E6CF",
+    discount: "15% הנחה על ספרי לימוד עם אישור מהמוסד",
+    hours: "09:00–19:00",
+    menu: [
+      { name: "ספרי לימוד מדעים", price: "₪120–₪280" },
+      { name: "ספרי הנדסה", price: "₪90–₪240" },
+      { name: "כלי כתיבה", price: "₪5–₪40" },
+      { name: "מחברות ויומנים", price: "₪20–₪60" },
+      { name: "מדפסת תרמית", price: "₪180", tag: "מבצע שבועי" },
+    ],
+  },
+  {
+    id: "s3", name: "פיצה סטודנט", icon: "🍕", x: 105, y: 10, col: "#FF8A65",
+    discount: "פיצה אישית ב-₪25 בלבד בין 11:00-14:00",
+    hours: "10:00–23:00",
+    menu: [
+      { name: "פיצה אישית", price: "₪25", tag: "בצהריים" },
+      { name: "פיצה משפחתית", price: "₪72" },
+      { name: "פיצה טבעונית", price: "₪68", tag: "חדש" },
+      { name: "קלזונה", price: "₪38" },
+      { name: "שתייה קלה", price: "₪8" },
+    ],
+  },
+  {
+    id: "s4", name: "בית מרקחת", icon: "💊", x: 115, y: 10, col: "#80DEEA",
+    discount: "מרשמים של קופות חולים ללא המתנה",
+    hours: "08:00–21:00",
+    menu: [
+      { name: "תרופות ללא מרשם", price: "₪20–₪80" },
+      { name: "ויטמינים", price: "₪35–₪120" },
+      { name: "מוצרי היגיינה", price: "₪10–₪60" },
+      { name: "מדידת לחץ דם", price: "חינם", tag: "שירות" },
+      { name: "ייעוץ פרמצבטי", price: "חינם", tag: "שירות" },
+    ],
+  },
+  {
+    id: "s5", name: "בנק הדואר", icon: "🏦", x: 105, y: 86, col: "#CE93D8",
+    discount: "פתיחת חשבון לסטודנטים ללא עמלה לשנתיים",
+    hours: "08:30–14:00",
+    menu: [
+      { name: "חשבון עו\"ש סטודנט", price: "ללא עמלה 2 שנים", tag: "מיוחד" },
+      { name: "כרטיס אשראי", price: "ללא דמי כרטיס", tag: "מיוחד" },
+      { name: "העברת כספים", price: "₪5 לפעולה" },
+      { name: "הפקדת צ\'קים", price: "חינם" },
+    ],
+  },
+  {
+    id: "s6", name: "מיני סופר", icon: "🛒", x: 115, y: 86, col: "#4A9EFF",
+    discount: "5% הנחה על עגלה מעל ₪80 עם כרטיס סטודנט",
+    hours: "07:00–23:00",
+    menu: [
+      { name: "מוצרי בסיס", price: "₪3–₪30" },
+      { name: "פירות וירקות", price: "₪5–₪25" },
+      { name: "חטיפים ומתוקים", price: "₪5–₪20" },
+      { name: "שתייה קלה", price: "₪7–₪14" },
+      { name: "מוצרי חלב", price: "₪8–₪25" },
+    ],
+  },
+  {
+    id: "s7", name: "מסעדת הנגב", icon: "🍔", x: 125, y: 86, col: "#FF6B6B",
+    discount: "מנה ראשונה חינם בהזמנה מעל ₪60 בשעות 12:00-15:00",
+    hours: "11:00–22:00",
+    menu: [
+      { name: "המבורגר קלאסי", price: "₪52", tag: "הכי נמכר" },
+      { name: "המבורגר טבעוני", price: "₪58" },
+      { name: "שניצל עם תוספות", price: "₪48" },
+      { name: "סלט גדול", price: "₪38" },
+      { name: "עוגה יומית", price: "₪22", tag: "ביתי" },
+    ],
+  },
+];
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function dColor(d) {
+  if (d > 0.75) return "#EF4444";   // red  — very busy
+  if (d > 0.45) return "#F59E0B";   // amber — busy
+  return "#10B981";                  // green — quiet
+}
+function dLabel(d) { return d > 0.75 ? "עמוס מאוד" : d > 0.45 ? "עמוס" : "שקט"; }
+
+// ─── SHARED UI ────────────────────────────────────────────────────────────────
+function Av(props) {
+  var sz = props.size || 36;
+  return (
+    <div style={{ width: sz, height: sz, borderRadius: "50%", background: props.color || "#1B3A6B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: sz * 0.34, fontWeight: 700, color: "#fff", flexShrink: 0 }}>
+      {props.initials}
+    </div>
+  );
+}
+
+function Badge(props) {
+  return (
+    <span style={{ background: props.color + "22", color: props.color, border: "1px solid " + props.color + "55", borderRadius: 20, padding: "2px 9px", fontSize: 11, fontWeight: 700 }}>
+      {props.label}
+    </span>
+  );
+}
+
+function Bubble(props) {
+  var m = props.msg;
+  return (
+    <div style={{ display: "flex", gap: 6, justifyContent: m.mine ? "flex-end" : "flex-start", marginBottom: 8 }}>
+      {!m.mine && <Av initials={m.av} size={26} color="#1e3a5f" />}
+      <div>
+        {!m.mine && <div style={{ color: "#556", fontSize: 10, marginBottom: 2 }}>{m.u}</div>}
+        <div style={{ background: m.mine ? "#1B3A6B" : "#0d2040", border: "1px solid " + (m.mine ? "#2E5FA3" : "#1e3a5f"), borderRadius: m.mine ? "11px 11px 2px 11px" : "11px 11px 11px 2px", padding: "6px 10px", color: "#E8F4FF", fontSize: 13, maxWidth: 200 }}>
+          {m.text}
+        </div>
+        <div style={{ color: "#445", fontSize: 10, marginTop: 2, textAlign: m.mine ? "right" : "left" }}>{m.t}</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MAP SCREEN ───────────────────────────────────────────────────────────────
+function MapScreen(props) {
+  var onBuilding = props.onBuilding;
+  var onShop = props.onShop;
+  var selectedId = props.selectedId;
+  var hovState = useState(null);
+  var hovered = hovState[0];
+  var setHovered = hovState[1];
+  var hovShopState = useState(null);
+  var hovShop = hovShopState[0];
+  var setHovShop = hovShopState[1];
+  var piState = useState(0);
+  var pi = piState[0];
+  var setPi = piState[1];
+  var friendsVisState = useState(true);
+  var friendsVisible = friendsVisState[0];
+  var setFriendsVisible = friendsVisState[1];
+
+  useEffect(function() {
+    var t = setInterval(function() { setPi(function(p) { return (p + 1) % PULSE_ITEMS.length; }); }, 3200);
+    return function() { clearInterval(t); };
+  }, []);
+
+  var pulse = PULSE_ITEMS[pi];
+
+  var HEAT_DOTS = {
+    A: [[25,32],[27,35],[29,30],[24,37],[30,34],[26,40],[28,38]],
+    B: [[68,22],[72,20],[74,24],[70,26],[66,25],[73,28]],
+    C: [[42,62],[45,65],[40,64],[44,67],[47,63],[43,69]],
+    D: [[39,33],[41,30],[38,36],[43,35],[40,38]],
+    E: [[76,63],[80,65],[82,62],[78,68],[75,66]],
+    F: [[17,65],[19,68],[16,70],[20,72]],
+  };
+
+  function buildFloorLines(b) {
+    var lines = [];
+    for (var fi = 1; fi < b.floors; fi++) {
+      lines.push(
+        React.createElement("line", {key:"fl"+fi, x1:b.x+1, y1:b.y+b.h*fi/b.floors, x2:b.x+b.w-1, y2:b.y+b.h*fi/b.floors, stroke:b.col, strokeWidth:"0.18", opacity:"0.35"})
+      );
+    }
+    return lines;
+  }
+
+  function buildWindows(b) {
+    if (b.w < 10) return [];
+    var rects = [];
+    var cols = Math.min(3, Math.floor(b.w / 5));
+    var rows = Math.min(b.floors, 3);
+    for (var row = 0; row < rows; row++) {
+      for (var col = 0; col < cols; col++) {
+        rects.push(
+          React.createElement("rect", {key:"w"+row+col, x:b.x+2+col*((b.w-4)/cols), y:b.y+2+row*(b.h/b.floors), width:"2.2", height:"1.4", rx:"0.3", fill:b.col, opacity:"0.22"})
+        );
+      }
+    }
+    return rects;
+  }
+
+  var zoomSel = selectedId ? BUILDINGS.find(function(b) { return b.id === selectedId; }) : null;
+  var zoomOriginX = zoomSel ? Math.round(((zoomSel.x + zoomSel.w / 2) / 130) * 100) + "%" : "50%";
+  var zoomOriginY = zoomSel ? Math.round(((zoomSel.y + zoomSel.h / 2) / 100) * 100) + "%" : "50%";
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ background: "rgba(248,250,252,0.9)", borderBottom: "1px solid rgba(0,0,0,0.06)", padding: "7px 14px", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        {/* Smart status capsule */}
+        <div style={{
+          flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between",
+          background: "rgba(255,255,255,0.85)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+          border: "1px solid rgba(0,0,0,0.07)", borderRadius: 20, padding: "5px 12px",
+          boxShadow: "0 1px 8px rgba(0,0,0,0.06)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ color: "#111827", fontSize: 11, fontWeight: 700 }}>יום ב׳, 27 אפריל</span>
+            <span style={{ color: "#D1D5DB", fontSize: 10 }}>•</span>
+            <span style={{ color: "#6B7280", fontSize: 11 }}>14:35</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ fontSize: 13 }}>☀️</span>
+            <span style={{ color: "#374151", fontSize: 11, fontWeight: 700 }}>24°C</span>
+          </div>
+        </div>
+        <button onClick={function() { setFriendsVisible(function(v) { return !v; }); }} className="tap" style={{
+          background: friendsVisible ? "rgba(37,99,235,0.1)" : "rgba(0,0,0,0.04)",
+          border: "1px solid " + (friendsVisible ? "rgba(37,99,235,0.3)" : "rgba(0,0,0,0.08)"),
+          borderRadius: 20, color: friendsVisible ? "#2563EB" : "#9CA3AF",
+          fontSize: 14, padding: "4px 8px", cursor: "pointer",
+        }}>👥</button>
+      </div>
+      <div style={{ flex: 1, position: "relative", overflow: "hidden", background: "#F2F5F8" }}>
+        <svg
+          viewBox="0 0 130 100"
+          style={{
+            width: "100%", height: "100%", position: "absolute", inset: 0,
+            transform: zoomSel ? "scale(1.12)" : "scale(1)",
+            transformOrigin: zoomOriginX + " " + zoomOriginY,
+            transition: "transform 600ms ease",
+          }}
+        >
+          <defs>
+            {/* Architectural dot grid - very subtle */}
+            <pattern id="dotgrid" width="5" height="5" patternUnits="userSpaceOnUse">
+              <circle cx="0" cy="0" r="0.25" fill="rgba(100,116,139,0.18)"/>
+            </pattern>
+            {/* Soft drop shadow for buildings */}
+            <filter id="bldShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="1.5" dy="2" stdDeviation="1.5" floodColor="rgba(0,0,0,0.12)" floodOpacity="1"/>
+            </filter>
+            <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="1.2" result="blur"/>
+              <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+            </filter>
+            <filter id="shopglow" x="-60%" y="-60%" width="220%" height="220%">
+              <feGaussianBlur stdDeviation="1.4" result="blur"/>
+              <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+            </filter>
+            {/* Fountain water gradient */}
+            <radialGradient id="fountainGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#BAE6FD" stopOpacity="0.9"/>
+              <stop offset="60%" stopColor="#7DD3FC" stopOpacity="0.5"/>
+              <stop offset="100%" stopColor="#38BDF8" stopOpacity="0"/>
+            </radialGradient>
+            {/* Lawn gradient */}
+            <radialGradient id="lawnGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#BBF7D0" stopOpacity="0.9"/>
+              <stop offset="100%" stopColor="#86EFAC" stopOpacity="0.5"/>
+            </radialGradient>
+          </defs>
+
+          {/* ── BASE CANVAS ── */}
+          <rect width="130" height="100" fill="#F4F6F9"/>
+          {/* Architectural dot grid */}
+          <rect width="130" height="100" fill="url(#dotgrid)"/>
+
+          {/* ── OUTER CITY CONTEXT ── */}
+          {/* Top-left residential neighbourhood */}
+          <rect x="0" y="0" width="18" height="16" fill="#EEF2F7"/>
+          <rect x="1" y="1" width="7" height="5" rx="0.6" fill="#E2E8F0" stroke="#CBD5E1" strokeWidth="0.3"/>
+          <rect x="10" y="1" width="6" height="5" rx="0.6" fill="#E2E8F0" stroke="#CBD5E1" strokeWidth="0.3"/>
+          <rect x="1" y="7" width="5" height="4" rx="0.6" fill="#DDE5EF" stroke="#CBD5E1" strokeWidth="0.3"/>
+          <rect x="8" y="7" width="8" height="4" rx="0.6" fill="#DDE5EF" stroke="#CBD5E1" strokeWidth="0.3"/>
+          <rect x="1" y="12" width="6" height="3" rx="0.6" fill="#D4DCE9" stroke="#CBD5E1" strokeWidth="0.3"/>
+          <rect x="9" y="12" width="7" height="3" rx="0.6" fill="#D4DCE9" stroke="#CBD5E1" strokeWidth="0.3"/>
+          <text x="9" y="15.5" textAnchor="middle" fill="#94A3B8" fontSize="1.6" fontWeight="600">שכונת סטודנטים</text>
+
+          {/* Top-right commercial strip */}
+          <rect x="90" y="0" width="40" height="16" fill="#FDF8F0"/>
+          <rect x="90" y="13" width="40" height="3" fill="#E8DFCF" opacity="0.8"/>
+          <line x1="90" y1="14.5" x2="130" y2="14.5" stroke="#C8B99A" strokeWidth="0.35" strokeDasharray="4,3"/>
+          <text x="110" y="15.2" textAnchor="middle" fill="#A38B6A" fontSize="1.6">רחוב המסחר</text>
+
+          {/* Bottom-left houses */}
+          <rect x="0" y="83" width="14" height="17" fill="#EEF2F7"/>
+          <rect x="1" y="84" width="4" height="4" rx="0.5" fill="#E2E8F0" stroke="#CBD5E1" strokeWidth="0.3"/>
+          <rect x="7" y="84" width="5" height="4" rx="0.5" fill="#E2E8F0" stroke="#CBD5E1" strokeWidth="0.3"/>
+          <rect x="1" y="90" width="4" height="4" rx="0.5" fill="#DDE5EF" stroke="#CBD5E1" strokeWidth="0.3"/>
+          <rect x="7" y="90" width="5" height="4" rx="0.5" fill="#DDE5EF" stroke="#CBD5E1" strokeWidth="0.3"/>
+          <rect x="1" y="96" width="11" height="3" rx="0.5" fill="#D4DCE9" stroke="#CBD5E1" strokeWidth="0.3"/>
+
+          {/* Bottom-right commercial */}
+          <rect x="92" y="80" width="38" height="20" fill="#FDF8F0"/>
+          <rect x="92" y="78" width="38" height="3" fill="#E8DFCF"/>
+          <line x1="92" y1="79.5" x2="130" y2="79.5" stroke="#C8B99A" strokeWidth="0.35" strokeDasharray="4,3"/>
+          <text x="111" y="79" textAnchor="middle" fill="#A38B6A" fontSize="1.6">שדרת המסחר</text>
+
+          {/* ── EXTERNAL ROADS ── */}
+          {/* Top boulevard - wide, light asphalt */}
+          <rect x="0" y="14" width="130" height="6" fill="#D1D5DB"/>
+          <line x1="0" y1="17" x2="130" y2="17" stroke="#F9FAFB" strokeWidth="0.5" strokeDasharray="5,4"/>
+          <line x1="0" y1="14.2" x2="130" y2="14.2" stroke="#9CA3AF" strokeWidth="0.2"/>
+          <line x1="0" y1="19.8" x2="130" y2="19.8" stroke="#9CA3AF" strokeWidth="0.2"/>
+          <text x="47" y="16" textAnchor="middle" fill="#6B7280" fontSize="1.9" fontWeight="600">שדרות האוניברסיטה</text>
+
+          {/* Bottom boulevard */}
+          <rect x="0" y="78" width="130" height="6" fill="#D1D5DB"/>
+          <line x1="0" y1="81" x2="130" y2="81" stroke="#F9FAFB" strokeWidth="0.5" strokeDasharray="5,4"/>
+          <line x1="0" y1="78.2" x2="130" y2="78.2" stroke="#9CA3AF" strokeWidth="0.2"/>
+          <line x1="0" y1="83.8" x2="130" y2="83.8" stroke="#9CA3AF" strokeWidth="0.2"/>
+          <text x="47" y="76.5" textAnchor="middle" fill="#6B7280" fontSize="1.9">רחוב הרצל</text>
+
+          {/* Side roads */}
+          <rect x="0" y="14" width="5" height="64" fill="#D8DCE2"/>
+          <line x1="2.5" y1="14" x2="2.5" y2="78" stroke="#F9FAFB" strokeWidth="0.3" strokeDasharray="4,3"/>
+          <rect x="88" y="14" width="4" height="64" fill="#D8DCE2"/>
+          <line x1="90" y1="14" x2="90" y2="78" stroke="#F9FAFB" strokeWidth="0.3" strokeDasharray="4,3"/>
+
+          {/* ── CAMPUS GROUND FILL ── */}
+          {/* Base campus surface - warm off-white */}
+          <rect x="6" y="20" width="82" height="57" rx="3" fill="#FAFBFC"/>
+          {/* Soft boundary */}
+          <rect x="6" y="20" width="82" height="57" rx="3" fill="none" stroke="#CBD5E1" strokeWidth="0.6"/>
+          <text x="47" y="22.5" textAnchor="middle" fill="#9CA3AF" fontSize="2" fontWeight="600">אוניברסיטת הנגב</text>
+
+          {/* ── CAMPUS INNER ROADS (paved, light gray) ── */}
+          {/* H-spine */}
+          <rect x="6" y="44" width="82" height="4.5" fill="#E5E7EB"/>
+          <line x1="6" y1="46.2" x2="88" y2="46.2" stroke="#F9FAFB" strokeWidth="0.5" strokeDasharray="4,3"/>
+          <line x1="6" y1="44.2" x2="88" y2="44.2" stroke="#CBD5E1" strokeWidth="0.2"/>
+          <line x1="6" y1="48.3" x2="88" y2="48.3" stroke="#CBD5E1" strokeWidth="0.2"/>
+          {/* V-spine */}
+          <rect x="51" y="20" width="4.5" height="57" fill="#E5E7EB"/>
+          <line x1="53.2" y1="20" x2="53.2" y2="77" stroke="#F9FAFB" strokeWidth="0.5" strokeDasharray="4,3"/>
+
+          {/* ── PEDESTRIAN WALKWAYS (organic curves) ── */}
+          {/* Primary spine - wide, warm stone */}
+          <path d="M 6 34 Q 18 33 29 34 Q 38 35 45 34" fill="none" stroke="#DDE3EC" strokeWidth="2.5"/>
+          <path d="M 6 34 Q 18 33 29 34 Q 38 35 45 34" fill="none" stroke="#EEF2F7" strokeWidth="0.8"/>
+          {/* Secondary paths - narrower */}
+          <path d="M 22 20 Q 23 27 22 34"           fill="none" stroke="#E2E8F0" strokeWidth="1.4"/>
+          <path d="M 36 20 Q 36.5 27 36 34"         fill="none" stroke="#E2E8F0" strokeWidth="1.4"/>
+          <path d="M 55.5 60 Q 65 59 75 60 Q 82 60.5 88 60" fill="none" stroke="#E2E8F0" strokeWidth="1.4"/>
+          <path d="M 63 44 Q 63.5 36 63 20"         fill="none" stroke="#E2E8F0" strokeWidth="1.4"/>
+          <path d="M 83 44 Q 83.5 36 83 20"         fill="none" stroke="#E2E8F0" strokeWidth="1.4"/>
+          <path d="M 19 62 Q 19.2 68 19 77"         fill="none" stroke="#E2E8F0" strokeWidth="1.4"/>
+          <path d="M 6 62 Q 15 61.5 28 62 Q 38 62.5 51 62" fill="none" stroke="#E2E8F0" strokeWidth="1.4"/>
+          <path d="M 88 48.5 Q 88.2 62 88 77"       fill="none" stroke="#E2E8F0" strokeWidth="1.4"/>
+          <text x="26" y="33" fill="#94A3B8" fontSize="1.7">שביל הספר</text>
+
+          {/* ── GREEN SPACES (lawns) ── */}
+          <ellipse cx="28.5" cy="39" rx="7"   ry="4.5" fill="#DCFCE7" opacity="0.95"/>
+          <ellipse cx="28.5" cy="39" rx="5.5" ry="3.2" fill="#BBF7D0" opacity="0.7"/>
+          <ellipse cx="62"   cy="54" rx="6.5" ry="4"   fill="#DCFCE7" opacity="0.9"/>
+          <ellipse cx="62"   cy="54" rx="5"   ry="2.8" fill="#BBF7D0" opacity="0.6"/>
+          <ellipse cx="10.5" cy="55" rx="3"   ry="6"   fill="#DCFCE7" opacity="0.85"/>
+          <ellipse cx="70"   cy="54" rx="4.5" ry="5"   fill="#DCFCE7" opacity="0.85"/>
+
+          {/* ── COMMUNAL PLAZAS ── */}
+          {/* Central plaza (around fountain) */}
+          <rect x="38.5" y="43.5" width="9" height="5.5" rx="1.2" fill="#F1F5F9" stroke="#E2E8F0" strokeWidth="0.4"/>
+          <line x1="38.5" y1="45.5" x2="47.5" y2="45.5" stroke="#CBD5E1" strokeWidth="0.25"/>
+          <line x1="38.5" y1="47.2" x2="47.5" y2="47.2" stroke="#CBD5E1" strokeWidth="0.25"/>
+          <line x1="41"   y1="43.5" x2="41"   y2="49"   stroke="#CBD5E1" strokeWidth="0.25"/>
+          <line x1="44"   y1="43.5" x2="44"   y2="49"   stroke="#CBD5E1" strokeWidth="0.25"/>
+          {/* Sports plaza */}
+          <rect x="55" y="56" width="7" height="5" rx="1" fill="#F1F5F9" stroke="#E2E8F0" strokeWidth="0.3" opacity="0.9"/>
+
+          {/* ── TREE CLUSTERS ── */}
+          {[
+            [22,36.5],[25,36.5],[28,36.5],[31,36.5],[22,41],[25,41],[28,41],[31,41],
+            [57.5,51],[61,51],[64.5,51],[57.5,55],[61,55],[64.5,55],
+            [9,51],[9,54],[9,57],[12,51],[12,54],[12,57],
+            [67,51],[71,51],[74,51],[67,55],[71,55],[74,55],
+          ].map(function(pos, i) {
+            return (
+              <g key={"tr"+i}>
+                {/* Canopy shadow */}
+                <circle cx={pos[0]+0.5} cy={pos[1]+0.5} r="1.9" fill="rgba(0,0,0,0.07)"/>
+                {/* Canopy */}
+                <circle cx={pos[0]} cy={pos[1]} r="1.8" fill="#86EFAC" stroke="#4ADE80" strokeWidth="0.35"/>
+                <circle cx={pos[0]} cy={pos[1]} r="0.9" fill="#4ADE80" opacity="0.7"/>
+              </g>
+            );
+          })}
+
+          {/* ── FOUNTAIN (light water theme) ── */}
+          <circle cx="43" cy="46.2" r="7" fill="url(#fountainGrad)" opacity="0.5"/>
+          {/* Roundabout ring */}
+          <circle cx="43" cy="46.2" r="5.5" fill="none" stroke="#E2E8F0" strokeWidth="2.8"/>
+          <circle cx="43" cy="46.2" r="5.5" fill="none" stroke="#CBD5E1" strokeWidth="0.4"/>
+          {/* Basin */}
+          <circle cx="43" cy="46.2" r="4.2" fill="#F0F9FF" stroke="#BAE6FD" strokeWidth="0.5"/>
+          <circle cx="43" cy="46.2" r="2.8" fill="#E0F2FE" stroke="#7DD3FC" strokeWidth="0.6"/>
+          <circle cx="43" cy="46.2" r="1.8" fill="#BAE6FD" stroke="#38BDF8" strokeWidth="0.5"/>
+          {/* Water surface */}
+          <circle cx="43" cy="46.2" r="1.2" fill="#7DD3FC" opacity="0.8"/>
+          <circle cx="43" cy="46.2" r="0.6" fill="#38BDF8" opacity="0.95"/>
+          {/* Ripples */}
+          <circle cx="43" cy="46.2" r="2.2" fill="none" stroke="#7DD3FC" strokeWidth="0.25" opacity="0.6" strokeDasharray="1,1"/>
+          <circle cx="43" cy="46.2" r="2.6" fill="none" stroke="#BAE6FD" strokeWidth="0.18" opacity="0.5" strokeDasharray="1.5,1"/>
+          {/* Jets */}
+          {[[43,44.7],[44.3,45.3],[44.3,47.1],[43,47.7],[41.7,47.1],[41.7,45.3]].map(function(p,i){ return <circle key={"j"+i} cx={p[0]} cy={p[1]} r="0.32" fill="#38BDF8" opacity="0.85"/>; })}
+          {/* Plaza connectors */}
+          <line x1="37.5" y1="46.2" x2="40.5" y2="46.2" stroke="#E5E7EB" strokeWidth="1.4"/>
+          <line x1="45.5" y1="46.2" x2="51"   y2="46.2" stroke="#E5E7EB" strokeWidth="1.4"/>
+          <line x1="43"   y1="40.7" x2="43"   y2="43.4" stroke="#E5E7EB" strokeWidth="1.4"/>
+          <line x1="43"   y1="49"   x2="43"   y2="51.7" stroke="#E5E7EB" strokeWidth="1.4"/>
+          <text x="43" y="52.8" textAnchor="middle" fill="#94A3B8" fontSize="1.6">כיכר המזרקה</text>
+
+          {/* ── PARKING LOTS ── */}
+          <rect x="62" y="73" width="22" height="7" rx="1" fill="#E9EBF0" stroke="#D1D5DB" strokeWidth="0.4"/>
+          {[62,65,68,71,74,77,80,83].map(function(x,i){ return <line key={"p1"+i} x1={x} y1="73" x2={x} y2="80" stroke="#CBD5E1" strokeWidth="0.3"/>; })}
+          <text x="73" y="77.5" textAnchor="middle" fill="#6B7280" fontSize="1.8" fontWeight="700">P</text>
+          <rect x="15" y="84" width="20" height="8" rx="0.5" fill="#E9EBF0" stroke="#D1D5DB" strokeWidth="0.3"/>
+          {[15,18,21,24,27,30,33].map(function(x,i){ return <line key={"p2"+i} x1={x} y1="84" x2={x} y2="92" stroke="#CBD5E1" strokeWidth="0.25"/>; })}
+          <text x="25" y="88.5" textAnchor="middle" fill="#6B7280" fontSize="1.7">P חיצוני</text>
+
+          {/* ── HEAT DOTS (density context) ── */}
+          {BUILDINGS.map(function(b) {
+            var dots = HEAT_DOTS[b.id] || [];
+            var dc = dColor(b.density);
+            return dots.map(function(dot, i) {
+              return <circle key={"hd"+b.id+i} cx={dot[0]} cy={dot[1]} r={0.6+(i%3)*0.25} fill={dc} opacity={0.25+(i%4)*0.07}/>;
+            });
+          })}
+
+          {/* ── BUILDINGS (architecturally grounded) ── */}
+          {BUILDINGS.map(function(b) {
+            var isHov = hovered === b.id;
+            var isSel = selectedId === b.id;
+            var hasSelection = !!selectedId;
+            var dimmed = hasSelection && !isSel;
+            var sc = dColor(b.density);          // status color
+            var depth = 0.8 + b.floors * 0.14;  // height-based extrusion depth
+
+            // Status tint (8–12% opacity inside footprint)
+            var tintOpacity = isSel ? 0.13 : 0.08;
+
+            // Label color follows status
+            var labelColor = isSel ? sc : "#6B7280";
+
+            return (
+              <g key={"bld"+b.id}
+                onClick={function() { onBuilding(b); }}
+                onMouseEnter={function() { setHovered(b.id); }}
+                onMouseLeave={function() { setHovered(null); }}
+                style={{ cursor: "pointer", opacity: dimmed ? 0.25 : 1, transition: "opacity 350ms ease" }}
+              >
+                {/* Grounded shadow — anchors building to terrain */}
+                <rect
+                  x={b.x+depth} y={b.y+depth}
+                  width={b.w} height={b.h}
+                  rx="2" fill="rgba(0,0,0,0.09)"
+                />
+                {/* Side depth faces (isometric height illusion) */}
+                <rect x={b.x+b.w} y={b.y+depth} width={depth} height={b.h}
+                  rx="0" fill="#D8DDE5" opacity="0.7"/>
+                <rect x={b.x+depth} y={b.y+b.h} width={b.w} height={depth}
+                  rx="0" fill="#D8DDE5" opacity="0.7"/>
+
+                {/* Status ambient glow — perimeter only */}
+                {!dimmed && (
+                  <rect
+                    x={b.x-1.5} y={b.y-1.5}
+                    width={b.w+3} height={b.h+3}
+                    rx="3.5" fill="none"
+                    stroke={sc} strokeWidth="2.5" opacity={isSel ? 0.35 : 0.18}
+                    style={{ filter: "blur(1.5px)" }}
+                  />
+                )}
+
+                {/* Main building face */}
+                <rect
+                  x={b.x} y={b.y} width={b.w} height={b.h}
+                  rx="2"
+                  fill={isSel ? "#F0F4FF" : isHov ? "#FAFBFC" : "#F7F8FA"}
+                />
+
+                {/* Status tint fill (8–12%) */}
+                <rect
+                  x={b.x} y={b.y} width={b.w} height={b.h}
+                  rx="2" fill={sc} opacity={tintOpacity}
+                />
+
+                {/* Floor lines — subtle architectural detail */}
+                {(function(){
+                  var lines = [];
+                  for (var fi=1; fi<b.floors; fi++) {
+                    lines.push(<line key={"fl"+fi}
+                      x1={b.x+1} y1={b.y+b.h*fi/b.floors}
+                      x2={b.x+b.w-1} y2={b.y+b.h*fi/b.floors}
+                      stroke="rgba(0,0,0,0.06)" strokeWidth="0.3"/>);
+                  }
+                  return lines;
+                })()}
+
+                {/* Window grid */}
+                {b.w >= 10 && (function(){
+                  var rects = [];
+                  var cols = Math.min(3, Math.floor(b.w/5));
+                  var rows = Math.min(b.floors, 3);
+                  for (var row=0; row<rows; row++) {
+                    for (var col=0; col<cols; col++) {
+                      rects.push(<rect key={"w"+row+col}
+                        x={b.x+2+col*((b.w-4)/cols)}
+                        y={b.y+2+row*(b.h/b.floors)}
+                        width="2" height="1.3" rx="0.3"
+                        fill="rgba(37,99,235,0.12)"/>);
+                    }
+                  }
+                  return rects;
+                })()}
+
+                {/* Status perimeter stroke — continuous, integrated */}
+                <rect
+                  x={b.x} y={b.y} width={b.w} height={b.h}
+                  rx="2" fill="none"
+                  stroke={sc}
+                  strokeWidth={isSel ? 1.8 : 1.2}
+                  opacity={isSel ? 0.9 : isHov ? 0.7 : 0.5}
+                />
+
+                {/* Rooftop accent */}
+                <line x1={b.x+1} y1={b.y+0.5} x2={b.x+b.w-1} y2={b.y+0.5}
+                  stroke={sc} strokeWidth="0.6" opacity={isSel ? 0.7 : 0.4}/>
+
+                {/* Selection ring — dashed, same status color */}
+                {isSel && (
+                  <rect x={b.x-2} y={b.y-2} width={b.w+4} height={b.h+4}
+                    rx="4" fill="none"
+                    stroke={sc} strokeWidth="1.2" opacity="0.5"
+                    strokeDasharray="3,2"/>
+                )}
+
+                {/* Issue badge */}
+                {b.issues > 0 && (
+                  <g>
+                    <circle cx={b.x+b.w-1.8} cy={b.y+1.8} r="1.8" fill="#EF4444"/>
+                    <text x={b.x+b.w-1.8} y={b.y+2.5}
+                      textAnchor="middle" fill="white" fontSize="1.9" fontWeight="700">
+                      {b.issues}
+                    </text>
+                  </g>
+                )}
+
+                {/* Icon — embedded on surface */}
+                <text x={b.x+b.w/2} y={b.y+b.h/2-0.5}
+                  textAnchor="middle" fontSize="4" opacity={dimmed ? 0.4 : 0.85}>
+                  {b.icon}
+                </text>
+
+                {/* Label — on building surface, status-tinted */}
+                <text
+                  x={b.x+b.w/2} y={b.y+b.h/2+4.8}
+                  textAnchor="middle" fontSize="2.1" fontWeight="600"
+                  fill={isSel ? sc : "#475569"}
+                  opacity={dimmed ? 0.3 : 1}
+                >
+                  {b.short}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* ── EMBEDDED SERVICE ZONES within buildings ── */}
+
+          {/* Building A (מדעים) — lab zone bottom-right corner */}
+          <rect x={22+8} y={28+12} width="6" height="6" rx="1"
+            fill="#3B82F6" opacity="0.10"/>
+          <text x={22+11} y={28+16.5} textAnchor="middle" fontSize="2.5" opacity="0.7">🔬</text>
+          <text x={22+11} y={28+18.5} textAnchor="middle" fill="#3B82F6" fontSize="1.5" fontWeight="600">מעבדות</text>
+
+          {/* Building B (ספרייה) — reading lounge left side */}
+          <rect x={63} y={18+4} width="7" height="6" rx="1"
+            fill="#8B5CF6" opacity="0.10"/>
+          <text x={63+3.5} y={18+8.5} textAnchor="middle" fontSize="2.5" opacity="0.7">📖</text>
+          <text x={63+3.5} y={18+10.5} textAnchor="middle" fill="#8B5CF6" fontSize="1.5" fontWeight="600">קריאה</text>
+
+          {/* Building C (חדר אוכל) — full dining zone, warm amber tint */}
+          <rect x={38} y={60} width={16} height={10} rx="2"
+            fill="#F59E0B" opacity="0.14"/>
+          <text x={38+8} y={60+5.5} textAnchor="middle" fontSize="4" opacity="0.85">🍽️</text>
+          <text x={38+8} y={60+8.5} textAnchor="middle" fill="#92400E" fontSize="2" fontWeight="700">אוכל</text>
+
+          {/* Building D (ראשי) — student services zone bottom */}
+          <rect x={36+1} y={28+14} width="10" height="6" rx="1"
+            fill="#14B8A6" opacity="0.12"/>
+          <text x={36+6} y={28+18.5} textAnchor="middle" fontSize="2.5" opacity="0.75">🏛️</text>
+          <text x={36+6} y={28+20.5} textAnchor="middle" fill="#0F766E" fontSize="1.5" fontWeight="600">שירותים</text>
+
+          {/* Building E (ספורט) — gym sub-zone right side */}
+          <rect x={72+11} y={60+2} width="7" height="10" rx="1"
+            fill="#F97316" opacity="0.13"/>
+          <text x={72+14.5} y={60+7.5} textAnchor="middle" fontSize="2.5" opacity="0.8">🏋️</text>
+          <text x={72+14.5} y={60+10} textAnchor="middle" fill="#9A3412" fontSize="1.4" fontWeight="600">חדר כושר</text>
+
+          {/* Building F (מעונות) — cafe/food corner top-left */}
+          <rect x={14} y={62+1} width="6" height="5" rx="1"
+            fill="#F59E0B" opacity="0.15"/>
+          <text x={14+3} y={62+4.5} textAnchor="middle" fontSize="2.5" opacity="0.8">🍳</text>
+          <text x={14+3} y={62+6.5} textAnchor="middle" fill="#92400E" fontSize="1.4" fontWeight="600">אוכל</text>
+
+          {/* ── COMMERCIAL STRIP — שדרת החנויות ── */}
+          {/* Strip background */}
+          <rect x="7" y="69.5" width="80" height="8.5" rx="2"
+            fill="rgba(255,255,255,0.82)" stroke="#E2E8F0" strokeWidth="0.5"/>
+          {/* Strip label */}
+          <text x="47" y="71.5" textAnchor="middle" fill="#9CA3AF" fontSize="1.8" fontWeight="600">שדרת החנויות</text>
+          {/* Shop cells */}
+          {[
+            {x:9,  icon:"☕", label:"קפה",    id:"s1"},
+            {x:20, icon:"📖", label:"ספרים",  id:"s2"},
+            {x:31, icon:"💊", label:"פארם",   id:"s4"},
+            {x:42, icon:"👗", label:"אופנה",  id:"sx"},
+            {x:53, icon:"🛒", label:"מכולת",  id:"s6"},
+            {x:64, icon:"💻", label:"טכנ׳",   id:"sy"},
+            {x:75, icon:"🎁", label:"מתנות",  id:"sz"},
+          ].map(function(item) {
+            var isHovStrip = hovShop === item.id;
+            var shop = SHOPS.find(function(s){ return s.id === item.id; });
+            return (
+              <g key={"strip"+item.id}
+                onClick={function() { if(shop) onShop(shop); }}
+                onMouseEnter={function() { setHovShop(item.id); }}
+                onMouseLeave={function() { setHovShop(null); }}
+                style={{ cursor: "pointer" }}
+              >
+                <rect x={item.x} y="72.5" width="9" height="7" rx="1.5"
+                  fill={isHovStrip ? "rgba(37,99,235,0.08)" : "rgba(255,255,255,0.9)"}
+                  stroke={isHovStrip ? "rgba(37,99,235,0.3)" : "#E2E8F0"}
+                  strokeWidth="0.5"/>
+                <text x={item.x+4.5} y="76.5" textAnchor="middle" fontSize="3">{item.icon}</text>
+                <text x={item.x+4.5} y="79" textAnchor="middle"
+                  fill={isHovStrip ? "#2563EB" : "#6B7280"}
+                  fontSize="1.6" fontWeight={isHovStrip ? "700" : "500"}>
+                  {item.label}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* ── FRIEND PINS (refined for light theme) ── */}
+          {friendsVisible && FRIENDS.filter(function(f){ return f.active && f.bid; }).map(function(f) {
+            var b = BUILDINGS.find(function(b){ return b.id === f.bid; });
+            if (!b) return null;
+            return (
+              <g key={"fr"+f.name}>
+                <circle cx={b.x+b.w+2} cy={b.y+2.5} r="2.8" fill={f.color} opacity="0.2"/>
+                <circle cx={b.x+b.w+2} cy={b.y+2.5} r="2.1"
+                  fill="white" stroke={f.color} strokeWidth="0.8"/>
+                <text x={b.x+b.w+2} y={b.y+3.2}
+                  textAnchor="middle" fill={f.color} fontSize="1.9" fontWeight="700">
+                  {f.av[0]}
+                </text>
+                <text x={b.x+b.w+2} y={b.y+6.5}
+                  textAnchor="middle" fill="#374151" fontSize="1.5" fontWeight="600">
+                  {f.name}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* ── MAINTENANCE PINS ── */}
+          {REPORTS.filter(function(r){ return r.pub && r.status !== "טופל"; }).map(function(r) {
+            var b = BUILDINGS.find(function(b){ return b.id === r.b; });
+            if (!b) return null;
+            return (
+              <g key={"rp"+r.id}>
+                <circle cx={b.x+b.w/2} cy={b.y+b.h+2.2} r="1.8"
+                  fill="white" stroke={r.col} strokeWidth="1"/>
+                <circle cx={b.x+b.w/2} cy={b.y+b.h+2.2} r="0.9" fill={r.col}/>
+              </g>
+            );
+          })}
+
+          {/* ── YOU ARE HERE ── */}
+          <circle cx="37" cy="46.2" r="4.5" fill="#2563EB" opacity="0.08"/>
+          <circle cx="37" cy="46.2" r="2.8" fill="#2563EB" opacity="0.15"/>
+          <circle cx="37" cy="46.2" r="1.5" fill="#2563EB" stroke="white" strokeWidth="0.8"/>
+          <text x="37" y="43" textAnchor="middle" fill="#2563EB" fontSize="1.7" fontWeight="600">📍 כאן</text>
+
+          {/* ── COMPASS (Apple Maps style — light) ── */}
+          <g transform="translate(84,24)">
+            <circle cx="0" cy="0" r="4.5" fill="rgba(255,255,255,0.9)"
+              stroke="rgba(0,0,0,0.08)" strokeWidth="0.5"
+              style={{filter:"drop-shadow(0 1px 3px rgba(0,0,0,0.12))"}}/>
+            <polygon points="0,-2.8 0.6,0 -0.6,0" fill="#EF4444"/>
+            <polygon points="0,2.8 0.6,0 -0.6,0"  fill="#9CA3AF"/>
+          </g>
+
+          {/* ── SCALE BAR ── */}
+          <g transform="translate(8,66)">
+            <rect x="0" y="0" width="12" height="1.5" rx="0.5" fill="#D1D5DB"/>
+            <rect x="0" y="0" width="6"  height="1.5" rx="0.5" fill="#6B7280"/>
+            <text x="6" y="-1" textAnchor="middle" fill="#9CA3AF" fontSize="1.6">100מ</text>
+          </g>
+        </svg>
+
+        {/* ── RIGHT SIDE CONTROLS (Apple Maps style) ── */}
+        <div style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", display:"flex", flexDirection:"column", gap:8 }}>
+          {[["🧭","כיוון"],["⊞","שכבות"],["3D","תלת"]].map(function(btn) {
+            return (
+              <div key={btn[0]} style={{
+                width:36, height:36, borderRadius:12,
+                background:"rgba(255,255,255,0.92)", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)",
+                border:"1px solid rgba(0,0,0,0.08)",
+                boxShadow:"0 2px 8px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9)",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                cursor:"pointer", fontSize:btn[0]==="3D"?11:16, fontWeight:700, color:"#374151",
+              }}>
+                {btn[0]}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── LEGEND (glass, light) ── */}
+        <div style={{
+          position:"absolute", bottom:10, left:10,
+          background:"rgba(255,255,255,0.88)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)",
+          border:"1px solid rgba(0,0,0,0.07)", borderRadius:14, padding:"8px 12px",
+          boxShadow:"0 2px 12px rgba(0,0,0,0.08)",
+        }}>
+          {[["#EF4444","עמוס מאוד"],["#F59E0B","עמוס"],["#10B981","שקט"]].map(function(item) {
+            return (
+              <div key={item[1]} style={{ display:"flex", alignItems:"center", gap:6, marginBottom:3 }}>
+                <div style={{ width:8, height:8, borderRadius:"50%", background:item[0] }}/>
+                <span style={{ color:"#374151", fontSize:10, fontWeight:500 }}>{item[1]}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── EVENTS BUTTON (bottom-right) ── */}
+        <div style={{
+          position:"absolute", bottom:10, right:10,
+          background:"rgba(255,255,255,0.88)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)",
+          border:"1px solid rgba(37,99,235,0.2)", borderRadius:14, padding:"7px 12px",
+          boxShadow:"0 2px 12px rgba(0,0,0,0.08)", cursor:"pointer", display:"flex", alignItems:"center", gap:6,
+        }}>
+          <span style={{ fontSize:14 }}>🎯</span>
+          <span style={{ color:"#2563EB", fontSize:11, fontWeight:700 }}>5 אירועים</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── NAVIGATION DATA ──────────────────────────────────────────────────────────
+// Pre-computed campus routes from user position (37, 46.2) to each building centroid
+var ROUTES = {
+  A: { points: "37,46.2 36,44 36,37 29,37 29,37", eta: "2 דקות", dist: "180מ",
+       steps: ["פנה שמאלה לשביל הראשי","המשך ישר לשביל הספר","בניין מדעים מצד שמאל"] },
+  B: { points: "37,46.2 37,44 53,44 53,32 63,25 73,25", eta: "5 דקות", dist: "420מ",
+       steps: ["המשך ישר צפונה","פנה ימינה לציר המרכזי","המשך לספרייה בצד ימין"] },
+  C: { points: "37,46.2 38,46 40,62 46,66", eta: "1 דקות", dist: "90מ",
+       steps: ["פנה דרומה","חדר האוכל בניין הראשון"] },
+  D: { points: "37,46.2 37,44 42,44 42,38", eta: "2 דקות", dist: "160מ",
+       steps: ["צעד קצר צפונה","בניין ראשי ישר מולך"] },
+  E: { points: "37,46.2 53,46.2 53,60 72,67 81,67", eta: "4 דקות", dist: "350מ",
+       steps: ["פנה ימינה לציר הראשי","המשך דרומה","מרכז הספורט בצד ימין"] },
+  F: { points: "37,46.2 19,46.2 19,62 20,70", eta: "3 דקות", dist: "260מ",
+       steps: ["פנה שמאלה","המשך דרומה","מעונות בצד שמאל"] },
+};
+
+// ─── NAV CARD ─────────────────────────────────────────────────────────────────
+function NavCard(props) {
+  var dest = props.dest;
+  var onCancel = props.onCancel;
+  var showStepsState = useState(false);
+  var showSteps = showStepsState[0];
+  var setShowSteps = showStepsState[1];
+  if (!dest) return null;
+  var route = ROUTES[dest.id];
+  if (!route) return null;
+
+  return (
+    <div style={{
+      position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 50,
+      padding: "0 12px 12px",
+    }}>
+      {/* Steps panel (hidden by default) */}
+      {showSteps && (
+        <div style={{
+          background: "rgba(255,255,255,0.92)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+          border: "1px solid rgba(0,0,0,0.06)", borderRadius: 20, padding: "14px 16px", marginBottom: 8,
+          boxShadow: "0 4px 24px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9)",
+          animation: "sIn 0.2s ease both",
+        }}>
+          <div style={{ color: "#374151", fontSize: 12, fontWeight: 700, marginBottom: 10 }}>הוראות מפורטות</div>
+          {route.steps.map(function(step, i) {
+            return (
+              <div key={"step"+i} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#EFF6FF", border: "1px solid #BFDBFE", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 10, fontWeight: 700, color: "#2563EB" }}>{i+1}</div>
+                <span style={{ color: "#374151", fontSize: 12, lineHeight: 1.5 }}>{step}</span>
+              </div>
+            );
+          })}
+          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            <div style={{ flex: 1, background: "#EFF6FF", borderRadius: 10, padding: "6px 10px", textAlign: "center", cursor: "pointer" }}>
+              <span style={{ color: "#2563EB", fontSize: 11, fontWeight: 600 }}>♿ מסלול נגיש</span>
+            </div>
+            <div style={{ flex: 1, background: "#F0FDF4", borderRadius: 10, padding: "6px 10px", textAlign: "center", cursor: "pointer" }}>
+              <span style={{ color: "#059669", fontSize: 11, fontWeight: 600 }}>🔀 מסלול חלופי</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main nav card */}
+      <div style={{
+        background: "rgba(255,255,255,0.92)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+        border: "1px solid rgba(0,0,0,0.06)", borderRadius: 22, padding: "14px 16px",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,1)",
+        animation: "sIn 0.25s cubic-bezier(0.34,1.2,0.64,1) both",
+      }}>
+        {/* Handle */}
+        <div style={{ width: 32, height: 3, borderRadius: 2, background: "rgba(0,0,0,0.12)", margin: "0 auto 12px" }} />
+
+        {/* Top row — destination + cancel */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 10, background: "#EFF6FF", border: "1px solid #BFDBFE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
+              {dest.icon}
+            </div>
+            <div>
+              <div style={{ color: "#111827", fontSize: 14, fontWeight: 700 }}>{dest.name}</div>
+              <div style={{ color: "#6B7280", fontSize: 11, marginTop: 1 }}>מתחיל ניווט</div>
+            </div>
+          </div>
+          <button onClick={onCancel} style={{ background: "rgba(0,0,0,0.05)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: "#6B7280", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+        </div>
+
+        {/* Stats row */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          {[["🕐", route.eta, "זמן הגעה"], ["📍", route.dist, "מרחק"], ["↗", route.steps[0], "הוראה הבאה"]].map(function(item, i) {
+            return (
+              <div key={"stat"+i} style={{ flex: i === 2 ? 2 : 1, background: i === 2 ? "#EFF6FF" : "#F9FAFB", borderRadius: 12, padding: "8px 10px", border: "1px solid " + (i===2 ? "#BFDBFE" : "#F3F4F6") }}>
+                <div style={{ fontSize: 12 }}>{item[0]}</div>
+                <div style={{ color: i===2 ? "#2563EB" : "#111827", fontSize: i===2 ? 10 : 13, fontWeight: 700, marginTop: 2 }}>{item[1]}</div>
+                <div style={{ color: "#9CA3AF", fontSize: 9, marginTop: 1 }}>{item[2]}</div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={function() { setShowSteps(function(s) { return !s; }); }} style={{
+            flex: 1, background: "#F3F4F6", border: "none", borderRadius: 12,
+            padding: "9px", cursor: "pointer", color: "#374151", fontSize: 12, fontWeight: 600,
+          }}>
+            {showSteps ? "הסתר פרטים" : "הצג פרטים ↑"}
+          </button>
+          <button style={{
+            flex: 1, background: "#2563EB", border: "none", borderRadius: 12,
+            padding: "9px", cursor: "pointer", color: "white", fontSize: 12, fontWeight: 700,
+            boxShadow: "0 2px 8px rgba(37,99,235,0.35)",
+          }}>
+            🧭 התחל ניווט
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── SHOP DRAWER ──────────────────────────────────────────────────────────────
+function ShopDrawer(props) {
+  var shop = props.shop;
+  var onClose = props.onClose;
+  return (
+    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "#0D1B2A", borderTop: "2px solid " + shop.col, borderRadius: "20px 20px 0 0", zIndex: 110, maxHeight: "72%", display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", justifyContent: "center", padding: "9px 0 4px" }}>
+        <div style={{ width: 34, height: 4, borderRadius: 2, background: shop.col }}/>
+      </div>
+      <div style={{ padding: "0 14px 12px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 24 }}>{shop.icon}</span>
+            <div style={{ color: "#E8F4FF", fontSize: 17, fontWeight: 800 }}>{shop.name}</div>
+          </div>
+          <div style={{ color: "#778", fontSize: 12, marginTop: 4 }}>🕐 {shop.hours}</div>
+        </div>
+        <button onClick={onClose} style={{ background: "#1e3a5f", border: "none", color: "#A8D8FF", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+      </div>
+
+      {/* Discount banner */}
+      <div style={{ margin: "0 14px 12px", background: shop.col + "22", border: "1px solid " + shop.col + "55", borderRadius: 10, padding: "10px 14px", display: "flex", gap: 9, alignItems: "center" }}>
+        <span style={{ fontSize: 20 }}>🎉</span>
+        <div>
+          <div style={{ color: shop.col, fontSize: 12, fontWeight: 800, marginBottom: 2 }}>הנחה לסטודנטים!</div>
+          <div style={{ color: "#A8D8FF", fontSize: 12 }}>{shop.discount}</div>
+        </div>
+      </div>
+
+      {/* Menu */}
+      <div style={{ color: "#A8D8FF", fontSize: 12, fontWeight: 700, padding: "0 14px 8px" }}>תפריט / מוצרים</div>
+      <div style={{ flex: 1, overflowY: "auto", padding: "0 14px 14px" }}>
+        {shop.menu.map(function(item, i) {
+          return (
+            <div key={"mi"+i} style={{ background: "#0d2040", borderRadius: 10, padding: "9px 12px", border: "1px solid #1e3a5f", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
+              <div>
+                <div style={{ color: "#E8F4FF", fontSize: 13, fontWeight: 600 }}>{item.name}</div>
+                {item.tag && (
+                  <span style={{ background: shop.col + "22", color: shop.col, fontSize: 10, borderRadius: 8, padding: "1px 7px", marginTop: 2, display: "inline-block" }}>{item.tag}</span>
+                )}
+              </div>
+              <span style={{ color: "#FFB347", fontWeight: 700, fontSize: 14 }}>{item.price}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── BUILDING DRAWER ──────────────────────────────────────────────────────────
+function BuildingDrawer(props) {
+  var building = props.building;
+  var onClose = props.onClose;
+  var tabState = useState("info");
+  var tab = tabState[0];
+  var setTab = tabState[1];
+  var floorState = useState(1);
+  var activeFloor = floorState[0];
+  var setActiveFloor = floorState[1];
+  var msgState = useState("");
+  var chatMsg = msgState[0];
+  var setChatMsg = msgState[1];
+  var initMsgs = LOCATION_CHATS[building.id] || [];
+  var msgsState = useState(initMsgs);
+  var messages = msgsState[0];
+  var setMessages = msgsState[1];
+  var chatRef = useRef(null);
+
+  useEffect(function() {
+    if (chatRef.current) { chatRef.current.scrollTop = chatRef.current.scrollHeight; }
+  }, [messages, tab]);
+
+  function sendMsg() {
+    if (!chatMsg.trim()) return;
+    var nm = { id: Date.now(), u: "את/ה", av: "ME", text: chatMsg, t: "עכשיו", mine: true };
+    setMessages(function(m) { return m.concat([nm]); });
+    setChatMsg("");
+  }
+
+  var floors = FLOOR_DATA[building.id] || [];
+  var currentFloorData = floors.find(function(f) { return f.floor === activeFloor; });
+  var buildingReports = REPORTS.filter(function(r) { return r.b === building.id; });
+  var friendsHere = FRIENDS.filter(function(f) { return f.active && f.bid === building.id; });
+  var friendsOnFloor = FRIENDS.filter(function(f) { return f.active && f.bid === building.id && f.floor === activeFloor; });
+
+  var roomTypeColor = { class: "#4A9EFF", lab: "#A8E6CF", admin: "#CE93D8", quiet: "#FFB347", service: "#778", wc: "#80DEEA" };
+  var roomTypeLabel = { class: "כיתה", lab: "מעבדה", admin: "מנהלה", quiet: "שקט", service: "שירות", wc: "שירותים" };
+
+  var floorButtons = [];
+  for (var i = 1; i <= building.floors; i++) {
+    var fi = i;
+    floorButtons.push(
+      <div key={"flbtn" + fi} onClick={function(fnum) { return function() { setActiveFloor(fnum); }; }(fi)} style={{ background: activeFloor === fi ? "#1B3A6B" : "#0d2040", border: "1px solid " + (activeFloor === fi ? "#4A9EFF" : "#1e3a5f"), borderRadius: 7, padding: "5px 10px", cursor: "pointer", color: activeFloor === fi ? "#A8D8FF" : "#556", fontSize: 11, fontWeight: 700, flexShrink: 0, textAlign: "center", minWidth: 44 }}>
+        <div>{fi}</div>
+        <div style={{ fontSize: 9, color: activeFloor === fi ? "#7ab" : "#334" }}>קומה</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "#0D1B2A", borderTop: "2px solid #1e3a5f", borderRadius: "20px 20px 0 0", zIndex: 100, maxHeight: "78%", display: "flex", flexDirection: "column" }}>
+      {/* Handle */}
+      <div style={{ display: "flex", justifyContent: "center", padding: "9px 0 4px" }}>
+        <div style={{ width: 34, height: 4, borderRadius: 2, background: "#2E5FA3" }} />
+      </div>
+
+      {/* Header */}
+      <div style={{ padding: "0 14px 8px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <span style={{ fontSize: 22 }}>{building.icon}</span>
+            <div style={{ color: "#E8F4FF", fontSize: 17, fontWeight: 800 }}>{building.name}</div>
+          </div>
+          <div style={{ display: "flex", gap: 6, marginTop: 5, flexWrap: "wrap" }}>
+            <Badge label={dLabel(building.density)} color={dColor(building.density)} />
+            <Badge label={building.floors + " קומות"} color="#4A9EFF" />
+            {friendsHere.length > 0 && <Badge label={"👥 " + friendsHere.length + " חברים כאן"} color="#CE93D8" />}
+            {buildingReports.length > 0 && <Badge label={"⚠ " + buildingReports.length} color="#FF6B6B" />}
+          </div>
+        </div>
+        <button onClick={onClose} style={{ background: "#1e3a5f", border: "none", color: "#A8D8FF", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+      </div>
+
+      {/* Floor slider */}
+      <div style={{ padding: "0 14px 8px" }}>
+        <div style={{ color: "#556", fontSize: 10, marginBottom: 5 }}>בחר קומה — החלק לצדדים</div>
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
+          {floorButtons}
+        </div>
+        {currentFloorData && (
+          <div style={{ color: "#4A9EFF", fontSize: 12, marginTop: 5, fontWeight: 700 }}>
+            קומה {activeFloor} — {currentFloorData.label}
+            {friendsOnFloor.length > 0 && (
+              <span style={{ color: "#CE93D8", marginRight: 8 }}>
+                {friendsOnFloor.map(function(f) { return f.name; }).join(", ")} כאן
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: "flex", borderBottom: "1px solid #1e3a5f", padding: "0 14px" }}>
+        {[["info", "מידע"], ["floor", "קומה " + activeFloor], ["chat", "צ׳אט"], ["reports", "דיווחים"]].map(function(item) {
+          return (
+            <button key={"tab" + item[0]} onClick={function() { setTab(item[0]); }} style={{ background: "none", border: "none", cursor: "pointer", color: tab === item[0] ? "#4A9EFF" : "#556", borderBottom: tab === item[0] ? "2px solid #4A9EFF" : "2px solid transparent", padding: "7px 10px", fontSize: 11, fontWeight: tab === item[0] ? 700 : 400, whiteSpace: "nowrap" }}>
+              {item[1]}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab content */}
+      <div style={{ flex: 1, overflowY: "auto", padding: 13 }}>
+
+        {/* INFO TAB - general building info */}
+        {tab === "info" && (
+          <div>
+            {friendsHere.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ color: "#A8D8FF", fontSize: 12, fontWeight: 700, marginBottom: 6 }}>👥 חברים בבניין</div>
+                {friendsHere.map(function(f) {
+                  return (
+                    <div key={"fh" + f.name} style={{ background: "#0d2040", borderRadius: 9, padding: "8px 11px", border: "1px solid #1e3a5f", display: "flex", alignItems: "center", gap: 9, marginBottom: 6 }}>
+                      <Av initials={f.av} size={30} color={f.color} />
+                      <div>
+                        <div style={{ color: "#E8F4FF", fontSize: 13, fontWeight: 600 }}>{f.name}</div>
+                        <div style={{ color: "#778", fontSize: 11 }}>📍 {f.status}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <div style={{ color: "#A8D8FF", fontSize: 12, fontWeight: 700, marginBottom: 6 }}>פרטי בניין</div>
+            <div style={{ background: "#0d2040", borderRadius: 9, padding: "9px 11px", border: "1px solid #1e3a5f", marginBottom: 6 }}>
+              <div style={{ color: "#778", fontSize: 12 }}>שעות פתיחה</div>
+              <div style={{ color: "#E8F4FF", fontSize: 14, fontWeight: 700 }}>
+                {building.id === "A" ? "07:00–22:00" : building.id === "B" ? "08:00–23:00" : building.id === "C" ? "07:30–20:00" : building.id === "F" ? "24/7" : "08:00–20:00"}
+              </div>
+            </div>
+            <div style={{ color: "#A8D8FF", fontSize: 12, fontWeight: 700, marginBottom: 6 }}>קומות בבניין</div>
+            {floors.map(function(fl) {
+              return (
+                <div key={"fl" + fl.floor} onClick={function() { setActiveFloor(fl.floor); setTab("floor"); }} style={{ background: "#0d2040", borderRadius: 9, padding: "8px 11px", border: "1px solid #1e3a5f", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, cursor: "pointer" }}>
+                  <div>
+                    <span style={{ color: "#4A9EFF", fontSize: 12, fontWeight: 700, marginLeft: 8 }}>קומה {fl.floor}</span>
+                    <span style={{ color: "#E8F4FF", fontSize: 13 }}>{fl.label}</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    {FRIENDS.filter(function(f) { return f.active && f.bid === building.id && f.floor === fl.floor; }).map(function(f) {
+                      return <div key={f.name} style={{ width: 18, height: 18, borderRadius: "50%", background: f.color, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700 }}>{f.av[0]}</div>;
+                    })}
+                    <span style={{ color: "#556", fontSize: 11 }}>›</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* FLOOR TAB - specific floor info */}
+        {tab === "floor" && currentFloorData && (
+          <div>
+            <div style={{ background: "#0d2040", borderRadius: 9, padding: "9px 11px", border: "1px solid #1B3A6B", marginBottom: 10 }}>
+              <div style={{ color: "#4A9EFF", fontSize: 13, fontWeight: 800 }}>קומה {activeFloor} — {currentFloorData.label}</div>
+              {friendsOnFloor.length > 0 && (
+                <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                  {friendsOnFloor.map(function(f) {
+                    return (
+                      <div key={"fof" + f.name} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <div style={{ width: 20, height: 20, borderRadius: "50%", background: f.color, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700 }}>{f.av[0]}</div>
+                        <span style={{ color: f.color, fontSize: 11 }}>{f.name}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {currentFloorData.events && currentFloorData.events.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ color: "#A8D8FF", fontSize: 12, fontWeight: 700, marginBottom: 6 }}>אירועים בקומה זו</div>
+                {currentFloorData.events.map(function(ev, i) {
+                  return (
+                    <div key={"ev" + i} style={{ background: "#0d2040", borderRadius: 9, padding: "8px 11px", border: "1px solid #4A9EFF44", display: "flex", gap: 10, marginBottom: 6 }}>
+                      <div style={{ color: "#4A9EFF", fontSize: 12, fontWeight: 700, minWidth: 36 }}>{ev.time}</div>
+                      <div>
+                        <div style={{ color: "#E8F4FF", fontSize: 13, fontWeight: 600 }}>{ev.name || ev.event}</div>
+                        <div style={{ color: "#778", fontSize: 11 }}>חדר {ev.room}{ev.prof ? " · " + ev.prof : ""}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div style={{ color: "#A8D8FF", fontSize: 12, fontWeight: 700, marginBottom: 6 }}>חדרים בקומה</div>
+            {currentFloorData.rooms && currentFloorData.rooms.map(function(room, i) {
+              var rc = roomTypeColor[room.type] || "#778";
+              var rl = roomTypeLabel[room.type] || room.type;
+              return (
+                <div key={"room" + i} style={{ background: "#0d2040", borderRadius: 9, padding: "8px 11px", border: "1px solid " + rc + "44", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <div>
+                    <div style={{ color: "#E8F4FF", fontSize: 13 }}>{room.name}</div>
+                    <div style={{ color: "#556", fontSize: 11 }}>{room.room !== "—" ? "חדר " + room.room : ""}</div>
+                  </div>
+                  <Badge label={rl} color={rc} />
+                </div>
+              );
+            })}
+
+            {currentFloorData.available !== undefined && (
+              <div style={{ background: "#0d2040", borderRadius: 9, padding: "9px 11px", border: "1px solid #1e3a5f", marginTop: 8 }}>
+                <div style={{ color: "#A8D8FF", fontSize: 12 }}>מקומות פנויים</div>
+                <div style={{ color: currentFloorData.available < 5 ? "#FF6B6B" : "#A8E6CF", fontSize: 18, fontWeight: 800 }}>{currentFloorData.available}</div>
+              </div>
+            )}
+            {currentFloorData.notes && (
+              <div style={{ background: "rgba(30,58,95,0.2)", border: "1px solid #1e3a5f", borderRadius: 8, padding: "7px 10px", color: "#A8D8FF", fontSize: 12, marginTop: 8 }}>📢 {currentFloorData.notes}</div>
+            )}
+            {currentFloorData.waitTime !== undefined && (
+              <div style={{ background: "#0d2040", borderRadius: 9, padding: "9px 11px", border: "1px solid #1e3a5f", marginTop: 8, display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#A8D8FF", fontSize: 12 }}>⏱ זמן המתנה</span>
+                <span style={{ color: "#FFB347", fontWeight: 700 }}>{currentFloorData.waitTime} דקות</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CHAT TAB */}
+        {tab === "chat" && (
+          <div style={{ display: "flex", flexDirection: "column", minHeight: 200 }}>
+            <div ref={chatRef} style={{ flex: 1, paddingBottom: 8 }}>
+              {messages.length === 0 ? (
+                <div style={{ color: "#445", fontSize: 12, textAlign: "center", marginTop: 20 }}>היה הראשון לכתוב!</div>
+              ) : (
+                messages.map(function(m) { return <Bubble key={m.id} msg={m} />; })
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 7, marginTop: 8 }}>
+              <input value={chatMsg} onChange={function(e) { setChatMsg(e.target.value); }} onKeyDown={function(e) { if (e.key === "Enter") sendMsg(); }} placeholder="כתוב הודעה..." style={{ flex: 1, background: "#0d2040", border: "1px solid #1e3a5f", borderRadius: 18, padding: "7px 12px", color: "#E8F4FF", fontSize: 13, outline: "none" }} />
+              <button onClick={sendMsg} style={{ background: "#1B3A6B", border: "1px solid #2E5FA3", borderRadius: 18, color: "#4A9EFF", padding: "7px 13px", cursor: "pointer", fontSize: 14 }}>↑</button>
+            </div>
+          </div>
+        )}
+
+        {/* REPORTS TAB */}
+        {tab === "reports" && (
+          <div>
+            {buildingReports.length === 0 ? (
+              <div style={{ color: "#445", fontSize: 12, textAlign: "center", marginTop: 20 }}>אין דיווחים פתוחים</div>
+            ) : (
+              buildingReports.map(function(r) {
+                return (
+                  <div key={"r" + r.id} style={{ background: "#0d2040", borderRadius: 9, padding: "9px 11px", border: "1px solid " + r.col + "44", display: "flex", alignItems: "center", gap: 9, marginBottom: 6 }}>
+                    <div style={{ width: 9, height: 9, borderRadius: "50%", background: r.col, flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ color: "#E8F4FF", fontSize: 13, fontWeight: 600 }}>{r.cat}</div>
+                      <div style={{ color: "#556", fontSize: 11 }}>קומה {r.floor} · {r.t}</div>
+                    </div>
+                    <Badge label={r.status} color={r.status === "טופל" ? "#A8E6CF" : r.status === "בטיפול" ? "#FFB347" : "#FF6B6B"} />
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── CHAT SCREEN ──────────────────────────────────────────────────────────────
+function ChatScreen() {
+  var activeState = useState(null);
+  var activeChat = activeState[0];
+  var setActiveChat = activeState[1];
+  var replyState = useState("");
+  var replyMsg = replyState[0];
+  var setReplyMsg = replyState[1];
+  var allMsgsState = useState(function() {
+    var r = {};
+    PRIVATE_CHATS.forEach(function(p) { r[p.id] = p.msgs.slice(); });
+    return r;
+  });
+  var allMsgs = allMsgsState[0];
+  var setAllMsgs = allMsgsState[1];
+  var endRef = useRef(null);
+
+  useEffect(function() {
+    if (endRef.current) { endRef.current.scrollTop = endRef.current.scrollHeight; }
+  }, [allMsgs, activeChat]);
+
+  function sendReply() {
+    if (!replyMsg.trim() || !activeChat) return;
+    var nm = { id: Date.now(), u: "את/ה", av: "ME", text: replyMsg, t: "עכשיו", mine: true };
+    setAllMsgs(function(prev) {
+      var next = Object.assign({}, prev);
+      next[activeChat.id] = (next[activeChat.id] || []).concat([nm]);
+      return next;
+    });
+    setReplyMsg("");
+  }
+
+  if (activeChat) {
+    var curMsgs = allMsgs[activeChat.id] || [];
+    return (
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ background: "#060d18", borderBottom: "1px solid #1e3a5f", padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <button onClick={function() { setActiveChat(null); }} style={{ background: "none", border: "none", color: "#4A9EFF", cursor: "pointer", fontSize: 20, padding: 0, lineHeight: 1 }}>←</button>
+          <div style={{ position: "relative" }}>
+            <Av initials={activeChat.av} size={34} color="#1B3A6B" />
+            {activeChat.online && <div style={{ position: "absolute", bottom: 0, right: 0, width: 9, height: 9, borderRadius: "50%", background: "#A8E6CF", border: "2px solid #060d18" }} />}
+          </div>
+          <div>
+            <div style={{ color: "#E8F4FF", fontSize: 14, fontWeight: 700 }}>{activeChat.name}</div>
+            <div style={{ color: "#556", fontSize: 11 }}>{activeChat.online ? "מחובר/ת" : "לא מחובר/ת"}</div>
+          </div>
+        </div>
+        <div ref={endRef} style={{ flex: 1, overflowY: "auto", padding: 13 }}>
+          {curMsgs.length === 0 ? <div style={{ color: "#445", fontSize: 12, textAlign: "center", marginTop: 30 }}>התחל/י שיחה</div> : curMsgs.map(function(m) { return <Bubble key={m.id} msg={m} />; })}
+        </div>
+        <div style={{ padding: "10px 13px", borderTop: "1px solid #1e3a5f", display: "flex", gap: 8, flexShrink: 0 }}>
+          <input value={replyMsg} onChange={function(e) { setReplyMsg(e.target.value); }} onKeyDown={function(e) { if (e.key === "Enter") sendReply(); }} placeholder="כתוב הודעה..." style={{ flex: 1, background: "#0d2040", border: "1px solid #1e3a5f", borderRadius: 20, padding: "8px 14px", color: "#E8F4FF", fontSize: 13, outline: "none" }} />
+          <button onClick={sendReply} style={{ background: "#1B3A6B", border: "1px solid #2E5FA3", borderRadius: 20, color: "#4A9EFF", padding: "8px 14px", cursor: "pointer", fontSize: 14 }}>↑</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ padding: "10px 14px 8px", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+        <div style={{ color: "#E8F4FF", fontSize: 16, fontWeight: 800 }}>הודעות</div>
+        <button style={{ background: "#1B3A6B", border: "1px solid #2E5FA3", borderRadius: 8, color: "#A8D8FF", fontSize: 12, padding: "4px 11px", cursor: "pointer" }}>+ חדש</button>
+      </div>
+      <div style={{ padding: "0 14px 10px", display: "flex", gap: 10, overflowX: "auto", flexShrink: 0, borderBottom: "1px solid #1e3a5f" }}>
+        {FRIENDS.filter(function(f) { return f.active; }).map(function(f) {
+          return (
+            <div key={"online" + f.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
+              <div style={{ position: "relative" }}>
+                <Av initials={f.av} size={38} color={f.color} />
+                <div style={{ position: "absolute", bottom: 0, right: 0, width: 10, height: 10, borderRadius: "50%", background: "#A8E6CF", border: "2px solid #0D1B2A" }} />
+              </div>
+              <span style={{ color: "#778", fontSize: 10 }}>{f.name}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ flex: 1, overflowY: "auto" }}>
+        {PRIVATE_CHATS.map(function(c) {
+          return (
+            <div key={"pc" + c.id} onClick={function() { setActiveChat(c); }} style={{ padding: "11px 14px", display: "flex", alignItems: "center", gap: 11, borderBottom: "1px solid #0d2040", cursor: "pointer" }}>
+              <div style={{ position: "relative" }}>
+                <Av initials={c.av} size={42} color={c.group ? "#1e3a5f" : "#1B3A6B"} />
+                {c.online && <div style={{ position: "absolute", bottom: 0, right: 0, width: 10, height: 10, borderRadius: "50%", background: "#A8E6CF", border: "2px solid #0D1B2A" }} />}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "#E8F4FF", fontSize: 14, fontWeight: 700 }}>{c.name}</span>
+                  <span style={{ color: "#445", fontSize: 11 }}>{c.t}</span>
+                </div>
+                <div style={{ color: "#778", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.last}</div>
+              </div>
+              {c.unread > 0 && <div style={{ background: "#4A9EFF", borderRadius: 10, minWidth: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#fff", padding: "0 5px" }}>{c.unread}</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── REPORT SCREEN ────────────────────────────────────────────────────────────
+function ReportScreen() {
+  var stepState = useState(0);
+  var step = stepState[0];
+  var setStep = stepState[1];
+  var bldState = useState("A");
+  var selBld = bldState[0];
+  var setSelBld = bldState[1];
+  var catState = useState("");
+  var selCat = catState[0];
+  var setSelCat = catState[1];
+  var cats = ["מזגן תקול", "נזילת מים", "תאורה שבורה", "נייר טואלט חסר", "מדפסת תקולה", "ספסל שבור", "ריצפה רטובה", "אחר"];
+  var isPrivate = selCat && ["נייר טואלט חסר", "מדפסת תקולה", "ספסל שבור"].includes(selCat);
+
+  if (step === 1) {
+    return (
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, gap: 14 }}>
+        <div style={{ fontSize: 60 }}>✅</div>
+        <div style={{ color: "#E8F4FF", fontSize: 19, fontWeight: 800 }}>הדיווח נשלח!</div>
+        <div style={{ color: "#778", fontSize: 13, textAlign: "center", maxWidth: 230 }}>הצוות יטפל בהקדם. תקבל/י עדכון כשיסתיים הטיפול.</div>
+        <div style={{ background: "#0d2040", borderRadius: 12, padding: "11px 14px", border: "1px solid #FFB34744", width: "100%", maxWidth: 280 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <div style={{ width: 9, height: 9, borderRadius: "50%", background: "#FFB347" }} />
+            <span style={{ color: "#FFB347", fontSize: 13, fontWeight: 700 }}>ממתין לשיבוץ טכנאי</span>
+          </div>
+        </div>
+        <button onClick={function() { setStep(0); setSelCat(""); }} style={{ background: "#1B3A6B", border: "1px solid #2E5FA3", borderRadius: 11, color: "#A8D8FF", padding: "9px 22px", cursor: "pointer", fontSize: 14 }}>דיווח נוסף</button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ flex: 1, overflowY: "auto", padding: 14 }}>
+      <div style={{ color: "#A8D8FF", fontSize: 13, fontWeight: 700, marginBottom: 8 }}>בחר בניין</div>
+      <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 14 }}>
+        {BUILDINGS.map(function(b) {
+          return (
+            <button key={"rb" + b.id} onClick={function() { setSelBld(b.id); }} style={{ background: selBld === b.id ? "#1B3A6B" : "#0d2040", border: "1px solid " + (selBld === b.id ? "#4A9EFF" : "#1e3a5f"), borderRadius: 8, padding: "5px 11px", cursor: "pointer", color: selBld === b.id ? "#A8D8FF" : "#778", fontSize: 12 }}>
+              {b.icon} {b.short}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ color: "#A8D8FF", fontSize: 13, fontWeight: 700, marginBottom: 8 }}>קטגוריה</div>
+      <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 14 }}>
+        {cats.map(function(c) {
+          return (
+            <button key={"rc" + c} onClick={function() { setSelCat(c); }} style={{ background: selCat === c ? "#1B3A6B" : "#0d2040", border: "1px solid " + (selCat === c ? "#4A9EFF" : "#1e3a5f"), borderRadius: 8, padding: "5px 11px", cursor: "pointer", color: selCat === c ? "#A8D8FF" : "#778", fontSize: 12 }}>
+              {c}
+            </button>
+          );
+        })}
+      </div>
+      {selCat && (
+        <div style={{ background: "#0d2040", border: "1px solid " + (isPrivate ? "#FFB34744" : "#4A9EFF44"), borderRadius: 10, padding: "9px 11px", marginBottom: 14 }}>
+          <div style={{ color: isPrivate ? "#FFB347" : "#4A9EFF", fontSize: 11, fontWeight: 700, marginBottom: 2 }}>🔒 חשיפה</div>
+          <div style={{ color: "#778", fontSize: 11 }}>{isPrivate ? "רק לצוות ולמשתמשים בחדר" : "גלוי לכולם על המפה"}</div>
+        </div>
+      )}
+      <button onClick={function() { if (selCat) setStep(1); }} style={{ background: selCat ? "#1B3A6B" : "#0d2040", border: "1px solid " + (selCat ? "#4A9EFF" : "#1e3a5f"), borderRadius: 12, padding: "12px", width: "100%", cursor: selCat ? "pointer" : "not-allowed", color: selCat ? "#E8F4FF" : "#445", fontSize: 15, fontWeight: 700 }}>
+        {selCat ? "שלח דיווח" : "בחר קטגוריה"}
+      </button>
+    </div>
+  );
+}
+
+// ─── PROFILE SCREEN ───────────────────────────────────────────────────────────
+function ProfileScreen() {
+  var ghostState = useState(false);
+  var ghost = ghostState[0];
+  var setGhost = ghostState[1];
+  return (
+    <div style={{ flex: 1, overflowY: "auto", padding: 14 }}>
+      <div style={{ background: "#0d2040", borderRadius: 16, padding: 14, border: "1px solid #1e3a5f", textAlign: "center", marginBottom: 13 }}>
+        <div style={{ display: "flex", justifyContent: "center" }}><Av initials="DC" size={60} color="#1B3A6B" /></div>
+        <div style={{ color: "#E8F4FF", fontSize: 17, fontWeight: 800, marginTop: 9 }}>דוד כהן</div>
+        <div style={{ color: "#778", fontSize: 13 }}>שנה ב׳ · מדעי המחשב</div>
+        <div style={{ display: "flex", justifyContent: "center", gap: 18, marginTop: 11 }}>
+          {[["24", "דיווחים"], ["8", "אירועים"], ["142", "נקודות"]].map(function(it) {
+            return (
+              <div key={it[1]} style={{ textAlign: "center" }}>
+                <div style={{ color: "#4A9EFF", fontSize: 18, fontWeight: 800 }}>{it[0]}</div>
+                <div style={{ color: "#556", fontSize: 11 }}>{it[1]}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div style={{ background: "#0d2040", borderRadius: 12, padding: "11px 14px", border: "1px solid " + (ghost ? "#4A9EFF" : "#1e3a5f"), display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 13 }}>
+        <div>
+          <div style={{ color: "#E8F4FF", fontSize: 14, fontWeight: 700 }}>👻 Ghost Mode</div>
+          <div style={{ color: "#778", fontSize: 12 }}>{ghost ? "אינך נראה/ת לאחרים" : "חברים יכולים לראות אותך"}</div>
+        </div>
+        <div onClick={function() { setGhost(function(g) { return !g; }); }} style={{ width: 42, height: 23, borderRadius: 12, cursor: "pointer", background: ghost ? "#1B3A6B" : "#1e3a5f", border: "2px solid " + (ghost ? "#4A9EFF" : "#334"), position: "relative", transition: "all 0.2s" }}>
+          <div style={{ position: "absolute", top: 2, left: ghost ? 18 : 2, width: 15, height: 15, borderRadius: "50%", background: ghost ? "#4A9EFF" : "#445", transition: "left 0.2s" }} />
+        </div>
+      </div>
+      <div style={{ color: "#4A9EFF", fontSize: 13, fontWeight: 700, marginBottom: 8 }}>פעילות אחרונה</div>
+      {[
+        { icon: "⚠️", text: "דיווחת על מזגן תקול — מדעים", t: "לפני שעה" },
+        { icon: "🎯", text: "הצטרפת לטורניר פינג-פונג", t: "אתמול" },
+        { icon: "💬", text: "כתבת בצ׳אט הספרייה", t: "לפני 2 ימים" },
+        { icon: "📍", text: "ביקרת ב-4 בניינים השבוע", t: "שבועי" },
+      ].map(function(a, i) {
+        return (
+          <div key={"act" + i} style={{ background: "#0d2040", borderRadius: 10, padding: "9px 11px", border: "1px solid #1e3a5f", display: "flex", gap: 9, alignItems: "center", marginBottom: 8 }}>
+            <span style={{ fontSize: 17 }}>{a.icon}</span>
+            <div>
+              <div style={{ color: "#C8E0FF", fontSize: 13 }}>{a.text}</div>
+              <div style={{ color: "#556", fontSize: 11 }}>{a.t}</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── BULLETIN BOARD ───────────────────────────────────────────────────────────
+var BULLETIN_DATA = {
+  social: [
+    { id:"s1", user:"נועה ב.", av:"NB", col:"#4A9EFF", time:"לפני 5 דק׳", text:"מישהו רוצה ללמוד ביחד לבחינה בסטטיסטיקה? אני בספרייה קומה 3 🙋", likes:14 },
+    { id:"s2", user:"עידן מ.", av:"IM", col:"#A8E6CF", time:"לפני 22 דק׳", text:"מי משחק כדורסל ב-17:00? חסרים 2 שחקנים למגרש", likes:8 },
+    { id:"s3", user:"שני כ.", av:"SK", col:"#FFB347", time:"לפני שעה", text:"קפה חינם בכניסה לבניין מנהל עד 12:00 🎉 מיזם של האגוד", likes:31 },
+    { id:"s4", user:"גל ר.", av:"GR", col:"#CE93D8", time:"לפני 2 שעות", text:"חדר הכושר ריק לגמרי עכשיו — הזדמנות נדירה 💪", likes:6 },
+  ],
+  lostfound: [
+    { id:"l1", user:"אנונימי", av:"?", col:"#FF8A65", time:"לפני 12 דק׳", text:"נמצא: ארנק שחור ליד מכונות הקפה בניין ראשי. פנו אלי בפרטי", tag:"נמצא", tagCol:"#A8E6CF" },
+    { id:"l2", user:"ליאת ש.", av:"LS", col:"#FF6B6B", time:"לפני שעה", text:"אבד: מחשב נייד Dell בכיסוי אפור, קומה 2 בניין מדעים. מאוד חשוב! מתגמל!", tag:"אבד", tagCol:"#FF6B6B" },
+    { id:"l3", user:"אנונימי", av:"?", col:"#FF8A65", time:"לפני 3 שעות", text:"נמצא: מפתח עם מחזיק כוכב כחול — ליד מדפסות קומה 2", tag:"נמצא", tagCol:"#A8E6CF" },
+    { id:"l4", user:"יוסף מ.", av:"YM", col:"#FF6B6B", time:"אתמול", text:"אבד: כרטיסיית Rav-Kav. שם: יוסף. אם מצאתם — תודה רבה!", tag:"אבד", tagCol:"#FF6B6B" },
+  ],
+  market: [
+    { id:"m1", user:"דנה כ.", av:"DK", col:"#FFB347", time:"לפני 30 דק׳", text:"ספר מתמטיקה דיסקרטית — מהדורה 4, מצב מצוין. ₪80 במקום ₪210", price:"₪80", tag:"ספרים" },
+    { id:"m2", user:"קיוסק עמי", av:"KE", col:"#A8E6CF", time:"לפני שעה", text:"קיוסק ביתי: שוקולד, חטיפים, שתייה קרה — קומה 3 בניין מדעים בין 10-14 בימים א-ה", price:"₪5–₪15", tag:"קיוסק" },
+    { id:"m3", user:"רון פ.", av:"RP", col:"#80DEEA", time:"לפני 2 שעות", text:"כסאות משרד ×2, מצב טוב. ₪120 לאחד, ₪200 לשניים. יציאה מהמעונות", price:"₪120", tag:"ריהוט" },
+    { id:"m4", user:"מאיה ג.", av:"MG", col:"#4A9EFF", time:"אתמול", text:"שיעורים פרטיים במתמטיקה ופיזיקה — ₪60 לשעה. שנה ד' הנדסה. 10 מקומות", price:"₪60/שעה", tag:"שיעורים" },
+    { id:"m5", user:"סטודנטים לעיצוב", av:"SL", col:"#CE93D8", time:"אתמול", text:"עיצוב לוגו, פליירים, מצגות — מחירים סטודנטיאלים. עבודות לתיק + ניסיון", price:"במשא ומתן", tag:"שירותים" },
+  ],
+};
+
+function BulletinScreen() {
+  var tabState = useState("social");
+  var tab = tabState[0];
+  var setTab = tabState[1];
+  var likedState = useState({});
+  var liked = likedState[0];
+  var setLiked = likedState[1];
+
+  var TABS = [
+    { id: "social",    icon: "📣", label: "פוסטים" },
+    { id: "lostfound", icon: "🔍", label: "אבידות" },
+    { id: "market",    icon: "🛍️", label: "שוק" },
+  ];
+
+  var posts = BULLETIN_DATA[tab] || [];
+
+  function toggleLike(id) {
+    setLiked(function(prev) {
+      var next = Object.assign({}, prev);
+      next[id] = !next[id];
+      return next;
+    });
+  }
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* Header */}
+      <div style={{ background: "#060d18", borderBottom: "1px solid #1e3a5f", padding: "10px 14px 0", flexShrink: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <div style={{ color: "#E8F4FF", fontSize: 16, fontWeight: 800 }}>לוח מודעות</div>
+          <button style={{ background: "#1B3A6B", border: "1px solid #2E5FA3", borderRadius: 8, color: "#A8D8FF", fontSize: 12, padding: "4px 11px", cursor: "pointer" }}>+ פרסם</button>
+        </div>
+        {/* Sub-tabs */}
+        <div style={{ display: "flex", gap: 0 }}>
+          {TABS.map(function(t) {
+            var active = tab === t.id;
+            return (
+              <button key={t.id} onClick={function() { setTab(t.id); }} style={{ flex: 1, background: "none", border: "none", cursor: "pointer", padding: "6px 4px", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, borderBottom: active ? "2px solid #4A9EFF" : "2px solid transparent", transition: "border-color 0.2s" }}>
+                <span style={{ fontSize: 16 }}>{t.icon}</span>
+                <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, color: active ? "#4A9EFF" : "#556" }}>{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Posts list */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px" }}>
+        {posts.map(function(p) {
+          var isLiked = !!liked[p.id];
+          return (
+            <div key={p.id} style={{ background: "#0d2040", borderRadius: 12, padding: "11px 13px", border: "1px solid #1e3a5f", marginBottom: 10 }}>
+              {/* Top row */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <div style={{ width: 32, height: 32, borderRadius: "50%", background: p.col + "33", border: "1px solid " + p.col + "66", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: p.col, flexShrink: 0 }}>{p.av}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: "#E8F4FF", fontSize: 13, fontWeight: 700 }}>{p.user}</div>
+                  <div style={{ color: "#445", fontSize: 11 }}>{p.time}</div>
+                </div>
+                {/* Tag badge */}
+                {p.tag && (
+                  <span style={{ background: (p.tagCol || p.col) + "22", color: p.tagCol || p.col, border: "1px solid " + (p.tagCol || p.col) + "55", borderRadius: 20, padding: "2px 8px", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{p.tag}</span>
+                )}
+                {/* Price badge */}
+                {p.price && (
+                  <span style={{ background: "#FFB34722", color: "#FFB347", border: "1px solid #FFB34755", borderRadius: 20, padding: "2px 8px", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>{p.price}</span>
+                )}
+              </div>
+              {/* Text */}
+              <div style={{ color: "#C8E0FF", fontSize: 13, lineHeight: 1.5, marginBottom: 8 }}>{p.text}</div>
+              {/* Actions */}
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <button onClick={function() { toggleLike(p.id); }} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, padding: 0 }}>
+                  <span style={{ fontSize: 14 }}>{isLiked ? "❤️" : "🤍"}</span>
+                  <span style={{ color: isLiked ? "#FF6B6B" : "#445", fontSize: 12 }}>{(p.likes || 0) + (isLiked ? 1 : 0)}</span>
+                </button>
+                <button style={{ background: "none", border: "none", cursor: "pointer", color: "#445", fontSize: 12, padding: 0 }}>💬 הגב</button>
+                <button style={{ background: "none", border: "none", cursor: "pointer", color: "#445", fontSize: 12, padding: 0, marginRight: "auto" }}>📤 שתף</button>
+                {(tab === "lostfound" || tab === "market") && (
+                  <button style={{ background: "#1B3A6B", border: "1px solid #2E5FA3", borderRadius: 7, color: "#A8D8FF", fontSize: 11, padding: "3px 10px", cursor: "pointer" }}>
+                    {tab === "lostfound" ? "פנה/י" : "צור קשר"}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── APP ──────────────────────────────────────────────────────────────────────
+export default function App() {
+  var screenState = useState("map");
+  var screen = screenState[0];
+  var setScreen = screenState[1];
+  var bldState = useState(null);
+  var selBuilding = bldState[0];
+  var setSelBuilding = bldState[1];
+  var shopState = useState(null);
+  var selShop = shopState[0];
+  var setSelShop = shopState[1];
+
+  var tabs = [
+    { id: "map",      icon: "🗺️", label: "מפה" },
+    { id: "bulletin", icon: "📋", label: "לוח" },
+    { id: "chat",     icon: "💬", label: "צ׳אט" },
+    { id: "report",   icon: "⚠️", label: "דיווח" },
+    { id: "profile",  icon: "👤", label: "פרופיל" },
+  ];
+
+  return (
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", background: "linear-gradient(135deg,#e8edf5 0%,#f0f4fa 50%,#e5eaf2 100%)" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&family=Assistant:wght@400;500;600;700;800&display=swap');
+        * { font-family: 'Assistant', -apple-system, BlinkMacSystemFont, sans-serif; box-sizing: border-box; }
+        button, input, textarea { font-family: inherit; }
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 2px; }
+
+        .screen-fade { animation: sIn 0.28s cubic-bezier(0.34,1.2,0.64,1) both; }
+        @keyframes sIn { from { opacity:0; transform:translateY(12px) scale(0.97); } to { opacity:1; transform:translateY(0) scale(1); } }
+
+        .tap { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+        .tap:active { transform: scale(0.96); }
+
+        .glass-light {
+          background: rgba(255,255,255,0.78);
+          backdrop-filter: blur(24px) saturate(200%);
+          -webkit-backdrop-filter: blur(24px) saturate(200%);
+          border: 1px solid rgba(255,255,255,0.9);
+          box-shadow: 0 2px 20px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,1);
+        }
+        .glass-card {
+          background: rgba(255,255,255,0.72);
+          backdrop-filter: blur(20px) saturate(180%);
+          -webkit-backdrop-filter: blur(20px) saturate(180%);
+          border: 1px solid rgba(255,255,255,0.85);
+          box-shadow: 0 1px 12px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.95);
+        }
+        .card-hover { transition: box-shadow 0.2s ease, transform 0.2s ease; }
+        .card-hover:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.1); transform: translateY(-1px); }
+      `}</style>
+
+      {/* Phone shell */}
+      <div style={{
+        width: 375, height: 812, borderRadius: 50, overflow: "hidden",
+        background: "#F2F5FA",
+        boxShadow: "0 50px 100px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)",
+        display: "flex", flexDirection: "column",
+        border: "1px solid rgba(0,0,0,0.04)",
+      }}>
+
+        {/* Status bar */}
+        <div style={{
+          background: "rgba(242,245,250,0.92)",
+          backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+          padding: "14px 20px 6px", flexShrink: 0,
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          borderBottom: "1px solid rgba(0,0,0,0.05)",
+        }}>
+          <span style={{ color: "#111827", fontSize: 13, fontWeight: 700 }}>9:41</span>
+          <span style={{ color: "#374151", fontSize: 11, fontWeight: 700, letterSpacing: 2 }}>CAMPUS OS</span>
+          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <span style={{ color: "#6B7280", fontSize: 10 }}>●●●</span>
+            <span style={{ fontSize: 12 }}>🔋</span>
+          </div>
+        </div>
+
+        {/* Smart info bar */}
+        <div style={{
+          margin: "8px 12px 0", borderRadius: 18, padding: "8px 16px",
+          background: "rgba(255,255,255,0.82)",
+          backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+          border: "1px solid rgba(0,0,0,0.06)",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.9)",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          flexShrink: 0,
+        }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <span style={{ color: "#111827", fontSize: 13, fontWeight: 700 }}>יום ב׳, 27 אפריל</span>
+            <span style={{ color: "#6B7280", fontSize: 11 }}>אוניברסיטת הנגב</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ color: "#374151", fontSize: 13, fontWeight: 600 }}>14:35</span>
+            <div style={{ width: 1, height: 18, background: "rgba(0,0,0,0.1)" }} />
+            <span style={{ fontSize: 18 }}>☀️</span>
+            <span style={{ color: "#111827", fontSize: 13, fontWeight: 700 }}>24°C</span>
+          </div>
+        </div>
+
+        {/* Content area */}
+        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", marginTop: 8 }}>
+          {screen === "map" && (
+            <div key="map" className="screen-fade" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              <MapScreen
+                onBuilding={function(b) { setSelShop(null); setSelBuilding(b); }}
+                onShop={function(s) { setSelBuilding(null); setSelShop(s); }}
+                selectedId={selBuilding ? selBuilding.id : null}
+              />
+              {selBuilding !== null && <BuildingDrawer building={selBuilding} onClose={function() { setSelBuilding(null); }} />}
+              {selShop !== null && <ShopDrawer shop={selShop} onClose={function() { setSelShop(null); }} />}
+            </div>
+          )}
+          {screen === "bulletin" && <div key="bulletin" className="screen-fade" style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}><BulletinScreen /></div>}
+          {screen === "chat"     && <div key="chat"     className="screen-fade" style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}><ChatScreen /></div>}
+          {screen === "report"   && <div key="report"   className="screen-fade" style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}><ReportScreen /></div>}
+          {screen === "profile"  && <div key="profile"  className="screen-fade" style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}><ProfileScreen /></div>}
+        </div>
+
+        {/* Bottom nav — glass pill */}
+        <div style={{
+          padding: "6px 8px 18px", flexShrink: 0,
+          background: "rgba(242,245,250,0.92)",
+          backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+          borderTop: "1px solid rgba(0,0,0,0.06)",
+        }}>
+          <div style={{ display: "flex", background: "rgba(255,255,255,0.7)", borderRadius: 22, padding: "2px", border: "1px solid rgba(0,0,0,0.05)" }}>
+            {tabs.map(function(t) {
+              var active = screen === t.id;
+              return (
+                <button key={"nav"+t.id}
+                  onClick={function() { setScreen(t.id); setSelBuilding(null); setSelShop(null); }}
+                  className="tap"
+                  style={{
+                    flex: 1, border: "none", cursor: "pointer", padding: "7px 0 5px",
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                    borderRadius: 20,
+                    background: active ? "rgba(255,255,255,0.95)" : "transparent",
+                    boxShadow: active ? "0 2px 8px rgba(0,0,0,0.1)" : "none",
+                    transition: "all 0.2s ease",
+                  }}>
+                  <div style={{ position: "relative" }}>
+                    <span style={{ fontSize: 19 }}>{t.icon}</span>
+                    {t.id === "chat" && <div style={{ position:"absolute", top:-2, right:-3, width:7, height:7, borderRadius:"50%", background:"#EF4444", border:"1.5px solid #F2F5FA" }} />}
+                  </div>
+                  <span style={{ fontSize: 9.5, fontWeight: active ? 700 : 500, color: active ? "#111827" : "#9CA3AF", letterSpacing: 0.2 }}>{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
