@@ -14,6 +14,12 @@ function formatPhone(val: string): string {
 
 const DEMO_PHONE = "+972501234567";
 
+// The demo-login shortcut is ONLY available in dev builds. The production
+// build (import.meta.env.DEV === false) never even ships the button or its
+// handler — there is no path for an unauthenticated user to obtain a session
+// without going through real OTP verification.
+const SHOW_DEMO_LOGIN = import.meta.env.DEV;
+
 export default function AuthPage() {
   const { setToken, refreshUser } = useAuth();
   const [, navigate] = useLocation();
@@ -26,10 +32,12 @@ export default function AuthPage() {
   const [error, setError] = useState("");
 
   const handleDemoLogin = async () => {
+    if (!SHOW_DEMO_LOGIN) return; // safety: should never reach in prod
     setDemoLoading(true);
     setError("");
     try {
       const res = await requestOtp(DEMO_PHONE);
+      if (!res.otp) throw new Error("Demo unavailable in production");
       const verify = await verifyOtp(DEMO_PHONE, res.otp);
       setStep("done");
       setTimeout(async () => {
@@ -120,15 +128,19 @@ export default function AuthPage() {
                 className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>שליחת קוד אימות <ArrowRight className="w-4 h-4 rotate-180" /></>}
               </button>
-              <div className="relative flex items-center gap-3 my-1">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground">או</span>
-                <div className="flex-1 h-px bg-border" />
-              </div>
-              <button type="button" onClick={handleDemoLogin} disabled={demoLoading}
-                className="w-full py-3.5 rounded-xl bg-secondary border border-border text-foreground font-semibold text-sm flex items-center justify-center gap-2 hover:bg-secondary/80 active:scale-[0.98] transition-all disabled:opacity-50">
-                {demoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>🗺️ כניסה להדגמה</>}
-              </button>
+              {SHOW_DEMO_LOGIN && (
+                <>
+                  <div className="relative flex items-center gap-3 my-1">
+                    <div className="flex-1 h-px bg-border" />
+                    <span className="text-xs text-muted-foreground">או (פיתוח בלבד)</span>
+                    <div className="flex-1 h-px bg-border" />
+                  </div>
+                  <button type="button" onClick={handleDemoLogin} disabled={demoLoading}
+                    className="w-full py-3.5 rounded-xl bg-secondary border border-border text-foreground font-semibold text-sm flex items-center justify-center gap-2 hover:bg-secondary/80 active:scale-[0.98] transition-all disabled:opacity-50">
+                    {demoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>🗺️ כניסת הדגמה (DEV)</>}
+                  </button>
+                </>
+              )}
               <p className="text-center text-xs text-muted-foreground">
                 בהמשך הינכם מסכימים לתנאי השימוש
               </p>

@@ -132,9 +132,15 @@ artifacts-monorepo/
 - `POST /api/campus` — Set/update campus config
 - `GET /api/locations` · `POST /api/locations` · `PUT /api/locations/:id` · `DELETE /api/locations/:id`
 
-### Auth (demo mode)
-- `POST /api/auth/request-otp` — Request OTP (returns `{ otp }` in demo mode)
-- `POST /api/auth/verify-otp` — Verify OTP, receive JWT token
+### Auth (production OTP — Wave 2)
+- `POST /api/auth/request-otp` — Request OTP. In dev returns `{ success, otp }`; in prod returns `{ success }` only and logs the OTP server-side. Per-phone rate-limit (5 / hour) returns 429 with Hebrew message.
+- `POST /api/auth/verify-otp` — Verify OTP. Body: `{ phone, otp, deviceId, platform?, appVersion? }`. Returns `{ token, userId, role, isNew, isNewDevice }`. Tokens are stored in `user_sessions` (mirrored to `users.session_token` for legacy /me lookup). Wrong codes increment `userOtps.attempts`; locked after 5 attempts.
+- `GET /api/auth/me` — Compact session profile: `{ id, phone, displayName, role, accountStatus, avatarUrl, bannerColor }`.
+- `POST /api/auth/logout` — Revoke the current device's session.
+- `POST /api/auth/logout-all` — Revoke every active session for the user.
+- `GET /api/auth/sessions` — List the user's active sessions (with `isCurrent`).
+- `DELETE /api/auth/sessions/:id` — Revoke a specific session by id.
+- Bootstrap admin: when a phone matching `ADMIN_PHONE` env first verifies, the row is auto-promoted to `role=admin`.
 
 ### Users (requires Bearer token)
 - `GET /api/me` — Get own profile
@@ -196,10 +202,13 @@ artifacts-monorepo/
 
 Tables: `bulletin_posts`, `bulletin_post_likes` (unique on postId+userId). Anonymous posts hide author identity in API response.
 
-### Admin (no auth required)
-- `GET/PATCH/DELETE /api/admin/issues/:id` — Admin issues management
-- `GET/POST/PATCH/DELETE /api/admin/shops/:id` — Admin shops management
-- `PATCH /api/admin/locations/:id/floors` — Admin floor data update
+### Admin (Wave 2 — requires Bearer token + `role=admin`)
+All `/api/admin/*` routes are now gated by `requireAuth` + `requireAdmin` (see `routes/admin.ts:11`). Unauthenticated → 401, non-admin → 403.
+- `GET/POST/DELETE /api/admin/users` · `/api/admin/users/:id`
+- `GET/POST/PATCH/DELETE /api/admin/messages` · `/api/admin/messages/:id`
+- `GET/PATCH/DELETE /api/admin/issues/:id`
+- `GET/POST/PATCH/DELETE /api/admin/shops/:id`
+- `PATCH /api/admin/locations/:id/floors`
 
 ## Key Notes
 
@@ -272,6 +281,54 @@ Frontend localization:
 - `map-public.tsx` guest banner translated ("קמפוס · ← התחברות", "טוען מפת קמפוס…")
 - Bottom nav in `home.tsx` Hebrew (מפה / צ'אטים / לוח / חנויות / פרופיל)
 - Remaining English strings (chats, profile, notifications, home compose) — to translate as a follow-up
+
+## Wave 2 — Production Auth (April 2026)
+
+Goal: replace the open-demo OTP shortcut with a real, multi-device, role-based auth system suitable for production. No `/api/admin/*` route may be reachable without `role=admin`.
+
+### Schema Changes
+- `users.role` (`user|moderator|admin`, default `user`, indexed)
+- `users.accountStatus` (`active|suspended|deleted`, default `active`)
+- `users.lastLoginAt` (timestamp; touched on every successful verify)
+- `userOtps.attempts` (int, default 0; locked at MAX_OTP_VERIFY_ATTEMPTS=5)
+- New `user_sessions(id, userId, token, deviceId, platform, appVersion, ipAddress, userAgent, createdAt, lastSeenAt, revokedAt)` — multi-device session tracking
+- New `user_devices(id, userId, deviceId, trustLevel, firstSeenAt, lastSeenAt)` — device trust framework
+
+### New Backend Files
+- `artifacts/api-server/src/middleware/auth.ts` — central `requireAuth` (looks up `user_sessions.token`, blocks suspended accounts, touches `lastSeenAt`), `requireRole`, `requireAdmin`, `requireModerator`, plus `createSession` / `revokeSession*` helpers. Mirrors the new session token into legacy `users.session_token` so the existing `/me` lookup keeps working during migration.
+- `artifacts/api-server/src/routes/auth.ts` — rewritten: E.164 normalization, per-phone rate limit (5 / hr), bootstrap admin from `ADMIN_PHONE` env, returns role/isNew/isNewDevice, session lifecycle endpoints (`/auth/me`, `/auth/logout`, `/auth/logout-all`, `/auth/sessions`, `DELETE /auth/sessions/:id`).
+- `artifacts/api-server/src/routes/admin.ts:11` — `router.use("/admin", requireAuth, requireAdmin)` locks the entire `/api/admin/*` namespace.
+
+### Admin Panel Auth Gate
+- Removed the hardcoded PIN screen (`ADMIN_PIN=1234` was the only thing standing between the open internet and `/api/admin/*`).
+- New `artifacts/admin-panel/src/lib/api.ts` — central `adminFetch()`, dedicated `campus_admin_token` localStorage key (no collision with the campus-app's user token), `setAuthTokenProvider` registration so the generated react-query hooks (`@workspace/api-client-react`) also send the Authorization header automatically.
+- `App.tsx` rewritten as `AuthGuard → LoginScreen → AppRouter`. Login is the same OTP flow as the campus app, but additionally calls `/me` and rejects the session if `role !== "admin"` (clears the token, shows "אין לכם הרשאות מנהל").
+- A 401 from any later request immediately clears the token and bounces the user back to login.
+
+### Campus App Updates
+- `useAuth` now exposes `role` and `accountStatus`, has an async server-side `logout()` that revokes the session, and registers `setUnauthorizedHandler` so any 401 instantly logs the user out.
+- The "כניסה להדגמה" button is gated by `import.meta.env.DEV` — it ships in development only, never in production builds.
+- `lib/api.ts` adds `getDeviceId()`, `getAuthMe`, `logoutCurrentSession`, `logoutAllSessions`, `listSessions`, `revokeSession`, plus typed `VerifyOtpResponse`.
+
+### lib/api-client-react Updates
+- `custom-fetch.ts` now exports `setAuthTokenProvider` and `setUnauthorizedHandler`. When set, `customFetch` automatically attaches `Authorization: Bearer <token>` to same-origin `/api/*` requests and invokes the handler on 401. This is what lets the admin panel's react-query hooks (zones, locations, setup, root) authenticate without any per-call wiring.
+
+### Smoke Test Results (all passing)
+- Admin OTP → token → `/me` returns `role=admin` ✓
+- `/api/admin/users`, `/api/admin/issues`, `/api/admin/shops` → 200 with admin token ✓
+- No token → 401, invalid token → 401 ✓
+- Regular user token → 403 on `/api/admin/users` ✓
+- Multi-device login (same phone, two `deviceId`s) → both succeed, `isNewDevice` flagged ✓
+- Sessions list returns `isCurrent` for the active token ✓
+
+### Breaking Change & Migration Note
+- All previously-issued tokens are invalid. The legacy code stored tokens only on `users.session_token`; the new middleware looks them up in `user_sessions`. Existing logged-in users will hit 401 on their next request and be redirected to the login screen — they need to re-authenticate once. The campus-app's central 401 handler makes this redirect automatic.
+
+### Deferred / TODO
+- **Real SMS provider**: production OTP delivery is logged server-side but not yet wired to a provider (Twilio etc. require keys we don't have on the free tier). `routes/auth.ts` has a clearly marked `TODO(SMS)` comment at the send site.
+- **Trusted-device UX**: schema and `registerDevice()` helper exist; the campus-app does not yet expose a "trust this device" toggle.
+- **Sessions UI**: campus-app could surface `/auth/sessions` + revoke buttons in profile; deferred.
+- **Moderator role**: enum and `requireModerator` middleware exist; no UI yet promotes anyone to moderator.
 
 ## Root Scripts
 

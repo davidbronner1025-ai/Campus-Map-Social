@@ -2,17 +2,9 @@ import { Router, type IRouter, type Request, type Response, type NextFunction } 
 import { db } from "@workspace/db";
 import { campusShopsTable, usersTable, campusTable } from "@workspace/db/schema";
 import { eq, asc } from "drizzle-orm";
+import { requireAuth } from "../middleware/auth";
 
 const router: IRouter = Router();
-
-async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const token = req.headers.authorization?.replace("Bearer ", "");
-  if (!token) { res.status(401).json({ error: "Unauthorized" }); return; }
-  const user = await db.select().from(usersTable).where(eq(usersTable.sessionToken, token)).limit(1);
-  if (!user.length) { res.status(401).json({ error: "Invalid token" }); return; }
-  (req as any).user = user[0];
-  next();
-}
 
 async function getCampusId(): Promise<number | null> {
   const c = await db.select().from(campusTable).limit(1);

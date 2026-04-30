@@ -1,13 +1,17 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import { getMe, type UserProfile } from "@/lib/api";
+import {
+  getMe, logoutCurrentSession, setUnauthorizedHandler,
+  type UserProfile,
+} from "@/lib/api";
 
 interface AuthContextType {
   token: string | null;
   user: UserProfile | null;
+  role: UserProfile["role"] | null;
   isLoading: boolean;
   setToken: (t: string | null) => void;
   refreshUser: () => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -24,11 +28,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshUser = useCallback(async () => {
-    if (!localStorage.getItem("campus_token")) { setIsLoading(false); return; }
+    if (!localStorage.getItem("campus_token")) {
+      setUser(null);
+      setIsLoading(false);
+      return;
+    }
     try {
       const u = await getMe();
       setUser(u);
     } catch {
+      // Token rejected — clear and force re-auth.
       setToken(null);
       setUser(null);
     } finally {
@@ -36,15 +45,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [setToken]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    // Best-effort server-side revocation; always clear client even if it fails.
+    try { await logoutCurrentSession(); } catch (e) { console.warn("[auth] logout API call failed", e); }
     setToken(null);
     setUser(null);
   }, [setToken]);
 
+  // Wire up the global 401 handler so any rejected request kicks the user out
+  // of the protected pages and back to /auth.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setTokenState(null);
+      setUser(null);
+    });
+  }, []);
+
   useEffect(() => { refreshUser(); }, [token, refreshUser]);
 
   return (
-    <AuthContext.Provider value={{ token, user, isLoading, setToken, refreshUser, logout }}>
+    <AuthContext.Provider value={{
+      token, user,
+      role: user?.role ?? null,
+      isLoading, setToken, refreshUser, logout,
+    }}>
       {children}
     </AuthContext.Provider>
   );

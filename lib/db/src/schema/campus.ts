@@ -185,6 +185,12 @@ export type EventRsvp = typeof eventRsvpsTable.$inferSelect;
 export const visibilityEnum = ["campus", "ghost"] as const;
 export type Visibility = typeof visibilityEnum[number];
 
+export const userRoleEnum = ["user", "moderator", "admin"] as const;
+export type UserRole = typeof userRoleEnum[number];
+
+export const accountStatusEnum = ["active", "suspended", "deleted"] as const;
+export type AccountStatus = typeof accountStatusEnum[number];
+
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
   phone: text("phone").notNull().unique(),
@@ -194,12 +200,18 @@ export const usersTable = pgTable("users", {
   bannerUrl: text("banner_url"),
   bannerColor: text("banner_color").notNull().default("#1a2a3a"),
   visibility: text("visibility").$type<Visibility>().notNull().default("campus"),
+  role: text("role").$type<UserRole>().notNull().default("user"),
+  accountStatus: text("account_status").$type<AccountStatus>().notNull().default("active"),
+  // Legacy single-token field — kept for backward compat during migration; new code uses userSessionsTable.
   sessionToken: text("session_token").unique(),
   lat: doublePrecision("lat"),
   lng: doublePrecision("lng"),
   lastSeen: timestamp("last_seen").defaultNow(),
+  lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("users_role_idx").on(table.role),
+]);
 
 export type User = typeof usersTable.$inferSelect;
 
@@ -210,8 +222,51 @@ export const userOtpsTable = pgTable("user_otps", {
   otp: text("otp").notNull(),
   expiresAt: timestamp("expires_at").notNull(),
   used: boolean("used").notNull().default(false),
+  attempts: integer("attempts").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("user_otps_phone_created_idx").on(table.phone, table.createdAt),
+]);
+
+// ─── User Sessions (multi-device) ──────────────────────────────────────────
+export const userSessionsTable = pgTable("user_sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  deviceId: text("device_id"),
+  platform: text("platform"),       // "web" | "ios" | "android"
+  appVersion: text("app_version"),
+  userAgent: text("user_agent"),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+}, (table) => [
+  index("sessions_user_id_idx").on(table.userId),
+  index("sessions_token_idx").on(table.token),
+]);
+
+export type UserSession = typeof userSessionsTable.$inferSelect;
+
+// ─── Trusted Devices ───────────────────────────────────────────────────────
+export const deviceTrustEnum = ["unverified", "trusted", "revoked"] as const;
+export type DeviceTrust = typeof deviceTrustEnum[number];
+
+export const userDevicesTable = pgTable("user_devices", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  deviceId: text("device_id").notNull(),
+  platform: text("platform"),
+  appVersion: text("app_version"),
+  trustStatus: text("trust_status").$type<DeviceTrust>().notNull().default("unverified"),
+  firstSeenAt: timestamp("first_seen_at").defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("user_devices_user_device_unique").on(table.userId, table.deviceId),
+]);
+
+export type UserDevice = typeof userDevicesTable.$inferSelect;
 
 // ─── Messages ──────────────────────────────────────────────────────────────
 export const invitationTypeEnum = ["smoke", "carpool", "phone_game", "food_order", "football"] as const;

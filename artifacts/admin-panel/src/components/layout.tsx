@@ -5,6 +5,8 @@ import { Settings, MapPin, Users, Map, LogOut, AlertTriangle, ShoppingBag } from
 interface LayoutProps {
   children: React.ReactNode;
   active: "setup" | "locations" | "users" | "issues" | "shops";
+  admin?: { displayName: string; phone: string };
+  onLogout?: () => void | Promise<void>;
 }
 
 const NAV = [
@@ -15,10 +17,14 @@ const NAV = [
   { key: "shops",     href: "/shops",     label: "Shops",     icon: ShoppingBag },
 ];
 
-export function Layout({ children, active }: LayoutProps) {
-  const handleLogout = () => {
-    sessionStorage.removeItem("campus_admin_unlocked");
-    window.location.reload();
+export function Layout({ children, active, admin, onLogout }: LayoutProps) {
+  const handleLogout = async () => {
+    if (onLogout) {
+      await onLogout();
+    } else {
+      // Fallback for any caller that didn't pass an onLogout handler.
+      window.location.reload();
+    }
   };
 
   return (
@@ -31,7 +37,14 @@ export function Layout({ children, active }: LayoutProps) {
           </div>
           <div>
             <h1 className="text-sm font-bold text-foreground leading-tight">Campus Admin</h1>
-            <span className="admin-badge">Admin</span>
+            <div className="flex items-center gap-2">
+              <span className="admin-badge">Admin</span>
+              {admin && (
+                <span className="text-[10px] text-muted-foreground truncate max-w-[140px]" title={admin.phone}>
+                  {admin.displayName}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <button onClick={handleLogout} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 border border-transparent hover:border-destructive/20 transition-all">

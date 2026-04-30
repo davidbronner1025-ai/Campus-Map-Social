@@ -6,6 +6,38 @@ export type ErrorType<T = unknown> = ApiError<T>;
 
 export type BodyType<T> = T;
 
+// ── Auth wiring ──────────────────────────────────────────────────────────────
+// Each consuming app registers a token provider on startup. customFetch auto-
+// adds an Authorization header for same-origin `/api/*` requests when a token
+// is available. A 401 response invokes the registered unauthorized handler so
+// the app can clear its session state and bounce the user back to login.
+type TokenProvider = () => string | null | undefined;
+type UnauthorizedHandler = () => void;
+
+let tokenProvider: TokenProvider | null = null;
+let unauthorizedHandler: UnauthorizedHandler | null = null;
+
+export function setAuthTokenProvider(fn: TokenProvider | null): void {
+  tokenProvider = fn;
+}
+
+export function setUnauthorizedHandler(fn: UnauthorizedHandler | null): void {
+  unauthorizedHandler = fn;
+}
+
+function shouldAttachAuth(url: string): boolean {
+  // Same-origin relative API path.
+  if (url.startsWith("/api/")) return true;
+  // Absolute URL pointing at the same origin's /api/ prefix.
+  try {
+    if (typeof window !== "undefined") {
+      const parsed = new URL(url, window.location.origin);
+      return parsed.origin === window.location.origin && parsed.pathname.startsWith("/api/");
+    }
+  } catch { /* ignore */ }
+  return false;
+}
+
 const NO_BODY_STATUS = new Set([204, 205, 304]);
 const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 
@@ -303,9 +335,20 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
+  // Attach Authorization header for same-origin /api/* requests when a token
+  // provider has been registered and produces a token. We don't overwrite an
+  // explicit Authorization header passed by the caller.
+  if (!headers.has("authorization") && tokenProvider && shouldAttachAuth(requestInfo.url)) {
+    const token = tokenProvider();
+    if (token) headers.set("authorization", `Bearer ${token}`);
+  }
+
   const response = await fetch(input, { ...init, method, headers });
 
   if (!response.ok) {
+    if (response.status === 401 && unauthorizedHandler) {
+      try { unauthorizedHandler(); } catch { /* swallow handler errors */ }
+    }
     const errorData = await parseErrorBody(response, method);
     throw new ApiError(response, errorData, requestInfo);
   }

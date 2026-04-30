@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { AlertTriangle, Trash2, RefreshCw, CheckCircle, Clock, Circle } from "lucide-react";
+import { adminFetch } from "@/lib/api";
 
 type IssueStatus = "open" | "in_progress" | "resolved";
 
@@ -39,9 +40,7 @@ export default function IssuesPage() {
   const loadIssues = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${BASE}/admin/issues`);
-      const data = await res.json();
-      setIssues(data);
+      setIssues(await adminFetch<AdminIssue[]>("/admin/issues"));
     } catch {} finally { setLoading(false); }
   }, []);
 
@@ -49,9 +48,8 @@ export default function IssuesPage() {
 
   const updateStatus = async (id: number, status: IssueStatus) => {
     try {
-      await fetch(`${BASE}/admin/issues/${id}/status`, {
+      await adminFetch(`/admin/issues/${id}/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
       setIssues(prev => prev.map(i => i.id === id ? { ...i, status } : i));
@@ -61,7 +59,7 @@ export default function IssuesPage() {
   const deleteIssue = async (id: number) => {
     if (!confirm("Delete this report?")) return;
     try {
-      await fetch(`${BASE}/admin/issues/${id}`, { method: "DELETE" });
+      await adminFetch(`/admin/issues/${id}`, { method: "DELETE" });
       setIssues(prev => prev.filter(i => i.id !== id));
     } catch {}
   };

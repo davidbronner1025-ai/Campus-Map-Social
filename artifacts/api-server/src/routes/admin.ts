@@ -2,8 +2,14 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { usersTable, userOtpsTable, messagesTable, issueReportsTable, campusShopsTable, locationsTable, campusTable } from "@workspace/db/schema";
 import { eq, desc, asc } from "drizzle-orm";
+import { requireAuth, requireAdmin } from "../middleware/auth";
 
 const router: IRouter = Router();
+
+// 🔐 Hard authorization gate: every /admin/* route requires (a) a valid session
+// AND (b) the calling user to have role=admin. Without both, requests are rejected
+// with 401 (no session) or 403 (not admin) — even before reaching the handler.
+router.use("/admin", requireAuth, requireAdmin);
 
 const ADMIN_PHONE = "+972000000000";
 

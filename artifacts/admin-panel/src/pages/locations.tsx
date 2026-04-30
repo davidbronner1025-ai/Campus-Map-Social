@@ -20,6 +20,7 @@ import {
   useGetGames, useCreateGame, useDeleteGame, useVoteForGame,
   LocationType,
 } from "@workspace/api-client-react";
+import { adminFetch } from "@/lib/api";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -501,15 +502,10 @@ function FloorDataEditor({ locationId, initialFloors }: { locationId: number; in
     setSaving(true);
     setSaveError(null);
     try {
-      const r = await fetch(`/api/admin/locations/${locationId}/floors`, {
+      await adminFetch(`/admin/locations/${locationId}/floors`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ floorData: floors }),
       });
-      if (!r.ok) {
-        const body = await r.json().catch(() => ({}));
-        throw new Error(body?.error || `Save failed (${r.status})`);
-      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e: any) {
@@ -674,13 +670,12 @@ export default function LocationsPage() {
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   useEffect(() => {
-    fetch("/api/admin/users").then(r => r.json()).then(setUsers).catch(() => {});
+    adminFetch<AdminUser[]>("/admin/users").then(setUsers).catch(() => {});
   }, []);
 
   const fetchAdminMsgs = useCallback(async () => {
     try {
-      const r = await fetch("/api/admin/messages");
-      if (r.ok) setAdminMsgs(await r.json());
+      setAdminMsgs(await adminFetch<any[]>("/admin/messages"));
     } catch {}
   }, []);
   useEffect(() => { fetchAdminMsgs(); }, [fetchAdminMsgs]);
@@ -689,15 +684,10 @@ export default function LocationsPage() {
     if (!pendingPin || !pinContent.trim() || pinSubmitting) return;
     setPinSubmitting(true);
     try {
-      const r = await fetch("/api/admin/messages", {
+      await adminFetch("/admin/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lat: pendingPin.lat, lng: pendingPin.lng, content: pinContent.trim(), type: "regular" }),
       });
-      if (!r.ok) {
-        const body = await r.json().catch(() => ({}));
-        throw new Error(body?.error || `Pin failed (${r.status})`);
-      }
       setPendingPin(null);
       setPinContent("");
       fetchAdminMsgs();
@@ -713,11 +703,7 @@ export default function LocationsPage() {
     if (deletingMsgId === id) return;
     setDeletingMsgId(id);
     try {
-      const r = await fetch(`/api/admin/messages/${id}`, { method: "DELETE" });
-      if (!r.ok) {
-        const body = await r.json().catch(() => ({}));
-        throw new Error(body?.error || `Delete failed (${r.status})`);
-      }
+      await adminFetch(`/admin/messages/${id}`, { method: "DELETE" });
       // Only remove from UI after server confirms
       setAdminMsgs(p => p.filter(m => m.id !== id));
     } catch (e: any) {

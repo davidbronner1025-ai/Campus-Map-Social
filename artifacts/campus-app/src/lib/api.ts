@@ -1,7 +1,27 @@
 const API_BASE = "/api";
 
+const TOKEN_KEY = "campus_token";
+const DEVICE_ID_KEY = "campus_device_id";
+const APP_VERSION = "1.0.0";
+
 function getToken(): string | null {
-  return localStorage.getItem("campus_token");
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+// Stable per-browser device ID (created once, persisted in localStorage).
+// This is a pseudonymous identifier — NOT linked to phone-level identifiers.
+export function getDeviceId(): string {
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    const random = (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    id = `web-${random}`;
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+}
+
+function platformLabel(): string {
+  return "web";
 }
 
 function authHeaders(): HeadersInit {
@@ -9,11 +29,22 @@ function authHeaders(): HeadersInit {
   return token ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } : { "Content-Type": "application/json" };
 }
 
+// 401 handler: when the server rejects our token (revoked / expired / blocked),
+// clear local state and force the user back to /auth. Single chokepoint avoids
+// stale-token zombies on the dashboard.
+let onUnauthorized: (() => void) | null = null;
+export function setUnauthorizedHandler(fn: () => void) { onUnauthorized = fn; }
+
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: { ...authHeaders(), ...(options.headers || {}) },
   });
+  if (res.status === 401 && getToken()) {
+    // Token was rejected — clear and redirect.
+    localStorage.removeItem(TOKEN_KEY);
+    onUnauthorized?.();
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || "Request failed");
@@ -21,16 +52,67 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   return res.json();
 }
 
-// Auth
+// ─── Auth ─────────────────────────────────────────────────────────────────
 export const requestOtp = (phone: string) =>
-  apiFetch<{ success: boolean; otp: string }>("/auth/request-otp", {
+  apiFetch<{ success: boolean; otp?: string }>("/auth/request-otp", {
     method: "POST", body: JSON.stringify({ phone }),
   });
 
+export type VerifyOtpResponse = {
+  token: string;
+  sessionId: number;
+  expiresAt: string;
+  userId: number;
+  role: "user" | "moderator" | "admin";
+  isNew: boolean;
+  isNewDevice: boolean;
+};
+
 export const verifyOtp = (phone: string, otp: string) =>
-  apiFetch<{ token: string; userId: number; isNew: boolean }>("/auth/verify-otp", {
-    method: "POST", body: JSON.stringify({ phone, otp }),
+  apiFetch<VerifyOtpResponse>("/auth/verify-otp", {
+    method: "POST",
+    body: JSON.stringify({
+      phone, otp,
+      deviceId: getDeviceId(),
+      platform: platformLabel(),
+      appVersion: APP_VERSION,
+    }),
   });
+
+export type AuthMe = {
+  id: number;
+  phone: string;
+  displayName: string;
+  role: "user" | "moderator" | "admin";
+  accountStatus: "active" | "suspended" | "deleted";
+  avatarUrl: string | null;
+  bannerColor: string;
+};
+
+export const getAuthMe = () => apiFetch<AuthMe>("/auth/me");
+
+export const logoutCurrentSession = () =>
+  apiFetch<{ success: boolean }>("/auth/logout", { method: "POST" });
+
+export const logoutAllSessions = () =>
+  apiFetch<{ success: boolean }>("/auth/logout-all", { method: "POST" });
+
+export type ActiveSession = {
+  id: number;
+  deviceId: string | null;
+  platform: string | null;
+  appVersion: string | null;
+  userAgent: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
+  isCurrent: boolean;
+};
+
+export const listSessions = () => apiFetch<ActiveSession[]>("/auth/sessions");
+export const revokeSession = (id: number) =>
+  apiFetch<{ success: boolean }>(`/auth/sessions/${id}`, { method: "DELETE" });
 
 // User
 export type UserProfile = {
@@ -42,9 +124,12 @@ export type UserProfile = {
   bannerUrl: string | null;
   bannerColor: string;
   visibility: "campus" | "ghost";
+  role: "user" | "moderator" | "admin";
+  accountStatus: "active" | "suspended" | "deleted";
   lat: number | null;
   lng: number | null;
   lastSeen: string | null;
+  lastLoginAt: string | null;
 };
 
 export type NearbyUser = {

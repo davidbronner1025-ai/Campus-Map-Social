@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Polygon, Marker, useMap } from "react-leaflet"
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { ShoppingBag, Plus, Trash2, RefreshCw, Pencil, X, Check, ToggleLeft, ToggleRight, MapPin } from "lucide-react";
+import { adminFetch } from "@/lib/api";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -154,9 +155,9 @@ export default function ShopsPage() {
     setLoading(true);
     try {
       const [shopsRes, locsRes, campusRes] = await Promise.all([
-        fetch(`${BASE}/admin/shops`).then(r => r.json()),
-        fetch(`${BASE}/locations`).then(r => r.json()),
-        fetch(`${BASE}/campus`).then(r => r.json()),
+        adminFetch<AdminShop[]>("/admin/shops"),
+        adminFetch<LocationEntry[]>("/locations"),
+        adminFetch<any>("/campus"),
       ]);
       setShops(shopsRes);
       setLocations((locsRes as LocationEntry[]).filter(l => l.polygon && l.polygon.length >= 3));
@@ -174,22 +175,18 @@ export default function ShopsPage() {
     if (!editing?.name) return;
     setSaving(true);
     try {
-      const url = editId ? `${BASE}/admin/shops/${editId}` : `${BASE}/admin/shops`;
+      const url = editId ? `/admin/shops/${editId}` : "/admin/shops";
       const method = editId ? "PATCH" : "POST";
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editing),
-      });
-      if (res.ok) { await load(); closeEdit(); }
+      await adminFetch(url, { method, body: JSON.stringify(editing) });
+      await load();
+      closeEdit();
     } catch {} finally { setSaving(false); }
   };
 
   const toggleActive = async (id: number, active: boolean) => {
     try {
-      await fetch(`${BASE}/admin/shops/${id}`, {
+      await adminFetch(`/admin/shops/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ active }),
       });
       setShops(prev => prev.map(s => s.id === id ? { ...s, active } : s));
@@ -199,7 +196,7 @@ export default function ShopsPage() {
   const deleteShop = async (id: number) => {
     if (!confirm("Delete this shop?")) return;
     try {
-      await fetch(`${BASE}/admin/shops/${id}`, { method: "DELETE" });
+      await adminFetch(`/admin/shops/${id}`, { method: "DELETE" });
       setShops(prev => prev.filter(s => s.id !== id));
     } catch {}
   };
