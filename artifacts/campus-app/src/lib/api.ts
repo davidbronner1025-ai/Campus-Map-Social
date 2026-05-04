@@ -1,6 +1,6 @@
 const API_BASE = "/api";
 
-const TOKEN_KEY = "campus_token";
+export const TOKEN_KEY = "campus_token";
 const DEVICE_ID_KEY = "campus_device_id";
 const APP_VERSION = "1.0.0";
 

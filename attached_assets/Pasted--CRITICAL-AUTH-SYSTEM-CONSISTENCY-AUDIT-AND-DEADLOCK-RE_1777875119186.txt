@@ -1,0 +1,199 @@
+# CRITICAL AUTH SYSTEM CONSISTENCY AUDIT AND DEADLOCK RESOLUTION
+
+## Mission
+The authentication system is currently in an inconsistent hybrid state. Parts of the platform have been migrated to production-grade authentication, while other components still rely on legacy demo or temporary access mechanisms.
+
+This has created a high-risk architectural inconsistency that may cause:
+- admin access failures
+- role mismatches
+- invalid session states
+- token collisions
+- authorization errors
+- unpredictable behavior across products
+
+Your task is to perform a full authentication consistency audit, identify the exact root cause of the current access issue, and resolve it without introducing regressions.
+
+---
+
+## Critical Context
+
+The platform consists of two separate clients:
+1. Campus App
+2. Admin Panel
+
+Both must use a single, unified authentication and authorization architecture.
+
+Currently, the system appears to contain remnants of multiple authentication generations:
+- Legacy PIN-based admin access (`1234`)
+- Demo OTP authentication
+- Production OTP + JWT + RBAC authentication
+
+Only one production authentication system may remain active.
+
+---
+
+## Required Investigation
+
+### Phase 1 — Full Auth Inventory
+Audit the entire codebase for all authentication-related logic, including:
+
+- PIN-based authentication
+- Demo OTP flows
+- Production OTP flows
+- JWT issuance and validation
+- Session storage mechanisms
+- Token storage keys
+- Admin bootstrap logic
+- Role assignment logic
+- Authentication middleware
+- Authorization middleware
+
+Search specifically for:
+- `1234`
+- `VITE_ADMIN_PIN`
+- `sessionStorage`
+- `localStorage`
+- `campus_token`
+- `campus_admin_token`
+- `demo`
+- `mock`
+- `request-otp`
+- `verify-otp`
+- `requireAuth`
+- `requireAdmin`
+
+Document every active authentication path.
+
+---
+
+## Phase 2 — Root Cause Identification
+
+Determine exactly which of the following is causing the current issue:
+
+- Legacy PIN guard still active
+- Demo OTP mode still enabled
+- Admin bootstrap not executing
+- `ADMIN_PHONE` mismatch or formatting inconsistency
+- JWT issued before admin role assignment
+- Stale token with outdated role
+- Token storage collision between Campus App and Admin Panel
+- Incorrect token attached to admin requests
+- Role hydration failure on `/api/me`
+- 401 handler causing premature logout
+- Multiple conflicting auth providers active simultaneously
+
+You must identify the precise failure point.
+
+---
+
+## Phase 3 — Required Corrections
+
+### Authentication Unification
+- Remove all legacy PIN-based authentication logic from production paths.
+- Remove all demo OTP logic from production paths.
+- Ensure both clients use the same OTP → JWT → RBAC pipeline.
+
+### Token Isolation
+- Campus App must exclusively use:
+  - `campus_token`
+- Admin Panel must exclusively use:
+  - `campus_admin_token`
+
+No cross-contamination is allowed.
+
+### Admin Bootstrap Validation
+- Verify `ADMIN_PHONE` is configured correctly.
+- Normalize phone numbers before comparison.
+- Ensure first admin promotion executes deterministically.
+- Confirm admin role assignment occurs before JWT issuance.
+
+### JWT Integrity
+- JWT must contain current role claims.
+- Role changes must require token refresh.
+- Stale tokens must be invalidated automatically.
+
+### Auth Guard Order
+The admin guard must follow this exact sequence:
+1. Wait for auth initialization.
+2. If no authenticated user → show login.
+3. If authenticated but role != admin → show access denied.
+4. If authenticated and role == admin → grant access.
+
+Never evaluate roles before auth initialization completes.
+
+---
+
+## Mandatory Validation Tests
+
+### Admin Authentication
+- OTP request succeeds
+- OTP verification succeeds
+- Admin bootstrap executes correctly
+- Admin receives valid JWT with `role=admin`
+- Admin can access `/api/admin/*`
+
+### Role Enforcement
+- Non-admin receives `403`
+- Unauthenticated request receives `401`
+
+### Token Integrity
+- Old tokens are rejected after role changes
+- Admin Panel never uses `campus_token`
+- Campus App never uses `campus_admin_token`
+
+### Session Handling
+- Session persists across refresh
+- Logout invalidates server-side session
+- 401 triggers clean re-authentication flow
+
+---
+
+## Deliverables
+
+### 1. Root Cause Report
+- Exact file(s)
+- Exact failure point
+- Why the issue occurred
+
+### 2. Remediation Summary
+- What was removed
+- What was fixed
+- What was unified
+
+### 3. Validation Results
+- Admin login
+- User login
+- Role enforcement
+- Token separation
+- Session persistence
+
+### 4. Residual Risks
+- Any remaining concerns
+- Recommended next hardening steps
+
+---
+
+## Non-Negotiable Constraints
+
+- Do not introduce temporary hacks.
+- Do not weaken security.
+- Do not leave legacy authentication paths active.
+- Do not break existing user flows.
+- Do not issue JWTs before role assignment is finalized.
+
+---
+
+## Final Success Criteria
+
+The platform must operate with a single, unified, production-grade identity system:
+
+- one authentication flow
+- one authorization model
+- one token lifecycle
+- deterministic admin bootstrap
+- zero legacy auth remnants
+
+Admin access must work reliably.
+User access must work reliably.
+Roles must be enforced correctly.
+No conflicting authentication paths may remain.

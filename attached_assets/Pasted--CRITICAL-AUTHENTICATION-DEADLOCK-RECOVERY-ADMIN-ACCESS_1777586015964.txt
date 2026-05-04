@@ -1,0 +1,68 @@
+# CRITICAL AUTHENTICATION DEADLOCK RECOVERY — ADMIN ACCESS RESTORATION
+
+## Mission
+The application currently has a critical authentication deadlock.
+
+The admin interface has been locked behind authentication and authorization checks, but a real phone-based authentication flow has not yet been implemented. As a result, no administrator can authenticate, no admin role can be assigned, and the admin interface is completely inaccessible.
+
+This must be corrected immediately and safely.
+
+---
+
+## Root Cause
+The current system enforces admin authentication before a valid authentication mechanism exists.
+
+Current broken flow:
+1. Admin interface requires authenticated user.
+2. Admin role validation is enforced.
+3. Phone OTP authentication is incomplete or non-functional.
+4. No verified user can sign in.
+5. No user can obtain admin privileges.
+6. Admin interface becomes permanently inaccessible.
+
+This is an architectural access deadlock.
+
+---
+
+## Immediate Recovery Requirement (Temporary Only)
+
+Restore temporary admin access using the legacy admin access code:
+
+**Temporary Admin Access Code: `1234`**
+
+This temporary access mechanism must:
+- Be re-enabled immediately.
+- Be isolated to the admin login flow only.
+- Remain active only until real phone authentication and admin role assignment are fully operational.
+- Be clearly marked as temporary recovery logic.
+
+---
+
+## Temporary Admin Recovery Flow
+
+1. Present admin access screen.
+2. Allow entry of temporary admin code.
+3. If code equals `1234`, grant temporary admin session.
+4. Restrict this temporary session to administrative recovery tasks only.
+5. Persist session securely for the current session only.
+6. Log all temporary admin access events.
+
+Example behavior:
+- Valid code → grant temporary admin access.
+- Invalid code → deny access with clear error.
+
+---
+
+## Mandatory Safety Constraints for Temporary Access
+
+- This bypass must only apply to the admin interface.
+- It must never affect normal user authentication.
+- It must never grant permanent admin privileges.
+- It must never modify user authentication state.
+- It must be easy to remove once production authentication is complete.
+
+Implement behind a clearly isolated feature flag or dedicated recovery guard.
+
+Suggested flag:
+```typescript
+const ENABLE_TEMP_ADMIN_RECOVERY = true;

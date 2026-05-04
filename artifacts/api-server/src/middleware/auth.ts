@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { db } from "@workspace/db";
 import { usersTable, userSessionsTable, userDevicesTable, type User, type UserRole } from "@workspace/db/schema";
-import { eq, and, isNull, gt } from "drizzle-orm";
+import { eq, and, isNull, gt, ne } from "drizzle-orm";
 import crypto from "crypto";
 
 // ─── Types ────────────────────────────────────────────────────────────────
@@ -156,21 +156,16 @@ export async function revokeSessionByToken(token: string): Promise<void> {
 }
 
 export async function revokeAllUserSessions(userId: number, exceptSessionId?: number): Promise<void> {
+  // Build the WHERE clause. When exceptSessionId is provided we exclude that one
+  // session from the revocation so the caller keeps an active session.
+  const conditions: Parameters<typeof and> = [
+    eq(userSessionsTable.userId, userId),
+    isNull(userSessionsTable.revokedAt),
+  ];
   if (exceptSessionId !== undefined) {
-    await db.update(userSessionsTable)
-      .set({ revokedAt: new Date() })
-      .where(and(
-        eq(userSessionsTable.userId, userId),
-        isNull(userSessionsTable.revokedAt),
-      ));
-    // Re-activate the kept session by setting revokedAt back to null (cleanest approach)
-    // Actually simpler: revoke all-except in a single query.
-    return;
+    conditions.push(ne(userSessionsTable.id, exceptSessionId));
   }
   await db.update(userSessionsTable)
     .set({ revokedAt: new Date() })
-    .where(and(
-      eq(userSessionsTable.userId, userId),
-      isNull(userSessionsTable.revokedAt),
-    ));
+    .where(and(...conditions));
 }

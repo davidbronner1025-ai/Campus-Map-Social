@@ -26,7 +26,7 @@ export default function AuthPage() {
   const [step, setStep] = useState<"phone" | "otp" | "done">("phone");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
-  const [demoOtp, setDemoOtp] = useState<string>("");
+  const [devOtp, setDevOtp] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState("");
@@ -60,7 +60,7 @@ export default function AuthPage() {
     try {
       const formatted = formatPhone(phone.trim());
       const res = await requestOtp(formatted);
-      setDemoOtp(res.otp); // demo mode: show OTP
+      setDevOtp(res.otp ?? ""); // dev mode: server echoes OTP only when NODE_ENV≠production
       setPhone(formatted);
       setStep("otp");
     } catch (err: any) {
@@ -155,12 +155,12 @@ export default function AuthPage() {
                 <p className="text-xs text-muted-foreground mb-3" dir="ltr">נשלח אל {phone}</p>
 
                 {/* Demo notice */}
-                {demoOtp && (
+                {devOtp && (
                   <div className="bg-accent/10 border border-accent/30 rounded-lg px-4 py-3 mb-4 flex items-center gap-3">
                     <span className="text-accent text-lg">🧪</span>
                     <div>
-                      <p className="text-xs text-accent font-semibold">מצב הדגמה — לא נשלח SMS</p>
-                      <p className="text-sm font-mono font-bold text-foreground mt-0.5 tracking-widest">{demoOtp}</p>
+                      <p className="text-xs text-accent font-semibold">מצב פיתוח — לא נשלח SMS</p>
+                      <p className="text-sm font-mono font-bold text-foreground mt-0.5 tracking-widest">{devOtp}</p>
                     </div>
                   </div>
                 )}

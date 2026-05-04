@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import crypto from "crypto";
 import { db } from "@workspace/db";
 import { usersTable, userOtpsTable, messagesTable, issueReportsTable, campusShopsTable, locationsTable, campusTable } from "@workspace/db/schema";
 import { eq, desc, asc } from "drizzle-orm";
@@ -11,25 +12,36 @@ const router: IRouter = Router();
 // with 401 (no session) or 403 (not admin) — even before reaching the handler.
 router.use("/admin", requireAuth, requireAdmin);
 
-const ADMIN_PHONE = "+972000000000";
+// ── Bot identity ─────────────────────────────────────────────────────────────
+// This is a synthetic phone number for a ghost "Campus Admin" bot account used
+// to attribute admin-pinned map messages. It is NOT an authentication mechanism
+// and has no relation to the ADMIN_PHONE environment variable used for bootstrap.
+const ADMIN_BOT_PHONE = "+972000000000";
 
-function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+// ── Helpers ───────────────────────────────────────────────────────────────────
+// Cryptographically random 6-digit OTP used for the admin invite flow.
+function generateSecureOtp(): string {
+  // crypto.randomInt is available in Node ≥ 14.10 and is cryptographically secure.
+  return crypto.randomInt(100_000, 999_999).toString();
 }
 
-function formatPhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("972")) return "+" + digits;
-  if (digits.startsWith("0")) return "+972" + digits.slice(1);
-  if (!phone.startsWith("+")) return "+" + digits;
-  return phone;
+// Normalize a phone string to E.164. Mirrors the logic in routes/auth.ts.
+function normalizePhoneForInvite(input: string): string | null {
+  if (!input || typeof input !== "string") return null;
+  let digits = input.replace(/[^\d+]/g, "");
+  if (digits.startsWith("00")) digits = "+" + digits.slice(2);
+  if (!digits.startsWith("+")) {
+    if (digits.startsWith("0")) digits = "+972" + digits.slice(1);
+    else digits = "+" + digits;
+  }
+  return /^\+\d{8,15}$/.test(digits) ? digits : null;
 }
 
-async function getOrCreateAdminUser(): Promise<number> {
-  const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.phone, ADMIN_PHONE)).limit(1);
+async function getOrCreateAdminBotUser(): Promise<number> {
+  const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.phone, ADMIN_BOT_PHONE)).limit(1);
   if (existing.length) return existing[0].id;
   const [u] = await db.insert(usersTable).values({
-    phone: ADMIN_PHONE,
+    phone: ADMIN_BOT_PHONE,
     displayName: "Campus Admin",
     visibility: "ghost" as const,
   }).returning({ id: usersTable.id });
@@ -65,7 +77,8 @@ router.post("/admin/users", async (req: Request, res: Response) => {
   const { phone } = req.body;
   if (!phone) { res.status(400).json({ error: "phone required" }); return; }
 
-  const formatted = formatPhone(phone.trim());
+  const formatted = normalizePhoneForInvite(phone.trim());
+  if (!formatted) { res.status(400).json({ error: "Invalid phone number" }); return; }
 
   try {
     const existing = await db.select().from(usersTable).where(eq(usersTable.phone, formatted)).limit(1);
@@ -77,7 +90,7 @@ router.post("/admin/users", async (req: Request, res: Response) => {
       userId = u.id;
     }
 
-    const otp = generateOtp();
+    const otp = generateSecureOtp();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await db.delete(userOtpsTable).where(eq(userOtpsTable.phone, formatted));
     await db.insert(userOtpsTable).values({ phone: formatted, otp, expiresAt });
@@ -103,7 +116,7 @@ router.delete("/admin/users/:id", async (req: Request, res: Response) => {
 // GET /admin/messages — list all admin-pinned map messages
 router.get("/admin/messages", async (_req: Request, res: Response) => {
   try {
-    const adminId = await getOrCreateAdminUser();
+    const adminId = await getOrCreateAdminBotUser();
     const msgs = await db
       .select()
       .from(messagesTable)
@@ -123,7 +136,7 @@ router.post("/admin/messages", async (req: Request, res: Response) => {
     return;
   }
   try {
-    const adminId = await getOrCreateAdminUser();
+    const adminId = await getOrCreateAdminBotUser();
     const expiresAt = expiresInMinutes
       ? new Date(Date.now() + expiresInMinutes * 60 * 1000)
       : null;
