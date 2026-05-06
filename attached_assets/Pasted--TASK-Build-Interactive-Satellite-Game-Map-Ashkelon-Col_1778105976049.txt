@@ -1,0 +1,150 @@
+# 🎯 TASK: Build Interactive Satellite Game Map (Ashkelon College Area)
+
+## CONTEXT
+
+We are NOT scanning real-world data.
+
+We are building a **high-precision interactive map system** that:
+- Uses real satellite tiles
+- Focuses on a specific geographic area (Ashkelon College region)
+- Overlays custom-defined locations (game points)
+- Feels like a game world layered on reality
+
+---
+
+## 📍 TARGET AREA
+
+Center the map approximately at:
+
+LAT: 31.668  
+LNG: 34.574  
+
+Zoom level: 17–19
+
+Limit interaction to this bounding box:
+- North: +0.01
+- South: -0.01
+- East: +0.01
+- West: -0.01
+
+👉 The map must NOT allow infinite panning outside this area.
+
+---
+
+## 🗺️ MAP REQUIREMENTS
+
+Use:
+- React + Leaflet (or react-leaflet)
+- Satellite tiles (Esri World Imagery)
+
+### MUST HAVE:
+- Smooth zoom
+- No tile flickering
+- Proper tile loading fallback
+- Map always initialized with VALID center (no undefined / NaN)
+
+---
+
+## 🧱 GAME LAYER SYSTEM
+
+Build a structured overlay system:
+
+### 1. Static Zones (Buildings / Areas)
+- Defined as polygons
+- Rendered with semi-transparent fill
+- Clickable → opens info panel
+
+### 2. Game Points (Custom Locations)
+Each location includes:
+- id
+- name
+- type (event / post / zone / npc)
+- lat / lng
+
+Render as:
+- custom markers
+- visually distinct per type
+
+---
+
+## ⚠️ CRITICAL: ANTI-OVERLAP SYSTEM
+
+You MUST implement:
+
+### Grid-based conflict resolution:
+- Radius: ~20 meters
+- If multiple points overlap:
+  - only highest priority is shown
+  - others hidden or clustered
+
+Priority:
+1. Admin / system points
+2. Events
+3. Active players
+4. Passive markers
+
+---
+
+## 🎮 INTERACTION SYSTEM
+
+- Click marker → open bottom sheet / popup
+- Hover (desktop) → tooltip
+- Smooth animations (no lag)
+
+---
+
+## 🧠 PERFORMANCE REQUIREMENTS
+
+- Must handle 100+ points without lag
+- Use memoization (React.memo / useMemo)
+- No unnecessary re-renders
+- No blocking UI
+
+---
+
+## 🚫 HARD CONSTRAINTS
+
+- NO fake/scanned data
+- NO random coordinates
+- NO undefined coordinates
+- NO crashes if data is empty
+- NO infinite loading states
+
+---
+
+## 🧪 VALIDATION
+
+You must verify:
+
+1. Map loads with no errors
+2. No console warnings
+3. All markers have valid coordinates
+4. Clicking always works
+5. No UI freeze
+6. No overlapping clutter
+
+---
+
+## 📦 OUTPUT
+
+- Clean modular code:
+  - MapView
+  - Layers
+  - Utils
+- Example dataset with 5–10 locations
+- Ready for extension
+
+---
+
+## GOAL
+
+Create a **game-like interactive layer on top of a real satellite map**.
+
+It must feel:
+- precise
+- responsive
+- clean
+- not cluttered
+
+This is NOT a demo.
+This is a foundation for a real system.
