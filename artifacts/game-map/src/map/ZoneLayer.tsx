@@ -23,33 +23,31 @@ function ZonePolygonItem({ zone, onClick }: { zone: ZonePolygon; onClick: (z: Zo
     [zone.coordinates]
   );
 
-  const color = zone.color;
-
   return (
     <Polygon
       positions={positions}
       pathOptions={{
-        color,
-        weight: 2,
-        opacity: 0.9,
-        fillColor: color,
-        fillOpacity: 0.08,
-        dashArray: "6 4",
+        color: zone.color,
+        weight: 2.5,
+        opacity: 1,
+        fillColor: zone.color,
+        fillOpacity: 0.15,
       }}
       eventHandlers={{ click: () => onClick(zone) }}
     >
       <Tooltip sticky direction="top" opacity={1}>
         <div style={{
-          background: "rgba(0,0,0,0.9)",
-          border: `1px solid ${color}`,
+          background: "#ffffff",
+          border: `1px solid ${zone.color}`,
           padding: "4px 10px",
-          color,
-          fontSize: "12px",
-          fontFamily: "monospace",
-          borderRadius: "3px",
-          boxShadow: `0 0 8px ${color}50`,
+          color: "#111827",
+          fontSize: 12,
+          fontFamily: "system-ui, sans-serif",
+          borderRadius: 6,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
         }}>
-          ◈ {zone.name}
+          <span style={{ color: zone.color, fontWeight: 600, marginRight: 4 }}>◈</span>
+          {zone.name}
         </div>
       </Tooltip>
     </Polygon>

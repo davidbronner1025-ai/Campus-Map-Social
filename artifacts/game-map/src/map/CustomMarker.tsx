@@ -9,8 +9,8 @@ interface CustomMarkerProps {
   onClick: (point: GamePoint) => void;
 }
 
-function createCyberpunkIcon(type: string): L.DivIcon {
-  const color = POINT_TYPE_COLORS[type] || "#ffffff";
+function createCleanIcon(type: string): L.DivIcon {
+  const color = POINT_TYPE_COLORS[type] || "#2563eb";
   const icon = POINT_TYPE_ICONS[type] || "•";
 
   return L.divIcon({
@@ -18,52 +18,34 @@ function createCyberpunkIcon(type: string): L.DivIcon {
     html: `
       <div style="
         position: relative;
-        width: 44px;
-        height: 44px;
+        width: 36px;
+        height: 42px;
         cursor: pointer;
-        filter: drop-shadow(0 0 8px ${color});
+        filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
       ">
-        <svg width="44" height="44" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
-          <polygon points="22,2 40,12 40,32 22,42 4,32 4,12" 
-            fill="rgba(0,0,0,0.85)" 
-            stroke="${color}" 
-            stroke-width="1.5"
-          />
-          <polygon points="22,6 36,14 36,30 22,38 8,30 8,14" 
-            fill="rgba(0,0,0,0.4)" 
-            stroke="${color}" 
-            stroke-width="0.5"
-            opacity="0.5"
-          />
-          <text x="22" y="27" text-anchor="middle" 
-            font-size="16" 
+        <svg width="36" height="42" viewBox="0 0 36 42" xmlns="http://www.w3.org/2000/svg">
+          <path d="M18 2 C9.16 2 2 9.16 2 18 C2 28 18 40 18 40 C18 40 34 28 34 18 C34 9.16 26.84 2 18 2Z"
             fill="${color}"
-            style="filter: drop-shadow(0 0 3px ${color})"
+            stroke="white"
+            stroke-width="2"
+          />
+          <circle cx="18" cy="18" r="9" fill="white" opacity="0.25"/>
+          <text x="18" y="23" text-anchor="middle"
+            font-size="14"
+            fill="white"
           >${icon}</text>
         </svg>
-        <div style="
-          position:absolute;
-          bottom:-4px;
-          left:50%;
-          transform:translateX(-50%);
-          width:6px;
-          height:6px;
-          border-radius:50%;
-          background:${color};
-          box-shadow: 0 0 6px 2px ${color};
-          animation: pulse 1.5s infinite;
-        "></div>
       </div>
     `,
-    iconSize: [44, 48],
-    iconAnchor: [22, 48],
-    tooltipAnchor: [0, -48],
+    iconSize: [36, 42],
+    iconAnchor: [18, 42],
+    tooltipAnchor: [0, -44],
   });
 }
 
 export function CustomMarker({ point, onClick }: CustomMarkerProps) {
-  const icon = useMemo(() => createCyberpunkIcon(point.type), [point.type]);
-  const color = POINT_TYPE_COLORS[point.type] || "#ffffff";
+  const icon = useMemo(() => createCleanIcon(point.type), [point.type]);
+  const color = POINT_TYPE_COLORS[point.type] || "#2563eb";
   const label = POINT_TYPE_LABELS[point.type] || point.type;
 
   if (!point.lat || !point.lng) return null;
@@ -74,24 +56,24 @@ export function CustomMarker({ point, onClick }: CustomMarkerProps) {
       icon={icon}
       eventHandlers={{ click: () => onClick(point) }}
     >
-      <Tooltip
-        direction="top"
-        offset={[0, -50]}
-        opacity={1}
-        className="cyberpunk-tooltip"
-      >
+      <Tooltip direction="top" offset={[0, -44]} opacity={1}>
         <div style={{
-          background: "rgba(0,0,0,0.9)",
+          background: "#ffffff",
           border: `1px solid ${color}`,
-          borderRadius: "4px",
-          padding: "4px 8px",
-          color,
-          fontSize: "12px",
-          fontFamily: "monospace",
+          borderRadius: 6,
+          padding: "4px 10px",
+          color: "#111827",
+          fontSize: 12,
+          fontFamily: "system-ui, sans-serif",
           whiteSpace: "nowrap",
-          boxShadow: `0 0 8px ${color}40`,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
         }}>
-          <span style={{ opacity: 0.6, marginRight: 4 }}>[{label}]</span>
+          <span style={{
+            color: color,
+            fontWeight: 600,
+            marginRight: 5,
+            fontSize: 11,
+          }}>{label}</span>
           {point.name}
         </div>
       </Tooltip>

@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Polyline, CircleMarker, useMapEvents } from "react-leaflet";
 import type { DrawingState } from "../types/map";
 
@@ -17,14 +16,14 @@ export function DrawingLayer({ drawing, onPointAdd }: DrawingLayerProps) {
 
   if (drawing.mode === "none" || drawing.points.length === 0) return null;
 
-  const color = drawing.color || "#00f5ff";
+  const color = drawing.color || "#2563eb";
 
   return (
     <>
       {drawing.points.length > 1 && (
         <Polyline
           positions={drawing.points}
-          pathOptions={{ color, weight: 2, dashArray: "6 4", opacity: 0.8 }}
+          pathOptions={{ color, weight: 2.5, dashArray: "8 5", opacity: 0.9 }}
         />
       )}
       {drawing.points.map(([lat, lng], i) => (
@@ -32,7 +31,7 @@ export function DrawingLayer({ drawing, onPointAdd }: DrawingLayerProps) {
           key={i}
           center={[lat, lng]}
           radius={5}
-          pathOptions={{ color, fillColor: color, fillOpacity: 1, weight: 1 }}
+          pathOptions={{ color, fillColor: "#fff", fillOpacity: 1, weight: 2 }}
         />
       ))}
     </>

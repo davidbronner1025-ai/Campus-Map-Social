@@ -19,64 +19,90 @@ export function InfoPanel({ selected, onClose }: InfoPanelProps) {
       {selected && (
         <motion.div
           key={selected.kind + (selected.data as any).id}
-          initial={{ y: 120, opacity: 0 }}
+          initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 120, opacity: 0 }}
-          transition={{ type: "spring", stiffness: 380, damping: 35 }}
+          exit={{ y: 20, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 400, damping: 36 }}
           style={{
             position: "absolute",
             bottom: 24,
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 1000,
-            width: "min(420px, 90vw)",
-            background: "rgba(0,0,0,0.92)",
-            backdropFilter: "blur(12px)",
-            border: `1px solid ${getColor(selected)}`,
-            borderRadius: 6,
+            width: "min(400px, 90vw)",
+            background: "#ffffff",
+            border: "1px solid #e2e8f0",
+            borderRadius: 12,
             padding: "16px 20px",
-            fontFamily: "monospace",
-            boxShadow: `0 0 24px ${getColor(selected)}60, 0 0 60px ${getColor(selected)}20`,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+            fontFamily: "system-ui, sans-serif",
           }}
         >
-          <ScanLines color={getColor(selected)} />
+          <div style={{
+            position: "absolute",
+            top: 0,
+            left: 20,
+            right: 20,
+            height: 3,
+            borderRadius: "0 0 3px 3px",
+            background: getColor(selected),
+            opacity: 0.8,
+          }} />
+
           <button
             onClick={onClose}
             style={{
               position: "absolute",
-              top: 10,
+              top: 12,
               right: 14,
-              background: "none",
+              background: "#f1f5f9",
               border: "none",
-              color: getColor(selected),
+              color: "#6b7280",
               cursor: "pointer",
-              fontSize: 18,
+              fontSize: 14,
               lineHeight: 1,
-              opacity: 0.7,
+              width: 24,
+              height: 24,
+              borderRadius: 6,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
             ✕
           </button>
 
-          <div style={{ color: getColor(selected), fontSize: 10, opacity: 0.6, marginBottom: 4 }}>
-            ▶ {getKindLabel(selected)} / ID:{(selected.data as any).id}
+          <div style={{
+            display: "inline-block",
+            background: `${getColor(selected)}18`,
+            color: getColor(selected),
+            fontSize: 11,
+            fontWeight: 600,
+            padding: "2px 8px",
+            borderRadius: 4,
+            marginBottom: 8,
+          }}>
+            {getKindLabel(selected)}
           </div>
-          <div style={{ color: getColor(selected), fontSize: 18, fontWeight: "bold", marginBottom: 8 }}>
+
+          <div style={{ color: "#111827", fontSize: 16, fontWeight: 700, marginBottom: 6 }}>
             {getName(selected)}
           </div>
+
           {getDescription(selected) && (
-            <div style={{ color: "#aaa", fontSize: 13, lineHeight: 1.6 }}>
+            <div style={{ color: "#6b7280", fontSize: 13, lineHeight: 1.6 }}>
               {getDescription(selected)}
             </div>
           )}
+
           {selected.kind === "point" && (
-            <div style={{ color: "#555", fontSize: 10, marginTop: 10 }}>
+            <div style={{ color: "#9ca3af", fontSize: 11, marginTop: 10 }}>
               {selected.data.lat.toFixed(6)}, {selected.data.lng.toFixed(6)}
             </div>
           )}
-          {selected.kind === "building" && (
-            <div style={{ color: "#555", fontSize: 10, marginTop: 10 }}>
-              קומות: {selected.data.floor ?? "—"} · סוג: {selected.data.type}
+          {selected.kind === "building" && selected.data.floor && (
+            <div style={{ color: "#9ca3af", fontSize: 11, marginTop: 10 }}>
+              {selected.data.floor} קומות · סוג: {selected.data.type}
             </div>
           )}
         </motion.div>
@@ -85,25 +111,11 @@ export function InfoPanel({ selected, onClose }: InfoPanelProps) {
   );
 }
 
-function ScanLines({ color }: { color: string }) {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        borderRadius: 6,
-        pointerEvents: "none",
-        backgroundImage: `repeating-linear-gradient(0deg, ${color}06 0px, ${color}06 1px, transparent 1px, transparent 4px)`,
-      }}
-    />
-  );
-}
-
 function getColor(item: NonNullable<SelectedItem>): string {
-  if (item.kind === "point") return POINT_TYPE_COLORS[item.data.type] || "#00f5ff";
+  if (item.kind === "point") return POINT_TYPE_COLORS[item.data.type] || "#2563eb";
   if (item.kind === "zone") return item.data.color;
-  if (item.kind === "building") return BUILDING_TYPE_COLORS[item.data.type] || "#aaa";
-  return "#00f5ff";
+  if (item.kind === "building") return BUILDING_TYPE_COLORS[item.data.type] || "#6b7280";
+  return "#2563eb";
 }
 
 function getKindLabel(item: NonNullable<SelectedItem>): string {

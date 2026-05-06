@@ -44,7 +44,7 @@ const DEFAULT_DRAWING: DrawingState = {
   points: [],
   name: "",
   type: "academic",
-  color: "#00f5ff",
+  color: "#2563eb",
 };
 
 const leafletBounds = L.latLngBounds(
@@ -67,17 +67,9 @@ export function MapView() {
     [gamePoints]
   );
 
-  const handlePointClick = useCallback((p: GamePoint) => {
-    setSelected({ kind: "point", data: p });
-  }, []);
-
-  const handleZoneClick = useCallback((z: ZonePolygon) => {
-    setSelected({ kind: "zone", data: z });
-  }, []);
-
-  const handleBuildingClick = useCallback((b: Building) => {
-    setSelected({ kind: "building", data: b });
-  }, []);
+  const handlePointClick = useCallback((p: GamePoint) => setSelected({ kind: "point", data: p }), []);
+  const handleZoneClick = useCallback((z: ZonePolygon) => setSelected({ kind: "zone", data: z }), []);
+  const handleBuildingClick = useCallback((b: Building) => setSelected({ kind: "building", data: b }), []);
 
   const handleModeChange = useCallback((mode: DrawingMode) => {
     setDrawing({ ...DEFAULT_DRAWING, mode });
@@ -87,11 +79,11 @@ export function MapView() {
   const handlePointAdd = useCallback((lat: number, lng: number) => {
     setDrawing(prev => ({
       ...prev,
-      points: drawing.mode === "building" || drawing.mode === "point"
+      points: prev.mode === "building" || prev.mode === "point"
         ? [[lat, lng]]
         : [...prev.points, [lat, lng]],
     }));
-  }, [drawing.mode]);
+  }, []);
 
   const handleFinishZone = useCallback((zone: ZonePolygon) => {
     setZones(prev => [...prev, zone]);
@@ -108,36 +100,40 @@ export function MapView() {
     setDrawing(DEFAULT_DRAWING);
   }, []);
 
-  const handleCancel = useCallback(() => {
-    setDrawing(DEFAULT_DRAWING);
-  }, []);
+  const handleCancel = useCallback(() => setDrawing(DEFAULT_DRAWING), []);
+
+  const isDrawing = drawing.mode !== "none";
 
   return (
-    <div style={{ position: "relative", width: "100vw", height: "100vh", background: "#000" }}>
+    <div style={{ position: "relative", width: "100vw", height: "100vh", background: "#f8fafc" }}>
       <style>{`
-        .leaflet-container { background: #0a0a0f; }
-        .leaflet-tile { filter: saturate(0.4) brightness(0.55) hue-rotate(185deg) contrast(1.1); }
+        .leaflet-container { background: #e2e8f0; }
+        .leaflet-tile { filter: saturate(0.85) brightness(1.05) contrast(1.02); }
+        .leaflet-control-zoom {
+          border: none !important;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.15) !important;
+        }
         .leaflet-control-zoom a {
-          background: rgba(0,0,0,0.85) !important;
-          border-color: #1a1a2e !important;
-          color: #00f5ff !important;
-          font-family: monospace !important;
+          background: #ffffff !important;
+          border-color: #e2e8f0 !important;
+          color: #374151 !important;
+          font-weight: 600 !important;
+          width: 30px !important;
+          height: 30px !important;
+          line-height: 30px !important;
         }
         .leaflet-control-zoom a:hover {
-          background: rgba(0,245,255,0.15) !important;
-          color: #fff !important;
+          background: #f1f5f9 !important;
+          color: #111827 !important;
         }
         .leaflet-control-attribution { display: none; }
-        .cyberpunk-tooltip { background: transparent !important; border: none !important; box-shadow: none !important; }
-        .leaflet-tooltip { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
-          50% { opacity: 0.4; transform: translateX(-50%) scale(1.5); }
+        .leaflet-tooltip {
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
+          padding: 0 !important;
         }
-        @keyframes scanline {
-          0% { transform: translateY(-100%); }
-          100% { transform: translateY(100vh); }
-        }
+        ${isDrawing ? "* { cursor: crosshair !important; }" : ""}
       `}</style>
 
       <MapContainer
@@ -192,22 +188,6 @@ export function MapView() {
       />
 
       <InfoPanel selected={selected} onClose={() => setSelected(null)} />
-
-      <div style={{
-        position: "absolute",
-        bottom: 70,
-        right: 16,
-        zIndex: 900,
-        background: "rgba(0,0,0,0.7)",
-        border: "1px solid #1a1a2e",
-        padding: "4px 8px",
-        fontFamily: "monospace",
-        fontSize: 9,
-        color: "#444",
-        borderRadius: 3,
-      }}>
-        Esri World Imagery
-      </div>
     </div>
   );
 }

@@ -19,34 +19,39 @@ export function BuildingLayer({ buildings, onBuildingClick }: BuildingLayerProps
 }
 
 function BuildingMarker({ building, onClick }: { building: Building; onClick: (b: Building) => void }) {
-  const color = useMemo(() => BUILDING_TYPE_COLORS[building.type] || "#aaaaaa", [building.type]);
+  const color = useMemo(() => BUILDING_TYPE_COLORS[building.type] || "#64748b", [building.type]);
 
   return (
     <CircleMarker
       center={[building.lat, building.lng]}
-      radius={10}
+      radius={11}
       pathOptions={{
-        color,
-        weight: 2,
-        fillColor: "rgba(0,0,0,0.7)",
-        fillOpacity: 0.85,
-        opacity: 0.9,
+        color: color,
+        weight: 2.5,
+        fillColor: "#ffffff",
+        fillOpacity: 0.92,
       }}
       eventHandlers={{ click: () => onClick(building) }}
     >
-      <Tooltip direction="top" offset={[0, -12]} opacity={1}>
+      <Tooltip direction="top" offset={[0, -14]} opacity={1}>
         <div style={{
-          background: "rgba(0,0,0,0.9)",
+          background: "#ffffff",
           border: `1px solid ${color}`,
           padding: "4px 10px",
-          color,
-          fontSize: "12px",
-          fontFamily: "monospace",
-          borderRadius: "3px",
-          boxShadow: `0 0 8px ${color}50`,
+          color: "#111827",
+          fontSize: 12,
+          fontFamily: "system-ui, sans-serif",
+          borderRadius: 6,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
+          whiteSpace: "nowrap",
         }}>
-          ▣ {building.name}
-          {building.floor && <span style={{ opacity: 0.6, marginLeft: 6 }}>{building.floor}F</span>}
+          <span style={{ color, fontWeight: 600, marginRight: 4 }}>▣</span>
+          {building.name}
+          {building.floor && (
+            <span style={{ color: "#9ca3af", fontSize: 10, marginLeft: 6 }}>
+              {building.floor}F
+            </span>
+          )}
         </div>
       </Tooltip>
     </CircleMarker>

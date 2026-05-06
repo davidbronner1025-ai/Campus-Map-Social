@@ -35,34 +35,34 @@ export function isValidCoord(lat: number, lng: number): boolean {
 }
 
 export const POINT_TYPE_COLORS: Record<string, string> = {
-  admin: "#ff2222",
-  event: "#ff9000",
-  post: "#00aaff",
-  zone: "#aa44ff",
-  npc: "#00ff99",
+  admin:  "#dc2626",
+  event:  "#ea580c",
+  post:   "#2563eb",
+  zone:   "#7c3aed",
+  npc:    "#059669",
 };
 
 export const POINT_TYPE_ICONS: Record<string, string> = {
   admin: "★",
   event: "⚡",
-  post: "💬",
-  zone: "◈",
-  npc: "◉",
+  post:  "💬",
+  zone:  "◈",
+  npc:   "◉",
 };
 
 export const POINT_TYPE_LABELS: Record<string, string> = {
   admin: "מערכת",
   event: "אירוע",
-  post: "פוסט",
-  zone: "אזור",
-  npc: "דמות",
+  post:  "פוסט",
+  zone:  "אזור",
+  npc:   "דמות",
 };
 
 export const BUILDING_TYPE_COLORS: Record<string, string> = {
-  academic: "#00f5ff",
-  admin: "#ff4444",
-  sports: "#ff9000",
-  dining: "#ffff00",
-  parking: "#888888",
-  other: "#aaaaaa",
+  academic: "#2563eb",
+  admin:    "#dc2626",
+  sports:   "#ea580c",
+  dining:   "#ca8a04",
+  parking:  "#64748b",
+  other:    "#94a3b8",
 };

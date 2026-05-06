@@ -12,7 +12,7 @@ interface DrawingPanelProps {
   onCancel: () => void;
 }
 
-const ZONE_COLORS = ["#00f5ff", "#ff0080", "#7fff00", "#ff9000", "#aa44ff", "#ffff00"];
+const ZONE_COLORS = ["#2563eb", "#dc2626", "#16a34a", "#ea580c", "#7c3aed", "#ca8a04"];
 
 export function DrawingPanel({
   drawing,
@@ -41,7 +41,6 @@ export function DrawingPanel({
         type: (drawing.type as Building["type"]) || "other",
         lat,
         lng,
-        description: "",
       });
     } else if (drawing.mode === "point" && drawing.points.length > 0) {
       const [lat, lng] = drawing.points[0];
@@ -51,59 +50,99 @@ export function DrawingPanel({
         type: pointType,
         lat,
         lng,
-        description: "",
         priority: 3,
       });
     }
   }
 
-  const btnStyle = (active: boolean, color = "#00f5ff") => ({
-    background: active ? `${color}22` : "rgba(0,0,0,0.6)",
-    border: `1px solid ${active ? color : "#333"}`,
-    color: active ? color : "#555",
-    padding: "6px 12px",
-    borderRadius: 3,
+  const card: React.CSSProperties = {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    zIndex: 1000,
+    width: 224,
+    background: "#ffffff",
+    border: "1px solid #e2e8f0",
+    borderRadius: 10,
+    padding: "14px 16px",
+    boxShadow: "0 2px 12px rgba(0,0,0,0.10)",
+    fontFamily: "system-ui, sans-serif",
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    background: "#f9fafb",
+    border: "1px solid #e2e8f0",
+    borderRadius: 6,
+    color: "#111827",
+    padding: "6px 10px",
+    fontSize: 13,
+    direction: "rtl",
+    outline: "none",
+    boxSizing: "border-box",
+  };
+
+  const btnPrimary: React.CSSProperties = {
+    flex: 1,
+    background: "#2563eb",
+    border: "none",
+    color: "#fff",
+    padding: "7px 12px",
+    borderRadius: 6,
     cursor: "pointer",
-    fontSize: 12,
-    fontFamily: "monospace",
-    transition: "all 0.15s",
-    boxShadow: active ? `0 0 8px ${color}40` : "none",
-  });
+    fontSize: 13,
+    fontWeight: 600,
+  };
+
+  const btnGhost: React.CSSProperties = {
+    flex: 1,
+    background: "#f1f5f9",
+    border: "1px solid #e2e8f0",
+    color: "#374151",
+    padding: "7px 12px",
+    borderRadius: 6,
+    cursor: "pointer",
+    fontSize: 13,
+  };
+
+  const modeBtn = (label: string, mode: DrawingMode, color: string) => (
+    <button
+      onClick={() => onModeChange(mode)}
+      style={{
+        width: "100%",
+        background: "#f8fafc",
+        border: `1px solid ${color}40`,
+        color: color,
+        padding: "8px 12px",
+        borderRadius: 7,
+        cursor: "pointer",
+        fontSize: 13,
+        fontWeight: 600,
+        textAlign: "right" as const,
+        marginBottom: 6,
+        transition: "all 0.15s",
+      }}
+    >
+      {label}
+    </button>
+  );
 
   return (
-    <div style={{
-      position: "absolute",
-      top: 16,
-      right: 16,
-      zIndex: 1000,
-      width: 220,
-      background: "rgba(0,0,0,0.88)",
-      border: "1px solid #333",
-      borderRadius: 6,
-      padding: "14px 16px",
-      fontFamily: "monospace",
-      backdropFilter: "blur(10px)",
-    }}>
-      <div style={{ color: "#00f5ff", fontSize: 11, marginBottom: 12, opacity: 0.8 }}>
-        ◈ עורך מפה
+    <div style={card}>
+      <div style={{ color: "#111827", fontSize: 13, fontWeight: 700, marginBottom: 12 }}>
+        ✏️ עורך מפה
       </div>
 
       {drawing.mode === "none" ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <button onClick={() => onModeChange("zone")} style={btnStyle(false, "#00f5ff")}>
-            + אזור / פוליגון
-          </button>
-          <button onClick={() => onModeChange("building")} style={btnStyle(false, "#ff9000")}>
-            + מבנה
-          </button>
-          <button onClick={() => onModeChange("point")} style={btnStyle(false, "#ff0080")}>
-            + נקודת עניין
-          </button>
-        </div>
+        <>
+          {modeBtn("+ הוסף אזור / פוליגון", "zone", "#2563eb")}
+          {modeBtn("+ הוסף מבנה", "building", "#059669")}
+          {modeBtn("+ הוסף נקודת עניין", "point", "#ea580c")}
+        </>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ color: "#00f5ff", fontSize: 11 }}>
-            {drawing.mode === "zone" && "לחץ על המפה להוסיף נקודות לפוליגון"}
+          <div style={{ color: "#6b7280", fontSize: 12, background: "#f1f5f9", borderRadius: 6, padding: "6px 10px" }}>
+            {drawing.mode === "zone" && "לחץ על המפה להוסיף נקודות לפוליגון (מינ׳ 3)"}
             {drawing.mode === "building" && "לחץ על המפה למיקום המבנה"}
             {drawing.mode === "point" && "לחץ על המפה למיקום הנקודה"}
           </div>
@@ -112,34 +151,25 @@ export function DrawingPanel({
             placeholder="שם..."
             value={drawing.name}
             onChange={e => onUpdateDrawing({ name: e.target.value })}
-            style={{
-              background: "rgba(0,0,0,0.6)",
-              border: "1px solid #333",
-              color: "#fff",
-              padding: "5px 8px",
-              borderRadius: 3,
-              fontSize: 12,
-              fontFamily: "monospace",
-              direction: "rtl",
-            }}
+            style={inputStyle}
           />
 
           {drawing.mode === "zone" && (
             <div>
-              <div style={{ color: "#555", fontSize: 10, marginBottom: 4 }}>צבע</div>
+              <div style={{ color: "#6b7280", fontSize: 11, marginBottom: 6 }}>צבע אזור</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {ZONE_COLORS.map(c => (
                   <button
                     key={c}
                     onClick={() => onUpdateDrawing({ color: c })}
                     style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 3,
+                      width: 22,
+                      height: 22,
+                      borderRadius: 4,
                       background: c,
-                      border: drawing.color === c ? "2px solid #fff" : "2px solid transparent",
+                      border: drawing.color === c ? "2px solid #111" : "2px solid transparent",
                       cursor: "pointer",
-                      boxShadow: drawing.color === c ? `0 0 6px ${c}` : "none",
+                      boxShadow: drawing.color === c ? `0 0 0 1px ${c}` : "none",
                     }}
                   />
                 ))}
@@ -149,13 +179,22 @@ export function DrawingPanel({
 
           {drawing.mode === "point" && (
             <div>
-              <div style={{ color: "#555", fontSize: 10, marginBottom: 4 }}>סוג נקודה</div>
+              <div style={{ color: "#6b7280", fontSize: 11, marginBottom: 6 }}>סוג נקודה</div>
               <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                 {(["event", "post", "zone", "npc"] as GamePoint["type"][]).map(t => (
                   <button
                     key={t}
                     onClick={() => setPointType(t)}
-                    style={btnStyle(pointType === t, POINT_TYPE_COLORS[t])}
+                    style={{
+                      background: pointType === t ? `${POINT_TYPE_COLORS[t]}18` : "#f8fafc",
+                      border: `1px solid ${pointType === t ? POINT_TYPE_COLORS[t] : "#e2e8f0"}`,
+                      color: pointType === t ? POINT_TYPE_COLORS[t] : "#6b7280",
+                      padding: "4px 8px",
+                      borderRadius: 5,
+                      cursor: "pointer",
+                      fontSize: 11,
+                      fontWeight: pointType === t ? 700 : 400,
+                    }}
                   >
                     {t}
                   </button>
@@ -165,51 +204,33 @@ export function DrawingPanel({
           )}
 
           {drawing.mode === "building" && (
-            <div>
-              <div style={{ color: "#555", fontSize: 10, marginBottom: 4 }}>סוג מבנה</div>
-              <select
-                value={drawing.type}
-                onChange={e => onUpdateDrawing({ type: e.target.value })}
-                style={{
-                  background: "rgba(0,0,0,0.8)",
-                  border: "1px solid #333",
-                  color: "#aaa",
-                  padding: "4px 6px",
-                  borderRadius: 3,
-                  fontSize: 12,
-                  fontFamily: "monospace",
-                  width: "100%",
-                }}
-              >
-                <option value="academic">אקדמי</option>
-                <option value="admin">מינהל</option>
-                <option value="sports">ספורט</option>
-                <option value="dining">אוכל</option>
-                <option value="parking">חניה</option>
-                <option value="other">אחר</option>
-              </select>
-            </div>
+            <select
+              value={drawing.type}
+              onChange={e => onUpdateDrawing({ type: e.target.value })}
+              style={{ ...inputStyle }}
+            >
+              <option value="academic">אקדמי</option>
+              <option value="admin">מינהל</option>
+              <option value="sports">ספורט</option>
+              <option value="dining">אוכל</option>
+              <option value="parking">חניה</option>
+              <option value="other">אחר</option>
+            </select>
           )}
 
           <div style={{ display: "flex", gap: 6 }}>
             <button
               onClick={handleFinish}
               disabled={drawing.points.length === 0}
-              style={{
-                ...btnStyle(true, "#00f5ff"),
-                flex: 1,
-                opacity: drawing.points.length === 0 ? 0.4 : 1,
-              }}
+              style={{ ...btnPrimary, opacity: drawing.points.length === 0 ? 0.45 : 1 }}
             >
               ✓ שמור
             </button>
-            <button onClick={onCancel} style={{ ...btnStyle(false), flex: 1 }}>
-              ✕
-            </button>
+            <button onClick={onCancel} style={btnGhost}>ביטול</button>
           </div>
 
-          <div style={{ color: "#444", fontSize: 10 }}>
-            {drawing.points.length} נקודות
+          <div style={{ color: "#9ca3af", fontSize: 11 }}>
+            {drawing.points.length} נקודות נבחרו
           </div>
         </div>
       )}
