@@ -1,4 +1,6 @@
 export type GamePointType = "event" | "post" | "zone" | "npc" | "admin";
+export type ZoneState = "neutral" | "active" | "hot";
+export type DrawingMode = "none" | "zone" | "building" | "point";
 
 export interface GamePoint {
   id: string;
@@ -16,7 +18,10 @@ export interface ZonePolygon {
   description?: string;
   color: string;
   coordinates: [number, number][];
-  buildingIds?: string[];
+  state?: ZoneState;
+  activityScore?: number;
+  userCount?: number;
+  messageCount?: number;
 }
 
 export interface Building {
@@ -30,14 +35,35 @@ export interface Building {
   floor?: number;
 }
 
+export interface PlayerMarker {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  online: boolean;
+  activityLevel: "idle" | "active" | "hot";
+  avatarColor: string;
+  lastSeen: Date;
+}
+
+export interface InteractionNode {
+  id: string;
+  type: "message" | "event" | "pin";
+  lat: number;
+  lng: number;
+  title: string;
+  creator: string;
+  participants: number;
+  createdAt: Date;
+  zoneId?: string;
+}
+
 export interface MapBounds {
   north: number;
   south: number;
   east: number;
   west: number;
 }
-
-export type DrawingMode = "none" | "zone" | "building" | "point";
 
 export interface DrawingState {
   mode: DrawingMode;
@@ -46,3 +72,11 @@ export interface DrawingState {
   type: string;
   color: string;
 }
+
+export type SelectedItem =
+  | { kind: "point"; data: GamePoint }
+  | { kind: "zone"; data: ZonePolygon }
+  | { kind: "building"; data: Building }
+  | { kind: "player"; data: PlayerMarker }
+  | { kind: "node"; data: InteractionNode }
+  | null;

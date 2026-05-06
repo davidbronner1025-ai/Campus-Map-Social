@@ -1,0 +1,223 @@
+THIS IS NOT A DESIGN TASK — THIS IS A REAL IMPLEMENTATION TASK.
+
+You are NOT allowed to "simulate" or "fake scan" a real-world campus.
+
+You MUST build a deterministic gamification system on top of the existing map infrastructure (Leaflet / React).
+
+---
+
+## 🎯 GOAL
+
+Transform the existing campus map into a **game-like interactive environment** with:
+
+- Zones (polygons)
+- Points of interest (locations already in DB)
+- Player presence (users)
+- Real-time interaction layer
+
+NO external map scanning. ONLY use:
+- existing `locations` table (polygons)
+- user GPS data
+- existing map tiles (satellite)
+
+---
+
+## 🧠 CORE CONCEPT
+
+The system behaves like a hybrid between:
+
+- Pokémon GO (map + real world positioning)
+- Clash of Clans (zones / territories)
+- Discord (social interaction layer)
+
+---
+
+## 🗺️ VISUAL STRUCTURE
+
+### 1. BASE MAP
+- Use existing satellite tiles (Esri / Leaflet)
+- DO NOT change provider
+
+---
+
+### 2. ZONES (GAME AREAS)
+Use existing `locations.polygon`:
+
+Each zone must render as:
+- semi-transparent colored polygon
+- soft glowing border
+- label always visible
+
+Add state:
+- "neutral"
+- "active"
+- "high activity"
+
+Visual behavior:
+- high activity → pulsing glow
+- inactive → dim opacity
+
+---
+
+### 3. PLAYER MARKERS
+
+Users must be rendered as:
+
+- small circular avatars
+- with:
+  - online/offline indicator
+  - activity ring
+
+Rules:
+- cluster when dense (use clustering logic)
+- NEVER overlap visually
+- prioritize clarity over accuracy
+
+---
+
+### 4. INTERACTION NODES (MESSAGES / EVENTS)
+
+Each message/event becomes:
+
+- interactive node on map
+- icon based on type:
+  - 💬 message
+  - 🎯 event
+  - 📌 admin pin
+
+Behavior:
+- click → open bottom sheet
+- show:
+  - creator
+  - participants
+  - CTA (join / react)
+
+---
+
+## 🎮 GAME MECHANICS
+
+### 1. ACTIVITY SCORE PER ZONE
+
+For each zone calculate:
+
+score =
+  + number of users
+  + number of messages
+  + number of active events
+
+Update every 10 seconds.
+
+---
+
+### 2. HOT ZONE DETECTION
+
+If score > threshold:
+
+- mark zone as "HOT"
+- enable:
+  - glow animation
+  - priority rendering
+
+---
+
+### 3. DISCOVERY SYSTEM
+
+If no nearby activity:
+
+- DO NOT fake data
+- show:
+  - "No activity nearby"
+  - suggest nearest active zone
+
+---
+
+### 4. PLAYER PRESENCE
+
+Each user:
+- updates location every 30s
+- appears only if:
+  - visibility = campus
+  - has recent activity
+
+---
+
+## 🎨 UI / UX REQUIREMENTS
+
+### MUST MATCH THESE REFERENCES:
+
+#### Pokémon GO Map UI
+
+::contentReference[oaicite:0]{index=0}
+
+
+Use:
+- clean map
+- minimal UI overlay
+- focus on interaction points
+
+---
+
+#### Clash of Clans Territory Feel
+
+::contentReference[oaicite:1]{index=1}
+
+
+Use:
+- clear zone boundaries
+- visual hierarchy
+- color-coded areas
+
+---
+
+#### Discord Interaction Layer
+
+::contentReference[oaicite:2]{index=2}
+
+
+Use:
+- smooth interactions
+- instant feedback
+- bottom sheets
+
+---
+
+## ⚙️ TECH REQUIREMENTS
+
+You MUST:
+
+- Use existing API endpoints (NO new fake endpoints)
+- Use real data only
+- Keep map at 60fps
+- Avoid unnecessary re-renders
+- Memoize markers
+- Throttle location updates
+
+---
+
+## 🚫 HARD RULES
+
+- NO fake data generation
+- NO mock "scan"
+- NO blocking UI
+- NO global re-renders on every update
+- NO breaking existing features
+
+---
+
+## ✅ FINAL RESULT
+
+The map must:
+
+- feel alive
+- show real user activity
+- prioritize interaction
+- behave like a game, not a static map
+
+---
+
+## OUTPUT
+
+1. Code changes per file
+2. Explanation of rendering flow
+3. Performance considerations
+4. Before/After behavior comparison
