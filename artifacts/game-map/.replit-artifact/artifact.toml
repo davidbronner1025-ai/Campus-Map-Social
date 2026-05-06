@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/game-map/"
+title = "Campus Game Map"
+version = "1.0.0"
+id = "artifacts/game-map"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/game-map/" ]
+localPort = 25174
+
+[services.development]
+run = "pnpm --filter @workspace/game-map run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/game-map", "run", "build" ]
+publicDir = "artifacts/game-map/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25174"
+BASE_PATH = "/game-map/"
