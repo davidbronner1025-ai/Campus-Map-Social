@@ -1,0 +1,413 @@
+# MAP ENGINE REBUILD — NEW VISUAL DIRECTION
+
+We are no longer building a classic “GIS map with markers”.
+
+The current direction is WRONG.
+
+The existing system feels:
+
+* overloaded
+* technical
+* military/dashboard-like
+* visually noisy
+* emotionally dead
+
+Even when the functionality works, the experience does not feel premium, immersive, or enjoyable.
+
+We are now changing direction completely.
+
+---
+
+# NEW PRODUCT VISION
+
+The map must feel like:
+
+> a living interactive campus operating system
+
+NOT:
+
+* Google Maps
+* Waze
+* GIS software
+* admin dashboard
+* tactical military map
+
+The experience should feel closer to:
+
+* Apple Maps
+* VisionOS
+* modern strategy/open-world game UI
+* interactive campus simulation
+
+The map should feel:
+
+* calm
+* clean
+* soft
+* spatial
+* alive
+* layered
+* immersive
+
+The user should immediately understand:
+
+* where activity exists
+* where people gather
+* what each building is
+* what matters right now
+
+WITHOUT visual overload.
+
+---
+
+# CRITICAL ARCHITECTURE CHANGE
+
+We are abandoning:
+
+* raw Leaflet polygon rendering
+* neon outlines
+* heavy satellite rendering
+* large marker spam
+* traditional GIS styling
+
+We are moving to:
+
+# STYLIZED CAMPUS RENDERING
+
+Buildings become:
+
+* interactive cards
+* soft 3D-like objects
+* layered structures
+* animated entities
+
+The map becomes:
+
+* an interface layer
+* not just a geographic renderer
+
+---
+
+# PRIMARY DESIGN REFERENCES
+
+Combine the BEST aspects of:
+
+### Apple Maps
+
+* cleanliness
+* readability
+* restrained colors
+* glass UI
+* soft depth
+
+### VisionOS
+
+* floating interface feeling
+* spatial layering
+* soft transparency
+* premium motion
+
+### Zelda BOTW
+
+* calm color palette
+* simplified terrain readability
+* soft environmental design
+
+### GTA V Map Logic
+
+* zoom-based information hierarchy
+* smart visibility rules
+* decluttered navigation
+
+### Warzone Heatmap Logic
+
+* activity zones
+* density representation
+* cluster abstraction
+
+### CampusOS-style concepts
+
+* stylized buildings
+* architectural cards
+* semantic spaces
+
+---
+
+# NEW MAP PRINCIPLES
+
+# 1. THE GROUND IS BACKGROUND
+
+Satellite imagery must stop dominating the experience.
+
+Current issue:
+
+* the satellite layer competes with the UI
+
+Fix:
+
+* reduce saturation
+* slightly blur background
+* apply soft white/gray overlay
+* reduce contrast
+
+Goal:
+Ground = context only.
+
+---
+
+# 2. BUILDINGS ARE THE PRIMARY OBJECTS
+
+Every building must become:
+
+* clean
+* readable
+* soft
+* elevated
+* categorized
+
+Each building should include:
+
+* subtle shadow
+* inner gradient
+* soft border
+* category icon
+* optional activity state
+* hover/focus states
+
+DO NOT use classic GIS polygons.
+
+The building layer should feel like:
+
+* a designed object
+* not a map annotation
+
+---
+
+# 3. REMOVE MARKER SPAM
+
+Current issue:
+too many pins destroy readability.
+
+New behavior:
+
+* users should NOT appear as permanent markers
+* posts should NOT create map clutter
+* events should NOT use classic pins
+
+Instead:
+
+### User presence
+
+Represent through:
+
+* density
+* soft pulses
+* group indicators
+
+Only show avatars:
+
+* on high zoom
+* or focused interaction
+
+### Events
+
+Use:
+
+* glow states
+* building highlights
+* activity halos
+
+NOT giant pins.
+
+---
+
+# 4. ZOOM-BASED HIERARCHY
+
+Different zoom levels must render different systems.
+
+### Low zoom
+
+Show only:
+
+* major buildings
+* activity zones
+* district labels
+
+### Medium zoom
+
+Add:
+
+* active buildings
+* event indicators
+* movement density
+
+### High zoom
+
+Add:
+
+* user avatars
+* conversations
+* micro interactions
+
+The map should NEVER display everything simultaneously.
+
+---
+
+# 5. BUILDING STATES
+
+Buildings should visually react to activity.
+
+Examples:
+
+### Quiet
+
+soft neutral outline
+
+### Active
+
+subtle glow
+
+### Crowded
+
+pulse animation
+
+### Important event
+
+elevated highlight state
+
+The campus should feel alive.
+
+---
+
+# 6. SOFT GAME-LIKE MOTION
+
+Add:
+
+* breathing glow
+* ambient transitions
+* smooth hover animations
+* subtle environmental movement
+
+DO NOT:
+
+* use flashy gaming effects
+* use aggressive neon
+* create visual chaos
+
+Motion should feel:
+premium and restrained.
+
+---
+
+# 7. GLASS UI SYSTEM
+
+Use:
+
+* glass morphism
+* soft blur
+* thin borders
+* translucent floating panels
+
+BUT:
+avoid excessive opacity and fake futuristic overload.
+
+We want:
+minimal premium design.
+
+---
+
+# 8. REBUILD THE MAP AS A RENDER ENGINE
+
+This is NOT a CSS redesign.
+
+This is a rendering architecture change.
+
+We need:
+
+* custom rendering layers
+* smart visibility logic
+* rendering prioritization
+* animation system
+* density engine
+* interaction hierarchy
+
+Potentially:
+
+* canvas rendering
+* WebGL overlays
+* custom map layer engine
+
+NOT:
+raw Leaflet-only rendering.
+
+---
+
+# TECHNICAL PRIORITIES
+
+PHASE 1:
+
+* stylized ground layer
+* building rendering system
+* soft visual language
+* remove current polygon system
+
+PHASE 2:
+
+* zoom hierarchy engine
+* smart filtering
+* visibility prioritization
+
+PHASE 3:
+
+* activity visualization engine
+* density/pulse system
+* interaction states
+
+PHASE 4:
+
+* animations
+* focus transitions
+* immersive polish
+
+---
+
+# IMPORTANT CONSTRAINTS
+
+The system MUST remain:
+
+* mobile performant
+* scalable
+* clean
+* readable
+* battery efficient
+
+DO NOT:
+
+* overload GPU
+* create 3D scenes
+* use heavy shaders everywhere
+* destroy usability
+
+This is:
+a stylized intelligent 2.5D campus system.
+
+NOT:
+a full game engine.
+
+---
+
+# FINAL GOAL
+
+The final result should feel like:
+
+> “an intelligent living campus interface”
+
+A user should open the app and instantly feel:
+
+* orientation
+* activity
+* social energy
+* spatial awareness
+* premium quality
+
+WITHOUT confusion or clutter.
