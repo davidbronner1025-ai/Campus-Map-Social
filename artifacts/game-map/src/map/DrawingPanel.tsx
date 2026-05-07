@@ -61,12 +61,15 @@ export function DrawingPanel({
     right: 16,
     zIndex: 1000,
     width: 224,
-    background: "#ffffff",
-    border: "1px solid #e2e8f0",
-    borderRadius: 10,
+    background: "rgba(255,255,255,0.90)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+    border: "1px solid rgba(255,255,255,0.75)",
+    borderRadius: 14,
     padding: "14px 16px",
-    boxShadow: "0 2px 12px rgba(0,0,0,0.10)",
-    fontFamily: "system-ui, sans-serif",
+    boxShadow: "0 2px 20px rgba(0,0,0,0.09), 0 1px 0 rgba(255,255,255,0.9) inset",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+    direction: "rtl",
   };
 
   const inputStyle: React.CSSProperties = {

@@ -1,17 +1,18 @@
-import { useState, useCallback } from "react";
-import { MapContainer, TileLayer, ZoomControl } from "react-leaflet";
+import { useState, useCallback, useEffect } from "react";
+import { MapContainer, TileLayer, ZoomControl, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { DrawingState, DrawingMode, ZonePolygon, Building, GamePoint, SelectedItem } from "../types/map";
 import { MAP_CENTER, MAP_ZOOM, MAP_BOUNDS } from "../data/campusData";
 import { useLocations } from "../hooks/useLocations";
 import { useActivityEngine } from "../hooks/useActivityEngine";
-import { GameZoneLayer } from "./GameZoneLayer";
-import { PlayerLayer } from "./PlayerLayer";
-import { NodeLayer } from "./NodeLayer";
+import { BuildingCard } from "./BuildingCard";
+import { CampusBoundary } from "./CampusBoundary";
+import { ActivityHalo } from "./ActivityHalo";
+import { PresenceDots } from "./PresenceDots";
+import { BuildingPopup } from "./BuildingPopup";
+import { CampusHUD } from "./CampusHUD";
 import { DrawingLayer } from "./DrawingLayer";
-import { BottomSheet } from "./BottomSheet";
-import { GameHUD } from "./GameHUD";
 import { DrawingPanel } from "./DrawingPanel";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -26,13 +27,20 @@ const DEFAULT_DRAWING: DrawingState = {
   points: [],
   name: "",
   type: "academic",
-  color: "#2563eb",
+  color: "#dc2626",
 };
 
 const leafletBounds = L.latLngBounds(
   [MAP_BOUNDS.south, MAP_BOUNDS.west],
   [MAP_BOUNDS.north, MAP_BOUNDS.east]
 );
+
+function ZoomTracker({ onZoom }: { onZoom: (z: number) => void }) {
+  const map = useMapEvents({
+    zoom() { onZoom(map.getZoom()); },
+  });
+  return null;
+}
 
 export function MapView() {
   const { zones, setZones, loading, error } = useLocations();
@@ -41,9 +49,10 @@ export function MapView() {
   const [selected, setSelected] = useState<SelectedItem>(null);
   const [drawing, setDrawing] = useState<DrawingState>(DEFAULT_DRAWING);
   const [showZones, setShowZones] = useState(true);
-  const [showPlayers, setShowPlayers] = useState(true);
   const [showNodes, setShowNodes] = useState(true);
+  const [zoom, setZoom] = useState(MAP_ZOOM);
   const [userZones, setUserZones] = useState<ZonePolygon[]>([]);
+  const [campusBoundary, setCampusBoundary] = useState<[number, number][]>([]);
 
   const handleSelect = useCallback((item: SelectedItem) => {
     if (drawing.mode !== "none") return;
@@ -65,50 +74,37 @@ export function MapView() {
   }, []);
 
   const handleFinishZone = useCallback((zone: ZonePolygon) => {
-    setUserZones(prev => [...prev, zone]);
+    if (zone.color === "#dc2626" && drawing.name?.includes("קמפוס")) {
+      setCampusBoundary(zone.coordinates);
+    } else {
+      setUserZones(prev => [...prev, zone]);
+    }
+    setDrawing(DEFAULT_DRAWING);
+  }, [drawing.name]);
+
+  const handleFinishBuilding = useCallback((_b: Building) => {
     setDrawing(DEFAULT_DRAWING);
   }, []);
 
-  const handleFinishBuilding = useCallback((b: Building) => {
-    setDrawing(DEFAULT_DRAWING);
-  }, []);
-
-  const handleFinishPoint = useCallback((p: GamePoint) => {
+  const handleFinishPoint = useCallback((_p: GamePoint) => {
     setDrawing(DEFAULT_DRAWING);
   }, []);
 
   const allZones = [...zones, ...userZones];
 
+  const presenceByZone = zones.reduce((acc, z) => {
+    const count = players.filter(p => {
+      if (!p.online) return false;
+      const [cLat, cLng] = z.coordinates[0];
+      return Math.abs(p.lat - cLat) < 0.001 && Math.abs(p.lng - cLng) < 0.0012;
+    }).length;
+    acc[z.id] = count;
+    return acc;
+  }, {} as Record<string, number>);
+
   return (
-    <div style={{ position: "relative", width: "100vw", height: "100vh", background: "#e2e8f0" }}>
+    <div style={{ position: "relative", width: "100vw", height: "100vh" }}>
       <style>{`
-        .leaflet-container { background: #e2e8f0; }
-        .leaflet-tile { filter: saturate(0.88) brightness(1.04) contrast(1.02); }
-        .leaflet-control-zoom {
-          border: none !important;
-          box-shadow: 0 1px 6px rgba(0,0,0,0.13) !important;
-          border-radius: 8px !important;
-          overflow: hidden;
-        }
-        .leaflet-control-zoom a {
-          background: white !important;
-          border-color: #e2e8f0 !important;
-          color: #374151 !important;
-          font-weight: 700 !important;
-          width: 32px !important;
-          height: 32px !important;
-          line-height: 32px !important;
-          font-size: 18px !important;
-        }
-        .leaflet-control-zoom a:hover { background: #f1f5f9 !important; }
-        .leaflet-control-attribution { display: none; }
-        .leaflet-tooltip {
-          background: transparent !important;
-          border: none !important;
-          box-shadow: none !important;
-          padding: 0 !important;
-        }
-        .zone-label-tooltip { pointer-events: none !important; }
         ${drawing.mode !== "none" ? "* { cursor: crosshair !important; }" : ""}
       `}</style>
 
@@ -116,7 +112,7 @@ export function MapView() {
         center={MAP_CENTER}
         zoom={MAP_ZOOM}
         maxBounds={leafletBounds}
-        maxBoundsViscosity={0.92}
+        maxBoundsViscosity={0.85}
         minZoom={16}
         maxZoom={20}
         zoomControl={false}
@@ -132,26 +128,45 @@ export function MapView() {
         />
 
         <ZoomControl position="bottomright" />
+        <ZoomTracker onZoom={setZoom} />
 
-        {showZones && <GameZoneLayer zones={allZones} onSelect={handleSelect} />}
-        {showPlayers && <PlayerLayer players={players} onSelect={handleSelect} />}
-        {showNodes && <NodeLayer nodes={nodes} onSelect={handleSelect} />}
+        {/* Campus boundary in red */}
+        {campusBoundary.length >= 3 && (
+          <CampusBoundary coordinates={campusBoundary} />
+        )}
 
+        {/* Activity halos behind buildings */}
+        <ActivityHalo zones={allZones} />
+
+        {/* Buildings as styled polygons */}
+        {showZones && allZones.map(zone => (
+          <BuildingCard
+            key={zone.id}
+            zone={zone}
+            onSelect={handleSelect}
+            presenceCount={presenceByZone[zone.id] ?? 0}
+          />
+        ))}
+
+        {/* Presence dots */}
+        <PresenceDots players={players} zoom={zoom} />
+
+        {/* Drawing layer */}
         <DrawingLayer drawing={drawing} onPointAdd={handlePointAdd} />
       </MapContainer>
 
-      <GameHUD
+      {/* Glass HUD top-right */}
+      <CampusHUD
         zones={allZones}
         players={players}
         showZones={showZones}
-        showPlayers={showPlayers}
         showNodes={showNodes}
-        onToggleZones={() => setShowZones(v => !v)}
-        onTogglePlayers={() => setShowPlayers(v => !v)}
-        onToggleNodes={() => setShowNodes(v => !v)}
         isDrawing={drawing.mode !== "none"}
+        onToggleZones={() => setShowZones(v => !v)}
+        onToggleNodes={() => setShowNodes(v => !v)}
       />
 
+      {/* Drawing panel top-right, below drawing header */}
       <DrawingPanel
         drawing={drawing}
         onModeChange={handleModeChange}
@@ -162,7 +177,8 @@ export function MapView() {
         onCancel={() => setDrawing(DEFAULT_DRAWING)}
       />
 
-      <BottomSheet selected={selected} onClose={() => setSelected(null)} />
+      {/* Floating popup card */}
+      <BuildingPopup selected={selected} onClose={() => setSelected(null)} />
 
       {loading && (
         <div style={{
@@ -170,18 +186,20 @@ export function MapView() {
           top: "50%",
           left: "50%",
           transform: "translate(-50%,-50%)",
-          background: "white",
-          borderRadius: 12,
-          padding: "16px 24px",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
+          background: "rgba(255,255,255,0.95)",
+          backdropFilter: "blur(16px)",
+          borderRadius: 16,
+          padding: "18px 28px",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
           fontSize: 14,
           color: "#374151",
           zIndex: 1100,
           display: "flex",
           alignItems: "center",
-          gap: 10,
+          gap: 12,
+          fontWeight: 600,
         }}>
-          <span style={{ fontSize: 20 }}>🗺️</span>
+          <span style={{ fontSize: 22 }}>🗺️</span>
           טוען מיקומים...
         </div>
       )}
@@ -189,13 +207,13 @@ export function MapView() {
       {error && (
         <div style={{
           position: "absolute",
-          bottom: 80,
+          bottom: 100,
           left: "50%",
           transform: "translateX(-50%)",
           background: "#fef2f2",
           border: "1px solid #fecaca",
-          borderRadius: 8,
-          padding: "10px 16px",
+          borderRadius: 10,
+          padding: "10px 18px",
           fontSize: 13,
           color: "#dc2626",
           zIndex: 1100,
