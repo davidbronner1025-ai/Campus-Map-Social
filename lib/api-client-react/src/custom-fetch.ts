@@ -352,7 +352,12 @@ export async function customFetch<T = unknown>(
     if (token) headers.set("authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(input, { ...init, method, headers });
+  // Always send cookies for same-origin /api/* requests so cookie-based auth
+  // sessions (Replit OIDC) are forwarded without needing explicit credentials.
+  const credentials: RequestCredentials =
+    shouldAttachAuth(requestInfo.url) ? "include" : (init.credentials ?? "same-origin");
+
+  const response = await fetch(input, { ...init, method, headers, credentials });
 
   if (!response.ok) {
     if (response.status === 401 && unauthorizedHandler) {

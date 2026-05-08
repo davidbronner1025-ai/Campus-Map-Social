@@ -85,8 +85,13 @@ function AuthGuard() {
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
 
   // Wire up the global 401 handler — any rejected API call bounces to login.
+  // We redirect to /api/login (NOT /api/logout) so the session is preserved
+  // and the OIDC flow can silently re-authenticate without wiping state.
   useEffect(() => {
-    setUnauthorizedHandler(() => { window.location.href = "/api/logout"; });
+    setUnauthorizedHandler(() => {
+      const returnTo = encodeURIComponent(window.location.pathname || "/");
+      window.location.href = `/api/login?returnTo=${returnTo}`;
+    });
     return () => setUnauthorizedHandler(null);
   }, []);
 

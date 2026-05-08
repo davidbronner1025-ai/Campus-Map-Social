@@ -3,14 +3,14 @@ import crypto from "crypto";
 import { db } from "@workspace/db";
 import { usersTable, userOtpsTable, messagesTable, issueReportsTable, campusShopsTable, locationsTable, campusTable } from "@workspace/db/schema";
 import { eq, desc, asc } from "drizzle-orm";
-import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requireReplitAuth } from "../middlewares/authMiddleware";
 
 const router: IRouter = Router();
 
-// 🔐 Hard authorization gate: every /admin/* route requires (a) a valid session
-// AND (b) the calling user to have role=admin. Without both, requests are rejected
-// with 401 (no session) or 403 (not admin) — even before reaching the handler.
-router.use("/admin", requireAuth, requireAdmin);
+// 🔐 Hard authorization gate: every /admin/* route requires a valid Replit OIDC
+// session (cookie-based). The global authMiddleware populates req.user from the
+// "sid" cookie; requireReplitAuth then rejects any request without a valid user.
+router.use("/admin", requireReplitAuth);
 
 // ── Bot identity ─────────────────────────────────────────────────────────────
 // This is a synthetic phone number for a ghost "Campus Admin" bot account used

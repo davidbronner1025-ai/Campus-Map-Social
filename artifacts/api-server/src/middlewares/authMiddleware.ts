@@ -53,6 +53,21 @@ async function refreshIfExpired(
   }
 }
 
+// ── Route-level guard: requires a valid Replit OIDC session cookie ────────────
+// Use this on any route that should only be accessible after Replit login.
+// Must be mounted AFTER the global authMiddleware (which populates req.user).
+export function requireReplitAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized — Replit auth required" });
+    return;
+  }
+  next();
+}
+
 export async function authMiddleware(
   req: Request,
   res: Response,
