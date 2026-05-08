@@ -7,4 +7,4 @@ export {
   ResponseParseError,
   customFetch,
 } from "./custom-fetch";
-export type { CustomFetchOptions, ErrorType, BodyType } from "./custom-fetch";
+export type { CustomFetchOptions, ErrorType, BodyType, AuthUser } from "./custom-fetch";

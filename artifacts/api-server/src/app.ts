@@ -1,7 +1,9 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import { authMiddleware } from "./middlewares/authMiddleware";
 import router from "./routes";
 
 const app: Express = express();
@@ -31,9 +33,17 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 }));
 
+// ── Cookie parser (required for Replit Auth session cookies) ──
+app.use(cookieParser());
+
 // ── Body parsing with explicit limits (DoS protection) ──
 app.use(express.json({ limit: "256kb" }));
 app.use(express.urlencoded({ extended: true, limit: "256kb" }));
+
+// ── Replit Auth middleware — loads OIDC session on every request ──
+// Sets req.user and req.isAuthenticated() when a valid session cookie exists.
+// Must run after cookieParser and body parsing, before routes.
+app.use(authMiddleware);
 
 // ── Rate limiters ──
 // Global: 600 requests / 5min per IP — generous for normal use, blocks runaway scripts

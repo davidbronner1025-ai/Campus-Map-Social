@@ -2,6 +2,15 @@ export type CustomFetchOptions = RequestInit & {
   responseType?: "json" | "text" | "blob" | "auto";
 };
 
+// ── Replit Auth user shape (returned by GET /api/auth/user) ─────────────────
+export type AuthUser = {
+  id: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  profileImageUrl: string | null;
+};
+
 export type ErrorType<T = unknown> = ApiError<T>;
 
 export type BodyType<T> = T;

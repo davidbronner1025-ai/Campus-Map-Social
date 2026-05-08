@@ -1,85 +1,40 @@
 // Central API helper for the admin panel.
 //
-// - Stores the admin's auth token under a dedicated localStorage key so it
-//   never collides with the campus-app's user token (different browser tab).
-// - Wraps fetch with the Authorization header so every admin API call is
-//   authenticated.
-// - Installs the same token into the generated react-query client
-//   (@workspace/api-client-react) via setAuthTokenProvider.
-// - Centralises the 401 handler: if any request returns 401 we wipe the
-//   stored token and reload, which sends the user back through the OTP
-//   login flow.
+// Auth is now handled by Replit Auth (cookie-based OIDC session via /api/login).
+// This module only handles:
+//   - adminFetch: a thin fetch wrapper that sends the session cookie and
+//     handles 401 by invoking the registered unauthorized handler.
+//   - setUnauthorizedHandler: lets App.tsx wire in a global bounce-to-login.
+//   - The generated react-query client (@workspace/api-client-react) is also
+//     wired here so its hooks send the same cookie automatically.
 import {
   setAuthTokenProvider,
   setUnauthorizedHandler as setReactQueryUnauthorizedHandler,
 } from "@workspace/api-client-react";
 
-const TOKEN_KEY = "campus_admin_token";
-const DEVICE_KEY = "campus_admin_device_id";
+// Admin panel uses cookie-based Replit Auth — no bearer token needed.
+// Register a null provider so the generated client doesn't try to attach one.
+setAuthTokenProvider(null);
 
-export type AdminUser = {
-  id: number;
-  phone: string;
-  displayName: string;
-  role: "user" | "moderator" | "admin";
-  accountStatus: "active" | "suspended" | "deleted";
-  avatarUrl: string | null;
-  bannerColor: string;
-  visibility: "campus" | "ghost";
-  lastLoginAt: string | null;
-};
-
-// ── Token storage ────────────────────────────────────────────────────────────
-export function getAdminToken(): string | null {
-  try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
-}
-
-export function setAdminToken(t: string | null): void {
-  try {
-    if (t) localStorage.setItem(TOKEN_KEY, t);
-    else localStorage.removeItem(TOKEN_KEY);
-  } catch { /* storage disabled */ }
-}
-
-// Stable per-browser device id so the server can list/revoke admin sessions.
-export function getAdminDeviceId(): string {
-  try {
-    let id = localStorage.getItem(DEVICE_KEY);
-    if (!id) {
-      id = (crypto?.randomUUID?.() ?? `admin-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-      localStorage.setItem(DEVICE_KEY, id);
-    }
-    return id;
-  } catch {
-    return `admin-${Date.now()}`;
-  }
-}
-
-// ── Fetch wrapper ────────────────────────────────────────────────────────────
+// ── Global 401 handler ────────────────────────────────────────────────────────
 let unauthorizedHandler: (() => void) | null = null;
 
 export function setUnauthorizedHandler(fn: (() => void) | null): void {
   unauthorizedHandler = fn;
-  // Mirror into the generated client so its requests share the same handler.
   setReactQueryUnauthorizedHandler(fn);
 }
 
-// Expose the token to the generated react-query client so its hooks send the
-// Authorization header automatically.
-setAuthTokenProvider(() => getAdminToken());
-
+// ── Fetch wrapper ─────────────────────────────────────────────────────────────
 export async function adminFetch<T = any>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const token = getAdminToken();
   const headers = new Headers(init.headers);
-  if (token && !headers.has("authorization")) headers.set("authorization", `Bearer ${token}`);
   if (init.body && !headers.has("content-type") && typeof init.body === "string") {
     headers.set("content-type", "application/json");
   }
   const url = path.startsWith("http") ? path : path.startsWith("/api") ? path : `/api${path}`;
-  const res = await fetch(url, { ...init, headers });
+  const res = await fetch(url, { ...init, headers, credentials: "include" });
   if (res.status === 401) {
     if (unauthorizedHandler) try { unauthorizedHandler(); } catch { /* ignore */ }
   }
@@ -92,42 +47,4 @@ export async function adminFetch<T = any>(
   const ct = res.headers.get("content-type") || "";
   if (ct.includes("application/json")) return (await res.json()) as T;
   return (await res.text()) as unknown as T;
-}
-
-// ── Auth endpoints ───────────────────────────────────────────────────────────
-export type RequestOtpResponse = { success: boolean; otp?: string };
-export type VerifyOtpResponse = {
-  token: string;
-  userId: number;
-  role: "user" | "moderator" | "admin";
-  isNew: boolean;
-  isNewDevice: boolean;
-};
-
-export async function requestOtp(phone: string): Promise<RequestOtpResponse> {
-  return adminFetch<RequestOtpResponse>("/auth/request-otp", {
-    method: "POST",
-    body: JSON.stringify({ phone }),
-  });
-}
-
-export async function verifyOtp(phone: string, otp: string): Promise<VerifyOtpResponse> {
-  return adminFetch<VerifyOtpResponse>("/auth/verify-otp", {
-    method: "POST",
-    body: JSON.stringify({
-      phone, otp,
-      deviceId: getAdminDeviceId(),
-      platform: "admin-web",
-      appVersion: "admin-1.0",
-    }),
-  });
-}
-
-export async function getMe(): Promise<AdminUser> {
-  return adminFetch<AdminUser>("/me");
-}
-
-export async function logoutAdmin(): Promise<void> {
-  try { await adminFetch("/auth/logout", { method: "POST" }); } catch { /* best-effort */ }
-  setAdminToken(null);
 }
