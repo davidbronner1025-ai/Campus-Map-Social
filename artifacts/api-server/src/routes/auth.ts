@@ -7,7 +7,7 @@ import crypto from "crypto";
 const router: IRouter = Router();
 
 function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
 function generateToken(): string {
@@ -29,7 +29,11 @@ router.post("/auth/request-otp", async (req, res) => {
   await db.insert(userOtpsTable).values({ phone: cleaned, otp, expiresAt });
 
   // In production, you'd send via SMS. For demo, return it in response.
-  res.json({ success: true, otp, message: "OTP generated (demo: returned in response)" });
+  res.json({
+    success: true,
+    otp,
+    message: "OTP generated (demo: returned in response)",
+  });
 });
 
 // POST /auth/verify-otp
@@ -45,7 +49,14 @@ router.post("/auth/verify-otp", async (req, res) => {
   const otpRow = await db
     .select()
     .from(userOtpsTable)
-    .where(and(eq(userOtpsTable.phone, cleaned), eq(userOtpsTable.otp, otp), eq(userOtpsTable.used, false), gt(userOtpsTable.expiresAt, now)))
+    .where(
+      and(
+        eq(userOtpsTable.phone, cleaned),
+        eq(userOtpsTable.otp, otp),
+        eq(userOtpsTable.used, false),
+        gt(userOtpsTable.expiresAt, now),
+      ),
+    )
     .orderBy(userOtpsTable.createdAt)
     .limit(1);
 
@@ -55,22 +66,40 @@ router.post("/auth/verify-otp", async (req, res) => {
   }
 
   // Mark OTP used
-  await db.update(userOtpsTable).set({ used: true }).where(eq(userOtpsTable.id, otpRow[0].id));
+  await db
+    .update(userOtpsTable)
+    .set({ used: true })
+    .where(eq(userOtpsTable.id, otpRow[0].id));
 
   // Find or create user
-  let user = await db.select().from(usersTable).where(eq(usersTable.phone, cleaned)).limit(1);
+  let user = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.phone, cleaned))
+    .limit(1);
   let userData;
   if (!user.length) {
     const token = generateToken();
-    const created = await db.insert(usersTable).values({ phone: cleaned, sessionToken: token, displayName: "" }).returning();
+    const created = await db
+      .insert(usersTable)
+      .values({ phone: cleaned, sessionToken: token, displayName: "" })
+      .returning();
     userData = created[0];
   } else {
     const token = generateToken();
-    const updated = await db.update(usersTable).set({ sessionToken: token }).where(eq(usersTable.phone, cleaned)).returning();
+    const updated = await db
+      .update(usersTable)
+      .set({ sessionToken: token })
+      .where(eq(usersTable.phone, cleaned))
+      .returning();
     userData = updated[0];
   }
 
-  res.json({ token: userData.sessionToken, userId: userData.id, isNew: !user.length });
+  res.json({
+    token: userData.sessionToken,
+    userId: userData.id,
+    isNew: !user.length,
+  });
 });
 
 export default router;
