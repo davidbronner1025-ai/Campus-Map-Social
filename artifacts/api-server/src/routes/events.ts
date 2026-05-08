@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { eventsTable, eventRsvpsTable, usersTable } from "@workspace/db/schema";
-import { eq, and, desc, sql, gte } from "drizzle-orm";
+import { eq, and, desc, sql, gte, inArray } from "drizzle-orm";
 import { requireAuth } from "./users";
 import { createNotification } from "../lib/notify";
 
@@ -47,28 +47,42 @@ router.get("/events/nearby", requireAuth, async (req: Request, res: Response) =>
     return dist <= radius;
   });
 
-  const enriched = await Promise.all(
-    filtered.map(async (row) => {
-      const rsvps = await db
-        .select({
-          id: eventRsvpsTable.id,
-          userId: eventRsvpsTable.userId,
-          displayName: usersTable.displayName,
-          avatarUrl: usersTable.avatarUrl,
-        })
-        .from(eventRsvpsTable)
-        .leftJoin(usersTable, eq(eventRsvpsTable.userId, usersTable.id))
-        .where(eq(eventRsvpsTable.eventId, row.event.id));
+  const eventIds = filtered.map((row) => row.event.id);
 
-      return {
-        ...row.event,
-        creator: row.creator,
-        rsvpCount: rsvps.length,
-        rsvps,
-        distance: Math.round(haversine(lat, lng, row.event.lat, row.event.lng)),
-      };
-    })
-  );
+  let allRsvps: any[] = [];
+  if (eventIds.length > 0) {
+    allRsvps = await db
+      .select({
+        eventId: eventRsvpsTable.eventId,
+        id: eventRsvpsTable.id,
+        userId: eventRsvpsTable.userId,
+        displayName: usersTable.displayName,
+        avatarUrl: usersTable.avatarUrl,
+      })
+      .from(eventRsvpsTable)
+      .leftJoin(usersTable, eq(eventRsvpsTable.userId, usersTable.id))
+      .where(inArray(eventRsvpsTable.eventId, eventIds));
+  }
+
+  const rsvpsByEventId = new Map<number, any[]>();
+  for (const rsvp of allRsvps) {
+    if (!rsvpsByEventId.has(rsvp.eventId)) {
+      rsvpsByEventId.set(rsvp.eventId, []);
+    }
+    const { eventId, ...rsvpData } = rsvp;
+    rsvpsByEventId.get(eventId)!.push(rsvpData);
+  }
+
+  const enriched = filtered.map((row) => {
+    const rsvps = rsvpsByEventId.get(row.event.id) || [];
+    return {
+      ...row.event,
+      creator: row.creator,
+      rsvpCount: rsvps.length,
+      rsvps,
+      distance: Math.round(haversine(lat, lng, row.event.lat, row.event.lng)),
+    };
+  });
 
   res.json(enriched);
 });
