@@ -105,7 +105,7 @@ function MapFly({ center, zoom }: { center: [number, number]; zoom: number }) {
 export default function SetupPage() {
   const [, nav] = useLocation();
   const { toast } = useToast();
-  const { data: campus, isLoading } = useGetCampus({ query: { retry: false } });
+  const { data: campus, isLoading } = useGetCampus({ query: { retry: false, queryKey: ["campus"] } });
   const setCampus = useSetCampus();
 
   const [searchQ, setSearchQ] = useState("");

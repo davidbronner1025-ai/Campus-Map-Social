@@ -152,7 +152,7 @@ router.post("/events", requireAuth, async (req: Request, res: Response) => {
 // DELETE /events/:id
 router.delete("/events/:id", requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
-  const eventId = parseInt(req.params.id);
+  const eventId = parseInt(req.params.id as string);
 
   const evt = await db.select().from(eventsTable).where(eq(eventsTable.id, eventId)).limit(1);
   if (!evt.length) { res.status(404).json({ error: "Not found" }); return; }
@@ -165,7 +165,7 @@ router.delete("/events/:id", requireAuth, async (req: Request, res: Response) =>
 // POST /events/:id/rsvp
 router.post("/events/:id/rsvp", requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
-  const eventId = parseInt(req.params.id);
+  const eventId = parseInt(req.params.id as string);
 
   const evt = await db.select().from(eventsTable).where(eq(eventsTable.id, eventId)).limit(1);
   if (!evt.length) { res.status(404).json({ error: "Not found" }); return; }
@@ -203,7 +203,7 @@ router.post("/events/:id/rsvp", requireAuth, async (req: Request, res: Response)
 // DELETE /events/:id/rsvp
 router.delete("/events/:id/rsvp", requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
-  const eventId = parseInt(req.params.id);
+  const eventId = parseInt(req.params.id as string);
 
   await db
     .delete(eventRsvpsTable)
@@ -214,7 +214,7 @@ router.delete("/events/:id/rsvp", requireAuth, async (req: Request, res: Respons
 
 // GET /events/:id — single event detail
 router.get("/events/:id", requireAuth, async (req: Request, res: Response) => {
-  const eventId = parseInt(req.params.id);
+  const eventId = parseInt(req.params.id as string);
 
   const rows = await db
     .select({

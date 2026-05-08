@@ -84,7 +84,7 @@ router.post("/admin/users", async (req: Request, res: Response) => {
 
 // DELETE /admin/users/:id — remove a user
 router.delete("/admin/users/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   try {
     await db.delete(usersTable).where(eq(usersTable.id, id));
@@ -137,7 +137,7 @@ router.post("/admin/messages", async (req: Request, res: Response) => {
 
 // DELETE /admin/messages/:id — remove an admin-pinned message
 router.delete("/admin/messages/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   try {
     await db.delete(messagesTable).where(eq(messagesTable.id, id));

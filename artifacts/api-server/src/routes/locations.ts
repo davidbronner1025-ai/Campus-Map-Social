@@ -66,7 +66,7 @@ router.post("/locations", async (req, res) => {
 
 router.get("/locations/:locationId", async (req, res) => {
   try {
-    const { locationId } = GetLocationParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = GetLocationParams.parse({ locationId: Number(req.params.locationId as string) });
     const rows = await db.select().from(locationsTable).where(eq(locationsTable.id, locationId));
     if (!rows.length) { res.status(404).json({ error: "Location not found" }); return; }
     const enriched = await enrichLocationsWithManager(rows);
@@ -78,7 +78,7 @@ router.get("/locations/:locationId", async (req, res) => {
 
 router.put("/locations/:locationId", async (req, res) => {
   try {
-    const { locationId } = UpdateLocationParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = UpdateLocationParams.parse({ locationId: Number(req.params.locationId as string) });
     const managerId = req.body.managerId !== undefined ? (req.body.managerId != null ? Number(req.body.managerId) : null) : undefined;
     const body = UpdateLocationBody.parse(req.body);
     const setObj: any = { ...body, updatedAt: new Date() };
@@ -97,7 +97,7 @@ router.put("/locations/:locationId", async (req, res) => {
 
 router.delete("/locations/:locationId", async (req, res) => {
   try {
-    const { locationId } = DeleteLocationParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = DeleteLocationParams.parse({ locationId: Number(req.params.locationId as string) });
     const deleted = await db.delete(locationsTable).where(eq(locationsTable.id, locationId)).returning();
     if (!deleted.length) { res.status(404).json({ error: "Location not found" }); return; }
     res.json({ success: true, message: "Deleted" });
@@ -110,7 +110,7 @@ router.delete("/locations/:locationId", async (req, res) => {
 
 router.get("/locations/:locationId/announcements", async (req, res) => {
   try {
-    const { locationId } = GetAnnouncementsParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = GetAnnouncementsParams.parse({ locationId: Number(req.params.locationId as string) });
     const rows = await db.select().from(announcementsTable)
       .where(eq(announcementsTable.locationId, locationId))
       .orderBy(desc(announcementsTable.createdAt));
@@ -122,7 +122,7 @@ router.get("/locations/:locationId/announcements", async (req, res) => {
 
 router.post("/locations/:locationId/announcements", async (req, res) => {
   try {
-    const { locationId } = CreateAnnouncementParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = CreateAnnouncementParams.parse({ locationId: Number(req.params.locationId as string) });
     const body = CreateAnnouncementBody.parse(req.body);
     const created = await db.insert(announcementsTable).values({ ...body, locationId }).returning();
     res.status(201).json(created[0]);
@@ -145,7 +145,7 @@ router.delete("/announcements/:announcementId", async (req, res) => {
 
 router.get("/locations/:locationId/schedules", async (req, res) => {
   try {
-    const { locationId } = GetSchedulesParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = GetSchedulesParams.parse({ locationId: Number(req.params.locationId as string) });
     const rows = await db.select().from(schedulesTable)
       .where(eq(schedulesTable.locationId, locationId));
     res.json(rows);
@@ -156,7 +156,7 @@ router.get("/locations/:locationId/schedules", async (req, res) => {
 
 router.post("/locations/:locationId/schedules", async (req, res) => {
   try {
-    const { locationId } = CreateScheduleEntryParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = CreateScheduleEntryParams.parse({ locationId: Number(req.params.locationId as string) });
     const body = CreateScheduleEntryBody.parse(req.body);
     const created = await db.insert(schedulesTable).values({ ...body, locationId }).returning();
     res.status(201).json(created[0]);
@@ -179,7 +179,7 @@ router.delete("/schedules/:scheduleId", async (req, res) => {
 
 router.get("/locations/:locationId/menus", async (req, res) => {
   try {
-    const { locationId } = GetMenusParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = GetMenusParams.parse({ locationId: Number(req.params.locationId as string) });
     const menus = await db.select().from(menusTable)
       .where(eq(menusTable.locationId, locationId))
       .orderBy(desc(menusTable.date));
@@ -201,9 +201,10 @@ router.get("/locations/:locationId/menus", async (req, res) => {
 
 router.post("/locations/:locationId/menus", async (req, res) => {
   try {
-    const { locationId } = CreateMenuParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = CreateMenuParams.parse({ locationId: Number(req.params.locationId as string) });
     const body = CreateMenuBody.parse(req.body);
-    const created = await db.insert(menusTable).values({ ...body, locationId }).returning();
+    const dateStr = typeof body.date === "string" ? body.date : (body.date as Date).toISOString().split("T")[0];
+    const created = await db.insert(menusTable).values({ ...body, date: dateStr, locationId }).returning();
     res.status(201).json({ ...created[0], averageRating: 0, ratingCount: 0 });
   } catch (err) {
     res.status(400).json({ error: String(err) });
@@ -225,7 +226,7 @@ router.post("/menus/:menuId/rate", async (req, res) => {
 
 router.get("/locations/:locationId/games", async (req, res) => {
   try {
-    const { locationId } = GetGamesParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = GetGamesParams.parse({ locationId: Number(req.params.locationId as string) });
     const games = await db.select().from(gameSessionsTable)
       .where(eq(gameSessionsTable.locationId, locationId))
       .orderBy(desc(gameSessionsTable.scheduledAt));
@@ -245,7 +246,7 @@ router.get("/locations/:locationId/games", async (req, res) => {
 
 router.post("/locations/:locationId/games", async (req, res) => {
   try {
-    const { locationId } = CreateGameParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = CreateGameParams.parse({ locationId: Number(req.params.locationId as string) });
     const body = CreateGameBody.parse(req.body);
     const scheduledAt = new Date(body.scheduledAt);
     const created = await db.insert(gameSessionsTable).values({ ...body, scheduledAt, locationId }).returning();

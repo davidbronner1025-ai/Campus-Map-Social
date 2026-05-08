@@ -226,8 +226,8 @@ const schSchema = z.object({ dayOfWeek:z.enum(["sunday","monday","tuesday","wedn
 
 function BuildingPanel({ locationId }: { locationId:number }) {
   const [tab,setTab]=useState<"announcements"|"schedule">("announcements");
-  const {data:anns=[],refetch:reA}=useGetAnnouncements({locationId});
-  const {data:scheds=[],refetch:reS}=useGetSchedules({locationId});
+  const {data:anns=[],refetch:reA}=useGetAnnouncements(locationId);
+  const {data:scheds=[],refetch:reS}=useGetSchedules(locationId);
   const createAnn=useCreateAnnouncement(); const deleteAnn=useDeleteAnnouncement();
   const createSch=useCreateScheduleEntry(); const deleteSch=useDeleteScheduleEntry();
   const aForm=useForm({resolver:zodResolver(annSchema),defaultValues:{title:"",content:"",priority:"normal" as const}});
@@ -250,7 +250,7 @@ function BuildingPanel({ locationId }: { locationId:number }) {
             <div key={a.id} className={`border rounded-xl p-3 ${PRIORITY_STYLE[a.priority]||"border-border"}`}>
               <div className="flex justify-between items-start gap-2">
                 <div><p className="text-sm font-semibold text-foreground">{a.title}</p><p className="text-xs text-muted-foreground mt-1">{a.content}</p></div>
-                <button onClick={()=>deleteAnn.mutate({announcementId:a.id},{onSuccess:reA})} className="p-1 text-muted-foreground hover:text-destructive flex-shrink-0"><X className="w-3.5 h-3.5"/></button>
+                <button onClick={()=>deleteAnn.mutate({announcementId:a.id},{onSuccess:()=>reA()})} className="p-1 text-muted-foreground hover:text-destructive flex-shrink-0"><X className="w-3.5 h-3.5"/></button>
               </div>
               <span className={`inline-block text-[10px] uppercase font-semibold mt-2 px-2 py-0.5 rounded-full border ${PRIORITY_STYLE[a.priority]||"border-border"}`}>{a.priority}</span>
             </div>
@@ -283,7 +283,7 @@ function BuildingPanel({ locationId }: { locationId:number }) {
                 {entries.map(e=>(
                   <div key={e.id} className="flex items-center justify-between py-1.5 border-t border-border first:border-0">
                     <div><p className="text-xs font-medium text-foreground">{e.startTime}–{e.endTime} · {e.label}</p>{e.instructor&&<p className="text-[10px] text-muted-foreground">{e.instructor}</p>}</div>
-                    <button onClick={()=>deleteSch.mutate({scheduleId:e.id},{onSuccess:reS})}><X className="w-3 h-3 text-muted-foreground hover:text-destructive"/></button>
+                    <button onClick={()=>deleteSch.mutate({scheduleId:e.id},{onSuccess:()=>reS()})}><X className="w-3 h-3 text-muted-foreground hover:text-destructive"/></button>
                   </div>
                 ))}
               </div>
@@ -313,7 +313,7 @@ function BuildingPanel({ locationId }: { locationId:number }) {
 
 // ── Dining Panel ───────────────────────────────────────────────────────────────
 function DiningPanel({ locationId }: { locationId:number }) {
-  const {data:menus=[],refetch}=useGetMenus({locationId});
+  const {data:menus=[],refetch}=useGetMenus(locationId);
   const createMenu=useCreateMenu(); const rateMenu=useRateMenu();
   const [ratingState,setRatingState]=useState<{menuId:number;val:number}|null>(null);
   const today=new Date().toISOString().split("T")[0];
@@ -376,7 +376,7 @@ function DiningPanel({ locationId }: { locationId:number }) {
 const gameSchema = z.object({ sport:z.enum(["football","basketball","volleyball","tennis","other"]), scheduledAt:z.string(), description:z.string().optional(), maxPlayers:z.coerce.number().min(2).max(100) });
 
 function SportsPanel({ locationId }: { locationId:number }) {
-  const {data:games=[],refetch}=useGetGames({locationId});
+  const {data:games=[],refetch}=useGetGames(locationId);
   const createGame=useCreateGame(); const deleteGame=useDeleteGame(); const voteGame=useVoteForGame();
   const [voteState,setVoteState]=useState<{gameId:number;name:string}|null>(null);
   const gForm=useForm({resolver:zodResolver(gameSchema),defaultValues:{sport:"football" as const,scheduledAt:new Date().toISOString().slice(0,16),description:"",maxPlayers:10}});
@@ -397,7 +397,7 @@ function SportsPanel({ locationId }: { locationId:number }) {
               <p className="text-xs text-muted-foreground">{fmtDate(g.scheduledAt)} at {fmtTime(g.scheduledAt)}</p>
               {g.description&&<p className="text-xs text-foreground mt-1">{g.description}</p>}
             </div>
-            <button onClick={()=>deleteGame.mutate({gameId:g.id},{onSuccess:refetch})} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4"/></button>
+            <button onClick={()=>deleteGame.mutate({gameId:g.id},{onSuccess:()=>refetch()})} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4"/></button>
           </div>
           <div className="flex items-center gap-1.5 mb-2">
             <Users className="w-3.5 h-3.5 text-muted-foreground"/>
@@ -483,7 +483,7 @@ type LocForm = z.infer<typeof locSchema>;
 // ── Main Locations Page ────────────────────────────────────────────────────────
 export default function LocationsPage() {
   const [, nav] = useLocation();
-  const { data: campus, isLoading: campusLoading } = useGetCampus({ query: { retry: false } });
+  const { data: campus, isLoading: campusLoading } = useGetCampus({ query: { retry: false, queryKey: ["campus"] } });
   const { data: locs = [], isLoading: locsLoading, refetch } = useGetLocations();
   const createLoc = useCreateLocation();
   const updateLoc = useUpdateLocation();
@@ -799,7 +799,7 @@ export default function LocationsPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <button onClick={e => { e.stopPropagation(); deleteLoc.mutate({ locationId: loc.id }, { onSuccess: refetch }); }}
+                    <button onClick={e => { e.stopPropagation(); deleteLoc.mutate({ locationId: loc.id }, { onSuccess: () => refetch() }); }}
                       className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
