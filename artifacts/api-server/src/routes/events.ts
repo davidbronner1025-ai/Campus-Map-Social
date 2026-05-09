@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { eventsTable, eventRsvpsTable, usersTable } from "@workspace/db/schema";
-import { eq, and, desc, sql, gte } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte, inArray } from "drizzle-orm";
 import { requireAuth } from "./users";
 import { createNotification } from "../lib/notify";
 
@@ -13,6 +13,17 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
   const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function latLngBounds(lat: number, lng: number, radiusMeters: number) {
+  const latDelta = radiusMeters / 111_320;
+  const lngDelta = radiusMeters / (111_320 * Math.cos((lat * Math.PI) / 180));
+  return {
+    minLat: lat - latDelta,
+    maxLat: lat + latDelta,
+    minLng: lng - lngDelta,
+    maxLng: lng + lngDelta,
+  };
 }
 
 // GET /events/nearby?lat=&lng=&radius= (default 1000m, upcoming only)
@@ -27,7 +38,10 @@ router.get("/events/nearby", requireAuth, async (req: Request, res: Response) =>
   }
 
   const now = new Date();
-  const allEvents = await db
+  const bounds = latLngBounds(lat, lng, radius);
+
+  // Step 1: SQL bounding-box + future-only pre-filter
+  const candidates = await db
     .select({
       event: eventsTable,
       creator: {
@@ -39,36 +53,59 @@ router.get("/events/nearby", requireAuth, async (req: Request, res: Response) =>
     })
     .from(eventsTable)
     .leftJoin(usersTable, eq(eventsTable.creatorId, usersTable.id))
-    .where(gte(eventsTable.startsAt, now))
-    .orderBy(eventsTable.startsAt);
+    .where(
+      and(
+        gte(eventsTable.startsAt, now),
+        gte(eventsTable.lat, bounds.minLat),
+        lte(eventsTable.lat, bounds.maxLat),
+        gte(eventsTable.lng, bounds.minLng),
+        lte(eventsTable.lng, bounds.maxLng),
+      )
+    )
+    .orderBy(eventsTable.startsAt)
+    .limit(50);
 
-  const filtered = allEvents.filter((row) => {
-    const dist = haversine(lat, lng, row.event.lat, row.event.lng);
-    return dist <= radius;
+  // Step 2: Precise Haversine
+  const filtered = candidates.filter((row) => {
+    return haversine(lat, lng, row.event.lat, row.event.lng) <= radius;
   });
 
-  const enriched = await Promise.all(
-    filtered.map(async (row) => {
-      const rsvps = await db
-        .select({
-          id: eventRsvpsTable.id,
-          userId: eventRsvpsTable.userId,
-          displayName: usersTable.displayName,
-          avatarUrl: usersTable.avatarUrl,
-        })
-        .from(eventRsvpsTable)
-        .leftJoin(usersTable, eq(eventRsvpsTable.userId, usersTable.id))
-        .where(eq(eventRsvpsTable.eventId, row.event.id));
+  if (filtered.length === 0) {
+    res.json([]);
+    return;
+  }
 
-      return {
-        ...row.event,
-        creator: row.creator,
-        rsvpCount: rsvps.length,
-        rsvps,
-        distance: Math.round(haversine(lat, lng, row.event.lat, row.event.lng)),
-      };
+  // Step 3: Batch fetch all RSVPs (1 query instead of N)
+  const eventIds = filtered.map((r) => r.event.id);
+  const allRsvps = await db
+    .select({
+      id: eventRsvpsTable.id,
+      eventId: eventRsvpsTable.eventId,
+      userId: eventRsvpsTable.userId,
+      displayName: usersTable.displayName,
+      avatarUrl: usersTable.avatarUrl,
     })
-  );
+    .from(eventRsvpsTable)
+    .leftJoin(usersTable, eq(eventRsvpsTable.userId, usersTable.id))
+    .where(inArray(eventRsvpsTable.eventId, eventIds));
+
+  const rsvpMap = new Map<number, typeof allRsvps>();
+  for (const r of allRsvps) {
+    const arr = rsvpMap.get(r.eventId) || [];
+    arr.push(r);
+    rsvpMap.set(r.eventId, arr);
+  }
+
+  const enriched = filtered.map((row) => {
+    const rsvps = rsvpMap.get(row.event.id) || [];
+    return {
+      ...row.event,
+      creator: row.creator,
+      rsvpCount: rsvps.length,
+      rsvps,
+      distance: Math.round(haversine(lat, lng, row.event.lat, row.event.lng)),
+    };
+  });
 
   res.json(enriched);
 });
@@ -152,7 +189,7 @@ router.post("/events", requireAuth, async (req: Request, res: Response) => {
 // DELETE /events/:id
 router.delete("/events/:id", requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
-  const eventId = parseInt(req.params.id);
+  const eventId = parseInt(req.params.id as string);
 
   const evt = await db.select().from(eventsTable).where(eq(eventsTable.id, eventId)).limit(1);
   if (!evt.length) { res.status(404).json({ error: "Not found" }); return; }
@@ -165,7 +202,7 @@ router.delete("/events/:id", requireAuth, async (req: Request, res: Response) =>
 // POST /events/:id/rsvp
 router.post("/events/:id/rsvp", requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
-  const eventId = parseInt(req.params.id);
+  const eventId = parseInt(req.params.id as string);
 
   const evt = await db.select().from(eventsTable).where(eq(eventsTable.id, eventId)).limit(1);
   if (!evt.length) { res.status(404).json({ error: "Not found" }); return; }
@@ -203,7 +240,7 @@ router.post("/events/:id/rsvp", requireAuth, async (req: Request, res: Response)
 // DELETE /events/:id/rsvp
 router.delete("/events/:id/rsvp", requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
-  const eventId = parseInt(req.params.id);
+  const eventId = parseInt(req.params.id as string);
 
   await db
     .delete(eventRsvpsTable)
@@ -214,7 +251,7 @@ router.delete("/events/:id/rsvp", requireAuth, async (req: Request, res: Respons
 
 // GET /events/:id — single event detail
 router.get("/events/:id", requireAuth, async (req: Request, res: Response) => {
-  const eventId = parseInt(req.params.id);
+  const eventId = parseInt(req.params.id as string);
 
   const rows = await db
     .select({

@@ -203,7 +203,7 @@ router.post("/locations/:locationId/menus", async (req, res) => {
   try {
     const { locationId } = CreateMenuParams.parse({ locationId: Number(req.params.locationId) });
     const body = CreateMenuBody.parse(req.body);
-    const created = await db.insert(menusTable).values({ ...body, locationId }).returning();
+    const created = await db.insert(menusTable).values({ ...body, locationId, date: String(body.date) }).returning();
     res.status(201).json({ ...created[0], averageRating: 0, ratingCount: 0 });
   } catch (err) {
     res.status(400).json({ error: String(err) });

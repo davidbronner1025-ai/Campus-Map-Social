@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { messagesTable, messageReactionsTable, messageRepliesTable, usersTable } from "@workspace/db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte, inArray, or, isNull } from "drizzle-orm";
 import { requireAuth } from "./users";
 import { createNotification } from "../lib/notify";
 
@@ -16,20 +16,34 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Bounding box helper — prefilter rows in SQL before Haversine
+function latLngBounds(lat: number, lng: number, radiusMeters: number) {
+  const latDelta = radiusMeters / 111_320;
+  const lngDelta = radiusMeters / (111_320 * Math.cos((lat * Math.PI) / 180));
+  return {
+    minLat: lat - latDelta,
+    maxLat: lat + latDelta,
+    minLng: lng - lngDelta,
+    maxLng: lng + lngDelta,
+  };
+}
+
 // GET /messages/nearby?lat=&lng=&radius= (default 300m)
 router.get("/messages/nearby", requireAuth, async (req: Request, res: Response) => {
   const lat = parseFloat(req.query.lat as string);
   const lng = parseFloat(req.query.lng as string);
-  const radius = parseFloat(req.query.radius as string) || 300;
+  const radius = Math.min(parseFloat(req.query.radius as string) || 300, 2000);
 
   if (isNaN(lat) || isNaN(lng)) {
     res.status(400).json({ error: "lat and lng required" });
     return;
   }
 
-  // Filter expired messages and get all active ones
   const now = new Date();
-  const allMessages = await db
+  const bounds = latLngBounds(lat, lng, radius);
+
+  // Step 1: SQL bounding-box pre-filter + non-expired, joined with user
+  const candidates = await db
     .select({
       message: messagesTable,
       user: {
@@ -42,34 +56,57 @@ router.get("/messages/nearby", requireAuth, async (req: Request, res: Response) 
     })
     .from(messagesTable)
     .leftJoin(usersTable, eq(messagesTable.userId, usersTable.id))
-    .orderBy(desc(messagesTable.createdAt));
+    .where(
+      and(
+        gte(messagesTable.lat, bounds.minLat),
+        lte(messagesTable.lat, bounds.maxLat),
+        gte(messagesTable.lng, bounds.minLng),
+        lte(messagesTable.lng, bounds.maxLng),
+        or(isNull(messagesTable.expiresAt), gte(messagesTable.expiresAt, now))
+      )
+    )
+    .orderBy(desc(messagesTable.createdAt))
+    .limit(100);
 
-  // Filter by radius and expiry in JS (avoids needing PostGIS)
-  const filtered = allMessages.filter((row) => {
-    if (row.message.expiresAt && row.message.expiresAt < now) return false;
-    const dist = haversine(lat, lng, row.message.lat, row.message.lng);
-    return dist <= radius;
-  });
-
-  // Attach reactions and reply counts
-  const enriched = await Promise.all(
-    filtered.map(async (row) => {
-      const reactions = await db
-        .select()
-        .from(messageReactionsTable)
-        .where(eq(messageReactionsTable.messageId, row.message.id));
-      const replyCount = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(messageRepliesTable)
-        .where(eq(messageRepliesTable.messageId, row.message.id));
-      return {
-        ...row.message,
-        author: row.user,
-        reactions,
-        replyCount: Number(replyCount[0]?.count ?? 0),
-      };
-    })
+  // Step 2: Precise Haversine filter on the small candidate set
+  const filtered = candidates.filter(
+    (row) => haversine(lat, lng, row.message.lat, row.message.lng) <= radius
   );
+
+  if (filtered.length === 0) {
+    res.json([]);
+    return;
+  }
+
+  // Step 3: Batch fetch reactions + reply counts (2 queries instead of 2N)
+  const msgIds = filtered.map((r) => r.message.id);
+
+  const [allReactions, replyCounts] = await Promise.all([
+    db.select().from(messageReactionsTable).where(inArray(messageReactionsTable.messageId, msgIds)),
+    db
+      .select({
+        messageId: messageRepliesTable.messageId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(messageRepliesTable)
+      .where(inArray(messageRepliesTable.messageId, msgIds))
+      .groupBy(messageRepliesTable.messageId),
+  ]);
+
+  const reactionsMap = new Map<number, typeof allReactions>();
+  for (const r of allReactions) {
+    const arr = reactionsMap.get(r.messageId) || [];
+    arr.push(r);
+    reactionsMap.set(r.messageId, arr);
+  }
+  const replyCountMap = new Map(replyCounts.map((r) => [r.messageId, r.count]));
+
+  const enriched = filtered.map((row) => ({
+    ...row.message,
+    author: row.user,
+    reactions: reactionsMap.get(row.message.id) || [],
+    replyCount: replyCountMap.get(row.message.id) || 0,
+  }));
 
   res.json(enriched);
 });
@@ -108,7 +145,7 @@ router.post("/messages", requireAuth, async (req: Request, res: Response) => {
 // DELETE /messages/:id
 router.delete("/messages/:id", requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
-  const msgId = parseInt(req.params.id);
+  const msgId = parseInt(req.params.id as string);
 
   const msg = await db.select().from(messagesTable).where(eq(messagesTable.id, msgId)).limit(1);
   if (!msg.length) { res.status(404).json({ error: "Not found" }); return; }
@@ -121,7 +158,7 @@ router.delete("/messages/:id", requireAuth, async (req: Request, res: Response) 
 // POST /messages/:id/react
 router.post("/messages/:id/react", requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
-  const msgId = parseInt(req.params.id);
+  const msgId = parseInt(req.params.id as string);
   const { type, emoji } = req.body;
 
   if (!["yes", "no", "emoji"].includes(type)) {
@@ -152,7 +189,7 @@ router.post("/messages/:id/react", requireAuth, async (req: Request, res: Respon
 
 // GET /messages/:id/replies
 router.get("/messages/:id/replies", requireAuth, async (req: Request, res: Response) => {
-  const msgId = parseInt(req.params.id);
+  const msgId = parseInt(req.params.id as string);
   const replies = await db
     .select({
       reply: messageRepliesTable,
@@ -173,7 +210,7 @@ router.get("/messages/:id/replies", requireAuth, async (req: Request, res: Respo
 // POST /messages/:id/replies
 router.post("/messages/:id/replies", requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
-  const msgId = parseInt(req.params.id);
+  const msgId = parseInt(req.params.id as string);
   const { content } = req.body;
 
   if (!content) { res.status(400).json({ error: "content required" }); return; }

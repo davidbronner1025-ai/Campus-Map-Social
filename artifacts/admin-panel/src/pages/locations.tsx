@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { adminFetch } from "@/lib/admin-fetch";
 import { useLocation } from "wouter";
 import { MapContainer, Polygon, Polyline, Marker, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -509,12 +510,12 @@ export default function LocationsPage() {
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   useEffect(() => {
-    fetch("/api/admin/users").then(r => r.json()).then(setUsers).catch(() => {});
+    adminFetch("/api/admin/users").then(r => r.json()).then(setUsers).catch(() => {});
   }, []);
 
   const fetchAdminMsgs = useCallback(async () => {
     try {
-      const r = await fetch("/api/admin/messages");
+      const r = await adminFetch("/api/admin/messages");
       if (r.ok) setAdminMsgs(await r.json());
     } catch {}
   }, []);
@@ -524,9 +525,8 @@ export default function LocationsPage() {
     if (!pendingPin || !pinContent.trim()) return;
     setPinSubmitting(true);
     try {
-      const r = await fetch("/api/admin/messages", {
+      const r = await adminFetch("/api/admin/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lat: pendingPin.lat, lng: pendingPin.lng, content: pinContent.trim(), type: "regular" }),
       });
       if (r.ok) {
@@ -542,7 +542,7 @@ export default function LocationsPage() {
   const deleteAdminMsg = async (id: number) => {
     setDeletingMsgId(id);
     try {
-      await fetch(`/api/admin/messages/${id}`, { method: "DELETE" });
+      await adminFetch(`/api/admin/messages/${id}`, { method: "DELETE" });
       setAdminMsgs(p => p.filter(m => m.id !== id));
     } finally {
       setDeletingMsgId(null);

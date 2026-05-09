@@ -1,6 +1,6 @@
 import {
   pgTable, serial, text, doublePrecision, integer,
-  timestamp, jsonb, real, date, boolean, uniqueIndex
+  timestamp, jsonb, real, date, boolean, uniqueIndex, index
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -41,7 +41,9 @@ export const locationsTable = pgTable("locations", {
   osmName: text("osm_name"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("locations_campus_id_idx").on(table.campusId),
+]);
 
 export const insertLocationSchema = createInsertSchema(locationsTable)
   .omit({ id: true, createdAt: true, updatedAt: true })
@@ -187,7 +189,10 @@ export const usersTable = pgTable("users", {
   lng: doublePrecision("lng"),
   lastSeen: timestamp("last_seen").defaultNow(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("users_session_token_idx").on(table.sessionToken),
+  index("users_visibility_idx").on(table.visibility),
+]);
 
 export type User = typeof usersTable.$inferSelect;
 
@@ -199,7 +204,9 @@ export const userOtpsTable = pgTable("user_otps", {
   expiresAt: timestamp("expires_at").notNull(),
   used: boolean("used").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("user_otps_phone_idx").on(table.phone),
+]);
 
 // ─── Messages ──────────────────────────────────────────────────────────────
 export const invitationTypeEnum = ["smoke", "carpool", "phone_game", "food_order", "football"] as const;
@@ -216,7 +223,11 @@ export const messagesTable = pgTable("messages", {
   maxParticipants: integer("max_participants"),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("messages_user_id_idx").on(table.userId),
+  index("messages_created_at_idx").on(table.createdAt),
+  index("messages_lat_lng_idx").on(table.lat, table.lng),
+]);
 
 export type Message = typeof messagesTable.$inferSelect;
 
@@ -256,7 +267,10 @@ export const chatMessagesTable = pgTable("chat_messages", {
   lat: doublePrecision("lat"),
   lng: doublePrecision("lng"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("chat_messages_conversation_id_idx").on(table.conversationId),
+  index("chat_messages_created_at_idx").on(table.createdAt),
+]);
 
 export type ChatMessage = typeof chatMessagesTable.$inferSelect;
 
@@ -270,7 +284,10 @@ export const notificationsTable = pgTable("notifications", {
   content: text("content").notNull(),
   read: boolean("read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("notifications_user_id_read_idx").on(table.userId, table.read),
+  index("notifications_user_id_idx").on(table.userId),
+]);
 
 export type Notification = typeof notificationsTable.$inferSelect;
 
@@ -282,7 +299,9 @@ export const messageReactionsTable = pgTable("message_reactions", {
   type: text("type").$type<"yes" | "no" | "emoji">().notNull(),
   emoji: text("emoji"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("message_reactions_message_id_idx").on(table.messageId),
+]);
 
 // ─── Message Replies ────────────────────────────────────────────────────────
 export const messageRepliesTable = pgTable("message_replies", {
@@ -291,4 +310,6 @@ export const messageRepliesTable = pgTable("message_replies", {
   userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("message_replies_message_id_idx").on(table.messageId),
+]);

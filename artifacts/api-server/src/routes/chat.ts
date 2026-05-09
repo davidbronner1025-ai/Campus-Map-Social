@@ -15,7 +15,7 @@ function parseId(val: string): number | null {
 }
 
 router.get("/conversations", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as Record<string, unknown>).user as { id: number };
+  const user = (req as any).user as { id: number };
 
   const memberships = await db
     .select({
@@ -33,63 +33,82 @@ router.get("/conversations", requireAuth, async (req: Request, res: Response) =>
   const convIds = memberships.map(m => m.conversationId);
   const readMap = new Map(memberships.map(m => [m.conversationId, m.lastReadMessageId]));
 
-  const convs = await db
-    .select()
-    .from(conversationsTable)
-    .where(inArray(conversationsTable.id, convIds))
-    .orderBy(desc(conversationsTable.updatedAt));
+  // Batch: fetch conversations, all members, last messages, and unread counts
+  const [convs, allMembers, lastMessages, unreadCounts] = await Promise.all([
+    db
+      .select()
+      .from(conversationsTable)
+      .where(inArray(conversationsTable.id, convIds))
+      .orderBy(desc(conversationsTable.updatedAt)),
 
-  const enriched = await Promise.all(
-    convs.map(async (conv) => {
-      const members = await db
-        .select({
-          userId: conversationMembersTable.userId,
-          displayName: usersTable.displayName,
-          avatarUrl: usersTable.avatarUrl,
-          bannerColor: usersTable.bannerColor,
-        })
-        .from(conversationMembersTable)
-        .leftJoin(usersTable, eq(conversationMembersTable.userId, usersTable.id))
-        .where(eq(conversationMembersTable.conversationId, conv.id));
+    db
+      .select({
+        conversationId: conversationMembersTable.conversationId,
+        userId: conversationMembersTable.userId,
+        displayName: usersTable.displayName,
+        avatarUrl: usersTable.avatarUrl,
+        bannerColor: usersTable.bannerColor,
+      })
+      .from(conversationMembersTable)
+      .leftJoin(usersTable, eq(conversationMembersTable.userId, usersTable.id))
+      .where(inArray(conversationMembersTable.conversationId, convIds)),
 
-      const lastMsg = await db
-        .select({
-          id: chatMessagesTable.id,
-          content: chatMessagesTable.content,
-          messageType: chatMessagesTable.messageType,
-          senderId: chatMessagesTable.senderId,
-          createdAt: chatMessagesTable.createdAt,
-        })
-        .from(chatMessagesTable)
-        .where(eq(chatMessagesTable.conversationId, conv.id))
-        .orderBy(desc(chatMessagesTable.createdAt))
-        .limit(1);
+    // Last message per conversation using DISTINCT ON
+    db.execute(sql`
+      SELECT DISTINCT ON (conversation_id)
+        id, conversation_id, content, message_type, sender_id, created_at
+      FROM chat_messages
+      WHERE conversation_id = ANY(${convIds})
+      ORDER BY conversation_id, id DESC
+    `),
 
-      const lastRead = readMap.get(conv.id) || 0;
-      const unreadResult = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(chatMessagesTable)
-        .where(
-          and(
-            eq(chatMessagesTable.conversationId, conv.id),
-            gt(chatMessagesTable.id, lastRead || 0)
-          )
-        );
+    // Unread counts per conversation
+    db.execute(sql`
+      SELECT cm.conversation_id, count(*)::int as count
+      FROM chat_messages cm
+      JOIN conversation_members cmem ON cmem.conversation_id = cm.conversation_id AND cmem.user_id = ${user.id}
+      WHERE cm.conversation_id = ANY(${convIds})
+        AND cm.id > COALESCE(cmem.last_read_message_id, 0)
+      GROUP BY cm.conversation_id
+    `),
+  ]);
 
-      return {
-        ...conv,
-        members,
-        lastMessage: lastMsg[0] || null,
-        unreadCount: unreadResult[0]?.count || 0,
-      };
-    })
-  );
+  // Build lookup maps
+  const membersMap = new Map<number, typeof allMembers>();
+  for (const m of allMembers) {
+    const arr = membersMap.get(m.conversationId) || [];
+    arr.push(m);
+    membersMap.set(m.conversationId, arr);
+  }
+
+  const lastMsgMap = new Map<number, any>();
+  for (const row of lastMessages.rows as any[]) {
+    lastMsgMap.set(row.conversation_id, {
+      id: row.id,
+      content: row.content,
+      messageType: row.message_type,
+      senderId: row.sender_id,
+      createdAt: row.created_at,
+    });
+  }
+
+  const unreadMap = new Map<number, number>();
+  for (const row of unreadCounts.rows as any[]) {
+    unreadMap.set(row.conversation_id, row.count);
+  }
+
+  const enriched = convs.map((conv) => ({
+    ...conv,
+    members: membersMap.get(conv.id) || [],
+    lastMessage: lastMsgMap.get(conv.id) || null,
+    unreadCount: unreadMap.get(conv.id) || 0,
+  }));
 
   res.json(enriched);
 });
 
 router.post("/conversations", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as Record<string, unknown>).user as { id: number };
+  const user = (req as any).user as { id: number };
   const { type, name, memberIds } = req.body as {
     type?: "direct" | "group"; name?: string; memberIds?: number[];
   };
@@ -160,8 +179,8 @@ router.post("/conversations", requireAuth, async (req: Request, res: Response) =
 });
 
 router.get("/conversations/:id/messages", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as Record<string, unknown>).user as { id: number };
-  const convId = parseId(req.params.id);
+  const user = (req as any).user as { id: number };
+  const convId = parseId(req.params.id as string);
   if (!convId) { res.status(400).json({ error: "Invalid conversation id" }); return; }
   const limitRaw = parseInt(req.query.limit as string, 10);
   const limit = Math.min(Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 50, 100);
@@ -211,8 +230,8 @@ router.get("/conversations/:id/messages", requireAuth, async (req: Request, res:
 });
 
 router.post("/conversations/:id/messages", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as Record<string, unknown>).user as { id: number };
-  const convId = parseId(req.params.id);
+  const user = (req as any).user as { id: number };
+  const convId = parseId(req.params.id as string);
   if (!convId) { res.status(400).json({ error: "Invalid conversation id" }); return; }
   const { content, messageType, lat, lng } = req.body as {
     content: string; messageType?: "text" | "location"; lat?: number; lng?: number;
@@ -290,8 +309,8 @@ router.post("/conversations/:id/messages", requireAuth, async (req: Request, res
 });
 
 router.post("/conversations/:id/read", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as Record<string, unknown>).user as { id: number };
-  const convId = parseId(req.params.id);
+  const user = (req as any).user as { id: number };
+  const convId = parseId(req.params.id as string);
   if (!convId) { res.status(400).json({ error: "Invalid conversation id" }); return; }
 
   const membership = await db
@@ -329,8 +348,8 @@ router.post("/conversations/:id/read", requireAuth, async (req: Request, res: Re
 });
 
 router.post("/conversations/:id/members", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as Record<string, unknown>).user as { id: number };
-  const convId = parseId(req.params.id);
+  const user = (req as any).user as { id: number };
+  const convId = parseId(req.params.id as string);
   if (!convId) { res.status(400).json({ error: "Invalid conversation id" }); return; }
   const { userId } = req.body as { userId: number };
 
@@ -369,8 +388,8 @@ router.post("/conversations/:id/members", requireAuth, async (req: Request, res:
 });
 
 router.delete("/conversations/:id/members", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as Record<string, unknown>).user as { id: number };
-  const convId = parseId(req.params.id);
+  const user = (req as any).user as { id: number };
+  const convId = parseId(req.params.id as string);
   if (!convId) { res.status(400).json({ error: "Invalid conversation id" }); return; }
 
   const targetUserIdRaw = req.query.userId as string | undefined;

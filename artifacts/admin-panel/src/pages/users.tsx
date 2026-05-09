@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import { Users, Phone, Trash2, UserPlus, Loader2, RefreshCw, Clock, User, Copy, Check, Map, List } from "lucide-react";
+import { adminFetch } from "@/lib/admin-fetch";
 
 interface AppUser {
   id: number;
@@ -85,7 +86,7 @@ export default function UsersPage() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await fetch("/api/admin/users");
+      const r = await adminFetch("/api/admin/users");
       if (r.ok) setUsers(await r.json());
     } catch {} finally { setLoading(false); }
   }, []);
@@ -103,7 +104,7 @@ export default function UsersPage() {
     if (!confirm("Remove this user from the platform?")) return;
     setDeleting(id);
     try {
-      const r = await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
+      const r = await adminFetch(`/api/admin/users/${id}`, { method: "DELETE" });
       if (r.ok) setUsers(p => p.filter(u => u.id !== id));
     } finally { setDeleting(null); }
   };
@@ -114,9 +115,8 @@ export default function UsersPage() {
     setInviting(true);
     setError("");
     try {
-      const r = await fetch("/api/admin/users", {
+      const r = await adminFetch("/api/admin/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: phone.trim() }),
       });
       const d = await r.json();

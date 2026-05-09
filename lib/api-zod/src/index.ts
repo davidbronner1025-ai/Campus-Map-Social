@@ -1,2 +1,3 @@
 export * from "./generated/api";
-export * from "./generated/types";
+// Types are available via direct import: "@workspace/api-zod/types"
+// Not re-exported here to avoid name collisions with Zod schemas in api.ts
