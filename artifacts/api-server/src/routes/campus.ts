@@ -20,7 +20,19 @@ router.get("/campus", async (_req, res) => {
   }
 });
 
-router.post("/campus", async (req, res) => {
+// 🔐 PIN check middleware
+const requirePin = (req: any, res: any, next: any) => {
+  const pinHeader = req.headers["x-admin-pin"] as string;
+  const authHeader = req.headers.authorization?.replace("Bearer ", "");
+  const pin = pinHeader || authHeader;
+  const expectedPin = process.env.VITE_ADMIN_PIN || "1234";
+  if (!pin || pin !== expectedPin) {
+    return res.status(401).json({ error: "Unauthorized — valid admin PIN required" });
+  }
+  next();
+};
+
+router.post("/campus", requirePin, async (req, res) => {
   try {
     const body = SetCampusBody.parse(req.body);
     const existing = await db.select().from(campusTable).limit(1);
@@ -36,7 +48,7 @@ router.post("/campus", async (req, res) => {
       res.json(created[0]);
     }
   } catch (err) {
-    console.error(err);
+    console.error("[campus] set failed:", err);
     res.status(400).json({ error: String(err) });
   }
 });

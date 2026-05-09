@@ -25,6 +25,18 @@ async function getCampusId(): Promise<number | null> {
   return c.length ? c[0].id : null;
 }
 
+// 🔐 PIN check middleware for location writes
+const requirePin = (req: any, res: any, next: any) => {
+  const pinHeader = req.headers["x-admin-pin"] as string;
+  const authHeader = req.headers.authorization?.replace("Bearer ", "");
+  const pin = pinHeader || authHeader;
+  const expectedPin = process.env.VITE_ADMIN_PIN || "1234";
+  if (!pin || pin !== expectedPin) {
+    return res.status(401).json({ error: "Unauthorized — valid admin PIN required" });
+  }
+  next();
+};
+
 // ─── Locations ──────────────────────────────────────────────────────────────
 
 async function enrichLocationsWithManager(locations: any[]) {
@@ -47,10 +59,10 @@ router.get("/locations", async (_req, res) => {
   }
 });
 
-router.post("/locations", async (req, res) => {
+router.post("/locations", requirePin, async (req, res) => {
   try {
-    const managerId = req.body.managerId != null ? Number(req.body.managerId) : null;
     const body = CreateLocationBody.parse(req.body);
+    const managerId = body.managerId != null ? Number(body.managerId) : null;
     const campusId = await getCampusId();
     if (!campusId) {
       res.status(400).json({ error: "Campus not configured yet." });
@@ -60,6 +72,7 @@ router.post("/locations", async (req, res) => {
     const enriched = await enrichLocationsWithManager(created);
     res.status(201).json(enriched[0]);
   } catch (err) {
+    console.error("[locations] create failed:", err);
     res.status(400).json({ error: String(err) });
   }
 });
@@ -76,11 +89,11 @@ router.get("/locations/:locationId", async (req, res) => {
   }
 });
 
-router.put("/locations/:locationId", async (req, res) => {
+router.put("/locations/:locationId", requirePin, async (req, res) => {
   try {
     const { locationId } = UpdateLocationParams.parse({ locationId: Number(req.params.locationId) });
-    const managerId = req.body.managerId !== undefined ? (req.body.managerId != null ? Number(req.body.managerId) : null) : undefined;
     const body = UpdateLocationBody.parse(req.body);
+    const managerId = body.managerId !== undefined ? (body.managerId != null ? Number(body.managerId) : null) : undefined;
     const setObj: any = { ...body, updatedAt: new Date() };
     if (managerId !== undefined) setObj.managerId = managerId;
     const updated = await db.update(locationsTable)
@@ -91,17 +104,19 @@ router.put("/locations/:locationId", async (req, res) => {
     const enriched = await enrichLocationsWithManager(updated);
     res.json(enriched[0]);
   } catch (err) {
+    console.error("[locations] update failed:", err);
     res.status(400).json({ error: String(err) });
   }
 });
 
-router.delete("/locations/:locationId", async (req, res) => {
+router.delete("/locations/:locationId", requirePin, async (req, res) => {
   try {
     const { locationId } = DeleteLocationParams.parse({ locationId: Number(req.params.locationId) });
     const deleted = await db.delete(locationsTable).where(eq(locationsTable.id, locationId)).returning();
     if (!deleted.length) { res.status(404).json({ error: "Location not found" }); return; }
     res.json({ success: true, message: "Deleted" });
   } catch (err) {
+    console.error("[locations] delete failed:", err);
     res.status(400).json({ error: String(err) });
   }
 });
