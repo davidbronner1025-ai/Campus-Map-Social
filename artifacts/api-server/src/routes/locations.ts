@@ -66,7 +66,7 @@ router.post("/locations", async (req, res) => {
 
 router.get("/locations/:locationId", async (req, res) => {
   try {
-    const { locationId } = GetLocationParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = GetLocationParams.parse({ locationId: Number(req.params.locationId as string) });
     const rows = await db.select().from(locationsTable).where(eq(locationsTable.id, locationId));
     if (!rows.length) { res.status(404).json({ error: "Location not found" }); return; }
     const enriched = await enrichLocationsWithManager(rows);
@@ -78,7 +78,7 @@ router.get("/locations/:locationId", async (req, res) => {
 
 router.put("/locations/:locationId", async (req, res) => {
   try {
-    const { locationId } = UpdateLocationParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = UpdateLocationParams.parse({ locationId: Number(req.params.locationId as string) });
     const managerId = req.body.managerId !== undefined ? (req.body.managerId != null ? Number(req.body.managerId) : null) : undefined;
     const body = UpdateLocationBody.parse(req.body);
     const setObj: any = { ...body, updatedAt: new Date() };
@@ -97,7 +97,7 @@ router.put("/locations/:locationId", async (req, res) => {
 
 router.delete("/locations/:locationId", async (req, res) => {
   try {
-    const { locationId } = DeleteLocationParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = DeleteLocationParams.parse({ locationId: Number(req.params.locationId as string) });
     const deleted = await db.delete(locationsTable).where(eq(locationsTable.id, locationId)).returning();
     if (!deleted.length) { res.status(404).json({ error: "Location not found" }); return; }
     res.json({ success: true, message: "Deleted" });
@@ -109,7 +109,7 @@ router.delete("/locations/:locationId", async (req, res) => {
 // PATCH /locations/:locationId/floors — update floor data for a location
 router.patch("/locations/:locationId/floors", async (req, res) => {
   try {
-    const locationId = Number(req.params.locationId);
+    const locationId = Number(req.params.locationId as string);
     const { floorData } = req.body;
     if (!Array.isArray(floorData)) {
       res.status(400).json({ error: "floorData must be an array" });
@@ -129,7 +129,7 @@ router.patch("/locations/:locationId/floors", async (req, res) => {
 // GET /locations/:locationId/crowd — returns message count in last 2h as crowd proxy
 router.get("/locations/:locationId/crowd", async (req, res) => {
   try {
-    const locationId = Number(req.params.locationId);
+    const locationId = Number(req.params.locationId as string);
     const loc = await db.select().from(locationsTable).where(eq(locationsTable.id, locationId)).limit(1);
     if (!loc.length) { res.status(404).json({ error: "Not found" }); return; }
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
@@ -155,7 +155,7 @@ router.get("/locations/:locationId/crowd", async (req, res) => {
 
 router.get("/locations/:locationId/announcements", async (req, res) => {
   try {
-    const { locationId } = GetAnnouncementsParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = GetAnnouncementsParams.parse({ locationId: Number(req.params.locationId as string) });
     const rows = await db.select().from(announcementsTable)
       .where(eq(announcementsTable.locationId, locationId))
       .orderBy(desc(announcementsTable.createdAt));
@@ -167,7 +167,7 @@ router.get("/locations/:locationId/announcements", async (req, res) => {
 
 router.post("/locations/:locationId/announcements", async (req, res) => {
   try {
-    const { locationId } = CreateAnnouncementParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = CreateAnnouncementParams.parse({ locationId: Number(req.params.locationId as string) });
     const body = CreateAnnouncementBody.parse(req.body);
     const created = await db.insert(announcementsTable).values({ ...body, locationId }).returning();
     res.status(201).json(created[0]);
@@ -178,7 +178,7 @@ router.post("/locations/:locationId/announcements", async (req, res) => {
 
 router.delete("/announcements/:announcementId", async (req, res) => {
   try {
-    const { announcementId } = DeleteAnnouncementParams.parse({ announcementId: Number(req.params.announcementId) });
+    const { announcementId } = DeleteAnnouncementParams.parse({ announcementId: Number(req.params.announcementId as string) });
     await db.delete(announcementsTable).where(eq(announcementsTable.id, announcementId));
     res.json({ success: true, message: "Deleted" });
   } catch (err) {
@@ -190,7 +190,7 @@ router.delete("/announcements/:announcementId", async (req, res) => {
 
 router.get("/locations/:locationId/schedules", async (req, res) => {
   try {
-    const { locationId } = GetSchedulesParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = GetSchedulesParams.parse({ locationId: Number(req.params.locationId as string) });
     const rows = await db.select().from(schedulesTable)
       .where(eq(schedulesTable.locationId, locationId));
     res.json(rows);
@@ -201,7 +201,7 @@ router.get("/locations/:locationId/schedules", async (req, res) => {
 
 router.post("/locations/:locationId/schedules", async (req, res) => {
   try {
-    const { locationId } = CreateScheduleEntryParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = CreateScheduleEntryParams.parse({ locationId: Number(req.params.locationId as string) });
     const body = CreateScheduleEntryBody.parse(req.body);
     const created = await db.insert(schedulesTable).values({ ...body, locationId }).returning();
     res.status(201).json(created[0]);
@@ -212,7 +212,7 @@ router.post("/locations/:locationId/schedules", async (req, res) => {
 
 router.delete("/schedules/:scheduleId", async (req, res) => {
   try {
-    const { scheduleId } = DeleteScheduleEntryParams.parse({ scheduleId: Number(req.params.scheduleId) });
+    const { scheduleId } = DeleteScheduleEntryParams.parse({ scheduleId: Number(req.params.scheduleId as string) });
     await db.delete(schedulesTable).where(eq(schedulesTable.id, scheduleId));
     res.json({ success: true, message: "Deleted" });
   } catch (err) {
@@ -224,7 +224,7 @@ router.delete("/schedules/:scheduleId", async (req, res) => {
 
 router.get("/locations/:locationId/menus", async (req, res) => {
   try {
-    const { locationId } = GetMenusParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = GetMenusParams.parse({ locationId: Number(req.params.locationId as string) });
     const menus = await db.select().from(menusTable)
       .where(eq(menusTable.locationId, locationId))
       .orderBy(desc(menusTable.date));
@@ -246,7 +246,7 @@ router.get("/locations/:locationId/menus", async (req, res) => {
 
 router.post("/locations/:locationId/menus", async (req, res) => {
   try {
-    const { locationId } = CreateMenuParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = CreateMenuParams.parse({ locationId: Number(req.params.locationId as string) });
     const body = CreateMenuBody.parse(req.body);
     const created = await db.insert(menusTable).values({ ...body, locationId }).returning();
     res.status(201).json({ ...created[0], averageRating: 0, ratingCount: 0 });
@@ -257,7 +257,7 @@ router.post("/locations/:locationId/menus", async (req, res) => {
 
 router.post("/menus/:menuId/rate", async (req, res) => {
   try {
-    const { menuId } = RateMenuParams.parse({ menuId: Number(req.params.menuId) });
+    const { menuId } = RateMenuParams.parse({ menuId: Number(req.params.menuId as string) });
     const body = RateMenuBody.parse(req.body);
     await db.insert(menuRatingsTable).values({ menuId, ...body });
     res.json({ success: true, message: "Rating saved" });
@@ -270,7 +270,7 @@ router.post("/menus/:menuId/rate", async (req, res) => {
 
 router.get("/locations/:locationId/games", async (req, res) => {
   try {
-    const { locationId } = GetGamesParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = GetGamesParams.parse({ locationId: Number(req.params.locationId as string) });
     const games = await db.select().from(gameSessionsTable)
       .where(eq(gameSessionsTable.locationId, locationId))
       .orderBy(desc(gameSessionsTable.scheduledAt));
@@ -290,7 +290,7 @@ router.get("/locations/:locationId/games", async (req, res) => {
 
 router.post("/locations/:locationId/games", async (req, res) => {
   try {
-    const { locationId } = CreateGameParams.parse({ locationId: Number(req.params.locationId) });
+    const { locationId } = CreateGameParams.parse({ locationId: Number(req.params.locationId as string) });
     const body = CreateGameBody.parse(req.body);
     const scheduledAt = new Date(body.scheduledAt);
     const created = await db.insert(gameSessionsTable).values({ ...body, scheduledAt, locationId }).returning();
@@ -302,7 +302,7 @@ router.post("/locations/:locationId/games", async (req, res) => {
 
 router.delete("/games/:gameId", async (req, res) => {
   try {
-    const { gameId } = DeleteGameParams.parse({ gameId: Number(req.params.gameId) });
+    const { gameId } = DeleteGameParams.parse({ gameId: Number(req.params.gameId as string) });
     await db.delete(gameSessionsTable).where(eq(gameSessionsTable.id, gameId));
     res.json({ success: true, message: "Deleted" });
   } catch (err) {
@@ -312,7 +312,7 @@ router.delete("/games/:gameId", async (req, res) => {
 
 router.post("/games/:gameId/vote", async (req, res) => {
   try {
-    const { gameId } = VoteForGameParams.parse({ gameId: Number(req.params.gameId) });
+    const { gameId } = VoteForGameParams.parse({ gameId: Number(req.params.gameId as string) });
     const body = VoteForGameBody.parse(req.body);
     await db.insert(gameVotesTable).values({ gameId, playerName: body.playerName });
     res.json({ success: true, message: "Vote recorded" });

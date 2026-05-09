@@ -64,7 +64,7 @@ router.post("/issues", requireAuth, async (req: Request, res: Response) => {
 // PATCH /issues/:id/status — admin updates status
 router.patch("/issues/:id/status", requireAuth, async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id);
+    const id = Number(req.params.id as string);
     const { status } = req.body;
     if (!["open", "in_progress", "resolved"].includes(status)) {
       res.status(400).json({ error: "Invalid status" });
@@ -84,7 +84,7 @@ router.patch("/issues/:id/status", requireAuth, async (req: Request, res: Respon
 // DELETE /issues/:id
 router.delete("/issues/:id", requireAuth, async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id);
+    const id = Number(req.params.id as string);
     await db.delete(issueReportsTable).where(eq(issueReportsTable.id, id));
     res.json({ ok: true });
   } catch (err) {

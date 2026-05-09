@@ -162,7 +162,7 @@ router.post("/bulletin", requireAuth, async (req: Request, res: Response) => {
 router.delete("/bulletin/:id", requireAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id as number;
-    const id = Number(req.params.id);
+    const id = Number(req.params.id as string);
     if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
     const found = await db.select().from(bulletinPostsTable).where(eq(bulletinPostsTable.id, id)).limit(1);
@@ -181,7 +181,7 @@ router.delete("/bulletin/:id", requireAuth, async (req: Request, res: Response) 
 router.post("/bulletin/:id/like", requireAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id as number;
-    const id = Number(req.params.id);
+    const id = Number(req.params.id as string);
     if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
     const post = await db.select({ id: bulletinPostsTable.id }).from(bulletinPostsTable).where(eq(bulletinPostsTable.id, id)).limit(1);

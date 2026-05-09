@@ -7,7 +7,6 @@
  */
 
 export * from "./addConversationMember200";
-export * from "./addConversationMemberBody";
 export * from "./announcement";
 export * from "./announcementPriority";
 export * from "./appNotification";
@@ -24,7 +23,6 @@ export * from "./createAnnouncementRequest";
 export * from "./createAnnouncementRequestPriority";
 export * from "./createConversationInput";
 export * from "./createConversationInputType";
-export * from "./createEventBody";
 export * from "./createGameRequest";
 export * from "./createGameRequestSport";
 export * from "./createLocationRequest";
@@ -45,7 +43,6 @@ export * from "./eventRsvpUser";
 export * from "./gameSession";
 export * from "./gameSessionSport";
 export * from "./gameSessionVotesItem";
-export * from "./getChatMessagesParams";
 export * from "./getNearbyEventsParams";
 export * from "./getNearbyUsersParams";
 export * from "./healthStatus";
@@ -63,7 +60,6 @@ export * from "./nearbyEvent";
 export * from "./nearbyUser";
 export * from "./rateMenuRequest";
 export * from "./removeConversationMember200";
-export * from "./removeConversationMemberParams";
 export * from "./rsvpEvent200";
 export * from "./rsvpEvent200Status";
 export * from "./scheduleEntry";

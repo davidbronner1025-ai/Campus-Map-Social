@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import type { AuthedRequest } from "../middleware/auth";
 import { db } from "@workspace/db";
 import { notificationsTable } from "@workspace/db/schema";
 import { eq, and, desc, sql, lt } from "drizzle-orm";
@@ -12,7 +13,7 @@ function parseId(val: string): number | null {
 }
 
 router.get("/notifications", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as Record<string, unknown>).user as { id: number };
+  const user = (req as unknown as AuthedRequest).user as { id: number };
   const limitRaw = parseInt(req.query.limit as string, 10);
   const limit = Math.min(Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 30, 100);
   const beforeRaw = req.query.before ? parseInt(req.query.before as string, 10) : undefined;
@@ -41,8 +42,8 @@ router.get("/notifications", requireAuth, async (req: Request, res: Response) =>
 });
 
 router.put("/notifications/:id/read", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as Record<string, unknown>).user as { id: number };
-  const notifId = parseId(req.params.id);
+  const user = (req as unknown as AuthedRequest).user as { id: number };
+  const notifId = parseId(req.params.id as string);
   if (!notifId) { res.status(400).json({ error: "Invalid notification id" }); return; }
 
   await db
@@ -54,7 +55,7 @@ router.put("/notifications/:id/read", requireAuth, async (req: Request, res: Res
 });
 
 router.put("/notifications/read-all", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as Record<string, unknown>).user as { id: number };
+  const user = (req as unknown as AuthedRequest).user as { id: number };
 
   await db
     .update(notificationsTable)

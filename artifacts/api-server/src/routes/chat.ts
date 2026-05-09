@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import type { AuthedRequest } from "../middleware/auth";
 import { db } from "@workspace/db";
 import {
   conversationsTable, conversationMembersTable, chatMessagesTable, usersTable
@@ -15,7 +16,7 @@ function parseId(val: string): number | null {
 }
 
 router.get("/conversations", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as Record<string, unknown>).user as { id: number };
+  const user = (req as unknown as AuthedRequest).user as { id: number };
 
   const memberships = await db
     .select({
@@ -89,7 +90,7 @@ router.get("/conversations", requireAuth, async (req: Request, res: Response) =>
 });
 
 router.post("/conversations", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as Record<string, unknown>).user as { id: number };
+  const user = (req as unknown as AuthedRequest).user as { id: number };
   const { type, name, memberIds } = req.body as {
     type?: "direct" | "group"; name?: string; memberIds?: number[];
   };
@@ -160,8 +161,8 @@ router.post("/conversations", requireAuth, async (req: Request, res: Response) =
 });
 
 router.get("/conversations/:id/messages", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as Record<string, unknown>).user as { id: number };
-  const convId = parseId(req.params.id);
+  const user = (req as unknown as AuthedRequest).user as { id: number };
+  const convId = parseId(req.params.id as string);
   if (!convId) { res.status(400).json({ error: "Invalid conversation id" }); return; }
   const limitRaw = parseInt(req.query.limit as string, 10);
   const limit = Math.min(Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 50, 100);
@@ -211,8 +212,8 @@ router.get("/conversations/:id/messages", requireAuth, async (req: Request, res:
 });
 
 router.post("/conversations/:id/messages", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as Record<string, unknown>).user as { id: number };
-  const convId = parseId(req.params.id);
+  const user = (req as unknown as AuthedRequest).user as { id: number };
+  const convId = parseId(req.params.id as string);
   if (!convId) { res.status(400).json({ error: "Invalid conversation id" }); return; }
   const { content, messageType, lat, lng } = req.body as {
     content: string; messageType?: "text" | "location"; lat?: number; lng?: number;
@@ -290,8 +291,8 @@ router.post("/conversations/:id/messages", requireAuth, async (req: Request, res
 });
 
 router.post("/conversations/:id/read", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as Record<string, unknown>).user as { id: number };
-  const convId = parseId(req.params.id);
+  const user = (req as unknown as AuthedRequest).user as { id: number };
+  const convId = parseId(req.params.id as string);
   if (!convId) { res.status(400).json({ error: "Invalid conversation id" }); return; }
 
   const membership = await db
@@ -329,8 +330,8 @@ router.post("/conversations/:id/read", requireAuth, async (req: Request, res: Re
 });
 
 router.post("/conversations/:id/members", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as Record<string, unknown>).user as { id: number };
-  const convId = parseId(req.params.id);
+  const user = (req as unknown as AuthedRequest).user as { id: number };
+  const convId = parseId(req.params.id as string);
   if (!convId) { res.status(400).json({ error: "Invalid conversation id" }); return; }
   const { userId } = req.body as { userId: number };
 
@@ -369,8 +370,8 @@ router.post("/conversations/:id/members", requireAuth, async (req: Request, res:
 });
 
 router.delete("/conversations/:id/members", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as Record<string, unknown>).user as { id: number };
-  const convId = parseId(req.params.id);
+  const user = (req as unknown as AuthedRequest).user as { id: number };
+  const convId = parseId(req.params.id as string);
   if (!convId) { res.status(400).json({ error: "Invalid conversation id" }); return; }
 
   const targetUserIdRaw = req.query.userId as string | undefined;

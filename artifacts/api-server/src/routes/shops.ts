@@ -63,7 +63,7 @@ router.post("/shops", requireAuth, async (req: Request, res: Response) => {
 // PATCH /shops/:id — update shop
 router.patch("/shops/:id", requireAuth, async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id);
+    const id = Number(req.params.id as string);
     const { name, icon, description, hours, discount, color, menuItems, active, sortOrder, locationId } = req.body;
     const updated = await db.update(campusShopsTable).set({
       ...(name !== undefined && { name: String(name) }),
@@ -88,7 +88,7 @@ router.patch("/shops/:id", requireAuth, async (req: Request, res: Response) => {
 // DELETE /shops/:id
 router.delete("/shops/:id", requireAuth, async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id);
+    const id = Number(req.params.id as string);
     await db.delete(campusShopsTable).where(eq(campusShopsTable.id, id));
     res.json({ ok: true });
   } catch (err) {
