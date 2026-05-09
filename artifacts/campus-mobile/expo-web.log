@@ -1,0 +1,175 @@
+Starting project at C:\Users\david\Campus-Map-Social\artifacts\campus-mobile
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Waiting on http://localhost:8083
+Logs for your project will appear below.
+Web artifacts\campus-mobile\index.js ▓▓░░░░░░░░░░░░░░ 16.0% ( 6/15)
+Web artifacts\campus-mobile\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web artifacts\campus-mobile\index.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 69.4% (35/42)
+Web artifacts\campus-mobile\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web artifacts\campus-mobile\index.js ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 75.6% (187/331)
+Web artifacts\campus-mobile\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web artifacts\campus-mobile\index.js ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 75.6% (515/608)
+Web artifacts\campus-mobile\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web artifacts\campus-mobile\index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 81.6% (758/851)
+Web artifacts\campus-mobile\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web artifacts\campus-mobile\index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 92.7% (928/964)
+Web artifacts\campus-mobile\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 23991ms artifacts\campus-mobile\index.js (1099 modules)
+Web artifacts\campus-mobile\index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1099/1099)
+Web artifacts\campus-mobile\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 24048ms artifacts\campus-mobile\index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web artifacts\campus-mobile\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 57ms artifacts\campus-mobile\index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Unable to resolve "./App" from "artifacts\campus-mobile\index.js"
+[0m [90m 1 |[39m [36mimport[39m { registerRootComponent } [36mfrom[39m [32m"expo"[39m[33m;[39m
+[31m[1m>[22m[39m[90m 2 |[39m [36mimport[39m [33mApp[39m [36mfrom[39m [32m"./App"[39m[33m;[39m
+ [90m   |[39m                  [31m[1m^[22m[39m
+ [90m 3 |[39m
+ [90m 4 |[39m registerRootComponent([33mApp[39m)[33m;[39m
+ [90m 5 |[39m[0m
+
+Import stack:
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+› Detected a change in babel.config.js. Restart the server to see the new results. You may need to clear the bundler cache with the --clear flag for your changes to take effect.
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
