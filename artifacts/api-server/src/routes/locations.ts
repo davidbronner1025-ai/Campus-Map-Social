@@ -15,6 +15,7 @@ import {
   GetGamesParams, CreateGameParams, CreateGameBody, DeleteGameParams, VoteForGameParams, VoteForGameBody,
 } from "@workspace/api-zod";
 import { campusTable } from "@workspace/db/schema";
+import { getDistanceSql } from "../lib/utils";
 
 const router: IRouter = Router();
 
@@ -135,14 +136,10 @@ router.get("/locations/:locationId/crowd", async (req, res) => {
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
     const { lat, lng } = loc[0];
     const radius = 150; // metres
-    const haversine = sql`(6371000 * acos(
-      cos(radians(${lat})) * cos(radians(${messagesTable.lat})) *
-      cos(radians(${messagesTable.lng}) - radians(${lng})) +
-      sin(radians(${lat})) * sin(radians(${messagesTable.lat}))
-    ))`;
+    const distanceSql = getDistanceSql(lat, lng, messagesTable.lat, messagesTable.lng);
     const rows = await db.select({ count: sql<number>`count(*)::int` })
       .from(messagesTable)
-      .where(and(gte(messagesTable.createdAt, twoHoursAgo), sql`${haversine} < ${radius}`));
+      .where(and(gte(messagesTable.createdAt, twoHoursAgo), sql`${distanceSql} < ${radius}`));
     const count = rows[0]?.count ?? 0;
     const density = count === 0 ? 0 : count < 3 ? 0.25 : count < 7 ? 0.55 : count < 15 ? 0.8 : 1.0;
     res.json({ count, density });
