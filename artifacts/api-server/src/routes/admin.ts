@@ -2,13 +2,14 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { usersTable, userOtpsTable, messagesTable } from "@workspace/db/schema";
 import { eq, desc } from "drizzle-orm";
+import crypto from "crypto";
 
 const router: IRouter = Router();
 
 const ADMIN_PHONE = "+972000000000";
 
 function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
 function formatPhone(phone: string): string {
@@ -20,13 +21,20 @@ function formatPhone(phone: string): string {
 }
 
 async function getOrCreateAdminUser(): Promise<number> {
-  const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.phone, ADMIN_PHONE)).limit(1);
+  const existing = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.phone, ADMIN_PHONE))
+    .limit(1);
   if (existing.length) return existing[0].id;
-  const [u] = await db.insert(usersTable).values({
-    phone: ADMIN_PHONE,
-    displayName: "Campus Admin",
-    visibility: "ghost" as const,
-  }).returning({ id: usersTable.id });
+  const [u] = await db
+    .insert(usersTable)
+    .values({
+      phone: ADMIN_PHONE,
+      displayName: "Campus Admin",
+      visibility: "ghost" as const,
+    })
+    .returning({ id: usersTable.id });
   return u.id;
 }
 
@@ -57,17 +65,27 @@ router.get("/admin/users", async (_req: Request, res: Response) => {
 // POST /admin/users — invite/create a user by phone number
 router.post("/admin/users", async (req: Request, res: Response) => {
   const { phone } = req.body;
-  if (!phone) { res.status(400).json({ error: "phone required" }); return; }
+  if (!phone) {
+    res.status(400).json({ error: "phone required" });
+    return;
+  }
 
   const formatted = formatPhone(phone.trim());
 
   try {
-    const existing = await db.select().from(usersTable).where(eq(usersTable.phone, formatted)).limit(1);
+    const existing = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.phone, formatted))
+      .limit(1);
     let userId: number;
     if (existing.length) {
       userId = existing[0].id;
     } else {
-      const [u] = await db.insert(usersTable).values({ phone: formatted }).returning({ id: usersTable.id });
+      const [u] = await db
+        .insert(usersTable)
+        .values({ phone: formatted })
+        .returning({ id: usersTable.id });
       userId = u.id;
     }
 
@@ -76,7 +94,12 @@ router.post("/admin/users", async (req: Request, res: Response) => {
     await db.delete(userOtpsTable).where(eq(userOtpsTable.phone, formatted));
     await db.insert(userOtpsTable).values({ phone: formatted, otp, expiresAt });
 
-    res.json({ userId, phone: formatted, otp, message: "User created. Share the OTP with them to log in." });
+    res.json({
+      userId,
+      phone: formatted,
+      otp,
+      message: "User created. Share the OTP with them to log in.",
+    });
   } catch (err) {
     res.status(500).json({ error: "Failed to invite user" });
   }
@@ -85,7 +108,10 @@ router.post("/admin/users", async (req: Request, res: Response) => {
 // DELETE /admin/users/:id — remove a user
 router.delete("/admin/users/:id", async (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
   try {
     await db.delete(usersTable).where(eq(usersTable.id, id));
     res.json({ ok: true });
@@ -121,14 +147,17 @@ router.post("/admin/messages", async (req: Request, res: Response) => {
     const expiresAt = expiresInMinutes
       ? new Date(Date.now() + expiresInMinutes * 60 * 1000)
       : null;
-    const [created] = await db.insert(messagesTable).values({
-      userId: adminId,
-      lat: parseFloat(lat),
-      lng: parseFloat(lng),
-      content,
-      type: type || "regular",
-      expiresAt,
-    }).returning();
+    const [created] = await db
+      .insert(messagesTable)
+      .values({
+        userId: adminId,
+        lat: parseFloat(lat),
+        lng: parseFloat(lng),
+        content,
+        type: type || "regular",
+        expiresAt,
+      })
+      .returning();
     res.status(201).json(created);
   } catch {
     res.status(500).json({ error: "Failed to create admin message" });
@@ -138,7 +167,10 @@ router.post("/admin/messages", async (req: Request, res: Response) => {
 // DELETE /admin/messages/:id — remove an admin-pinned message
 router.delete("/admin/messages/:id", async (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
   try {
     await db.delete(messagesTable).where(eq(messagesTable.id, id));
     res.json({ ok: true });
