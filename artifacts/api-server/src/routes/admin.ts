@@ -3,14 +3,22 @@ import crypto from "crypto";
 import { db } from "@workspace/db";
 import { usersTable, userOtpsTable, messagesTable, issueReportsTable, campusShopsTable, locationsTable, campusTable } from "@workspace/db/schema";
 import { eq, desc, asc } from "drizzle-orm";
-import { requireReplitAuth } from "../middlewares/authMiddleware";
 
 const router: IRouter = Router();
 
-// 🔐 Hard authorization gate: every /admin/* route requires a valid Replit OIDC
-// session (cookie-based). The global authMiddleware populates req.user from the
-// "sid" cookie; requireReplitAuth then rejects any request without a valid user.
-router.use("/admin", requireReplitAuth);
+// 🔐 Hard authorization gate: every /admin/* route requires the admin PIN
+router.use("/admin", (req: Request, res: Response, next) => {
+  const pinHeader = req.headers["x-admin-pin"] as string;
+  const authHeader = req.headers.authorization?.replace("Bearer ", "");
+  const pin = pinHeader || authHeader;
+  
+  const expectedPin = process.env.VITE_ADMIN_PIN || "1234";
+  if (!pin || pin !== expectedPin) {
+    res.status(401).json({ error: "Unauthorized — invalid admin PIN" });
+    return;
+  }
+  next();
+});
 
 // ── Bot identity ─────────────────────────────────────────────────────────────
 // This is a synthetic phone number for a ghost "Campus Admin" bot account used

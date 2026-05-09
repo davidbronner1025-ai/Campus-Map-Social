@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import { Users, Phone, Trash2, UserPlus, Loader2, RefreshCw, Clock, User, Copy, Check, Map, List } from "lucide-react";
-import { adminFetch } from "@/lib/admin-fetch";
+import { adminFetch } from "@/lib/api";
 
 interface AppUser {
   id: number;
@@ -86,8 +86,7 @@ export default function UsersPage() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await adminFetch("/api/admin/users");
-      if (r.ok) setUsers(await r.json());
+      setUsers(await adminFetch<AppUser[]>("/admin/users"));
     } catch {} finally { setLoading(false); }
   }, []);
 
@@ -104,9 +103,10 @@ export default function UsersPage() {
     if (!confirm("Remove this user from the platform?")) return;
     setDeleting(id);
     try {
-      const r = await adminFetch(`/api/admin/users/${id}`, { method: "DELETE" });
-      if (r.ok) setUsers(p => p.filter(u => u.id !== id));
-    } finally { setDeleting(null); }
+      await adminFetch(`/admin/users/${id}`, { method: "DELETE" });
+      setUsers(p => p.filter(u => u.id !== id));
+    } catch { /* swallow — UI stays on the row */ }
+    finally { setDeleting(null); }
   };
 
   const inviteUser = async (e: React.FormEvent) => {
@@ -115,16 +115,14 @@ export default function UsersPage() {
     setInviting(true);
     setError("");
     try {
-      const r = await adminFetch("/api/admin/users", {
+      const d = await adminFetch<{ phone: string; otp: string }>("/admin/users", {
         method: "POST",
         body: JSON.stringify({ phone: phone.trim() }),
       });
-      const d = await r.json();
-      if (!r.ok) { setError(d.error || "Failed to invite"); return; }
       setInviteResult({ phone: d.phone, otp: d.otp });
       setPhone("");
       fetchUsers();
-    } catch { setError("Network error"); }
+    } catch (err: any) { setError(err?.message || "Network error"); }
     finally { setInviting(false); }
   };
 

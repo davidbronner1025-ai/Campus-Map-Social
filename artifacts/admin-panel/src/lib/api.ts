@@ -1,20 +1,17 @@
 // Central API helper for the admin panel.
-//
-// Auth is now handled by Replit Auth (cookie-based OIDC session via /api/login).
-// This module only handles:
-//   - adminFetch: a thin fetch wrapper that sends the session cookie and
-//     handles 401 by invoking the registered unauthorized handler.
-//   - setUnauthorizedHandler: lets App.tsx wire in a global bounce-to-login.
-//   - The generated react-query client (@workspace/api-client-react) is also
-//     wired here so its hooks send the same cookie automatically.
 import {
   setAuthTokenProvider,
   setUnauthorizedHandler as setReactQueryUnauthorizedHandler,
 } from "@workspace/api-client-react";
 
-// Admin panel uses cookie-based Replit Auth — no bearer token needed.
-// Register a null provider so the generated client doesn't try to attach one.
-setAuthTokenProvider(null);
+// Admin PIN — set VITE_ADMIN_PIN env var to override. Default: 1234
+function getAdminPin(): string {
+  return (import.meta as any).env?.VITE_ADMIN_PIN || "1234";
+}
+
+// ── Auth wiring ───────────────────────────────────────────────────────────────
+// Provide the PIN to the auto-generated api-client-react hooks
+setAuthTokenProvider(() => getAdminPin());
 
 // ── Global 401 handler ────────────────────────────────────────────────────────
 let unauthorizedHandler: (() => void) | null = null;
@@ -30,11 +27,12 @@ export async function adminFetch<T = any>(
   init: RequestInit = {},
 ): Promise<T> {
   const headers = new Headers(init.headers);
+  headers.set("x-admin-pin", getAdminPin());
   if (init.body && !headers.has("content-type") && typeof init.body === "string") {
     headers.set("content-type", "application/json");
   }
   const url = path.startsWith("http") ? path : path.startsWith("/api") ? path : `/api${path}`;
-  const res = await fetch(url, { ...init, headers, credentials: "include" });
+  const res = await fetch(url, { ...init, headers });
   if (res.status === 401) {
     if (unauthorizedHandler) try { unauthorizedHandler(); } catch { /* ignore */ }
   }

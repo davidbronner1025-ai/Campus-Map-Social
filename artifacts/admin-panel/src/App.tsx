@@ -1,14 +1,16 @@
-import { useState, useEffect } from "react";
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { useState } from "react";
+import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { AnimatePresence, motion } from "framer-motion";
 import { ShieldCheck, KeyRound, Eye, EyeOff, Lock } from "lucide-react";
+import { motion } from "framer-motion";
 
 import { Layout } from "@/components/layout";
 import SetupPage from "@/pages/setup";
 import LocationsPage from "@/pages/locations";
 import UsersPage from "@/pages/users";
+import IssuesPage from "@/pages/issues";
+import ShopsAdminPage from "@/pages/shops";
 
 const queryClient = new QueryClient();
 
@@ -102,6 +104,12 @@ function AppRouter() {
       </Route>
       <Route path="/users">
         <Layout active="users"><UsersPage /></Layout>
+      </Route>
+      <Route path="/issues">
+        <Layout active="issues"><IssuesPage /></Layout>
+      </Route>
+      <Route path="/shops">
+        <Layout active="shops"><ShopsAdminPage /></Layout>
       </Route>
       <Route>
         <Layout active="setup"><SetupPage /></Layout>
