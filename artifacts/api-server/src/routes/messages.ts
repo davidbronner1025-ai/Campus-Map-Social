@@ -108,7 +108,7 @@ router.post("/messages", requireAuth, async (req: Request, res: Response) => {
 // DELETE /messages/:id
 router.delete("/messages/:id", requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
-  const msgId = parseInt(req.params.id);
+  const msgId = parseInt(req.params.id as string);
 
   const msg = await db.select().from(messagesTable).where(eq(messagesTable.id, msgId)).limit(1);
   if (!msg.length) { res.status(404).json({ error: "Not found" }); return; }
@@ -121,7 +121,7 @@ router.delete("/messages/:id", requireAuth, async (req: Request, res: Response) 
 // POST /messages/:id/react
 router.post("/messages/:id/react", requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
-  const msgId = parseInt(req.params.id);
+  const msgId = parseInt(req.params.id as string);
   const { type, emoji } = req.body;
 
   if (!["yes", "no", "emoji"].includes(type)) {
@@ -152,7 +152,7 @@ router.post("/messages/:id/react", requireAuth, async (req: Request, res: Respon
 
 // GET /messages/:id/replies
 router.get("/messages/:id/replies", requireAuth, async (req: Request, res: Response) => {
-  const msgId = parseInt(req.params.id);
+  const msgId = parseInt(req.params.id as string);
   const replies = await db
     .select({
       reply: messageRepliesTable,
@@ -173,7 +173,7 @@ router.get("/messages/:id/replies", requireAuth, async (req: Request, res: Respo
 // POST /messages/:id/replies
 router.post("/messages/:id/replies", requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
-  const msgId = parseInt(req.params.id);
+  const msgId = parseInt(req.params.id as string);
   const { content } = req.body;
 
   if (!content) { res.status(400).json({ error: "content required" }); return; }

@@ -103,7 +103,7 @@ router.post("/admin/users", async (req: Request, res: Response) => {
 
 // DELETE /admin/users/:id — remove a user
 router.delete("/admin/users/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   try {
     await db.delete(usersTable).where(eq(usersTable.id, id));
@@ -156,7 +156,7 @@ router.post("/admin/messages", async (req: Request, res: Response) => {
 
 // DELETE /admin/messages/:id — remove an admin-pinned message
 router.delete("/admin/messages/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   try {
     await db.delete(messagesTable).where(eq(messagesTable.id, id));
@@ -193,7 +193,7 @@ router.get("/admin/issues", async (_req: Request, res: Response) => {
 
 // PATCH /admin/issues/:id/status
 router.patch("/admin/issues/:id/status", async (req: Request, res: Response) => {
-  const id = Number(req.params.id);
+  const id = Number(req.params.id as string);
   const { status } = req.body;
   if (!["open","in_progress","resolved"].includes(status)) { res.status(400).json({ error: "Invalid status" }); return; }
   try {
@@ -208,7 +208,7 @@ router.patch("/admin/issues/:id/status", async (req: Request, res: Response) => 
 // DELETE /admin/issues/:id
 router.delete("/admin/issues/:id", async (req: Request, res: Response) => {
   try {
-    await db.delete(issueReportsTable).where(eq(issueReportsTable.id, Number(req.params.id)));
+    await db.delete(issueReportsTable).where(eq(issueReportsTable.id, Number(req.params.id as string)));
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: String(err) }); }
 });
@@ -250,7 +250,7 @@ router.post("/admin/shops", async (req: Request, res: Response) => {
 // PATCH /admin/shops/:id
 router.patch("/admin/shops/:id", async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id);
+    const id = Number(req.params.id as string);
     const { name, icon, description, hours, discount, color, menuItems, active, sortOrder, locationId } = req.body;
     const updated = await db.update(campusShopsTable).set({
       ...(name !== undefined && { name: String(name) }),
@@ -273,7 +273,7 @@ router.patch("/admin/shops/:id", async (req: Request, res: Response) => {
 // DELETE /admin/shops/:id
 router.delete("/admin/shops/:id", async (req: Request, res: Response) => {
   try {
-    await db.delete(campusShopsTable).where(eq(campusShopsTable.id, Number(req.params.id)));
+    await db.delete(campusShopsTable).where(eq(campusShopsTable.id, Number(req.params.id as string)));
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: String(err) }); }
 });
@@ -282,7 +282,7 @@ router.delete("/admin/shops/:id", async (req: Request, res: Response) => {
 
 // PATCH /admin/locations/:id/floors
 router.patch("/admin/locations/:id/floors", async (req: Request, res: Response) => {
-  const id = Number(req.params.id);
+  const id = Number(req.params.id as string);
   const { floorData } = req.body;
   if (!Array.isArray(floorData)) { res.status(400).json({ error: "floorData must be an array" }); return; }
   try {

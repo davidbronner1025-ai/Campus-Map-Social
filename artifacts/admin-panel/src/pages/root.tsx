@@ -5,9 +5,8 @@ import { Loader2 } from "lucide-react";
 
 export default function RootRedirect() {
   const [, setLocation] = useLocation();
-  const { data: campus, isLoading, isError } = useGetCampus({
-    query: { retry: false }
-  });
+  const { data: campus, isLoading, isError } = useGetCampus()
+
 
   useEffect(() => {
     if (!isLoading) {

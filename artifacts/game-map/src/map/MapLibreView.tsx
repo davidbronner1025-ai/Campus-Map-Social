@@ -109,7 +109,6 @@ export function MapLibreView({
         attributionControl: false,
         maxZoom: 20,
         minZoom: 14,
-        failIfMajorPerformanceCaveat: false,
       });
     } catch (err) {
       console.warn("[MapLibre] WebGL init failed, switching to 2D fallback", err);
