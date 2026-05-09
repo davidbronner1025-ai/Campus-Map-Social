@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Campus",
+    "slug": "campus-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "campus",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.campus.social",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Campus uses your location to show nearby people, posts, events, and campus places."
+      }
+    },
+    "android": {
+      "package": "com.campus.social",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#07111f"
+      }
+    },
+    "extra": {
+      "apiUrl": "http://localhost:5000/api"
+    },
+    "plugins": [
+      "expo-location"
+    ]
+  }
+}

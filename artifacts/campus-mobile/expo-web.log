@@ -1,0 +1,25 @@
+Starting project at C:\Users\david\Campus-Map-Social\artifacts\campus-mobile
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Waiting on http://localhost:8083
+Logs for your project will appear below.
+Web artifacts\campus-mobile\index.js ▓▓░░░░░░░░░░░░░░ 16.0% ( 6/15)
+Web artifacts\campus-mobile\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web artifacts\campus-mobile\index.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 69.4% (35/42)
+Web artifacts\campus-mobile\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web artifacts\campus-mobile\index.js ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 75.6% (187/331)
+Web artifacts\campus-mobile\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web artifacts\campus-mobile\index.js ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 75.6% (515/608)
+Web artifacts\campus-mobile\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web artifacts\campus-mobile\index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 81.6% (758/851)
+Web artifacts\campus-mobile\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web artifacts\campus-mobile\index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 92.7% (928/964)
+Web artifacts\campus-mobile\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 23991ms artifacts\campus-mobile\index.js (1099 modules)
+Web artifacts\campus-mobile\index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1099/1099)
+Web artifacts\campus-mobile\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 24048ms artifacts\campus-mobile\index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web artifacts\campus-mobile\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 57ms artifacts\campus-mobile\index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
