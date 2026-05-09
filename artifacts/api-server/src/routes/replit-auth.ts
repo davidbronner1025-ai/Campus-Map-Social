@@ -80,7 +80,7 @@ async function upsertReplitUser(claims: Record<string, unknown>) {
 router.get("/auth/user", (req: Request, res: Response) => {
   res.json(
     GetCurrentAuthUserResponse.parse({
-      user: req.isAuthenticated() ? req.user : null,
+      user: (req as any).isAuthenticated() ? (req as any).user : null,
     }),
   );
 });

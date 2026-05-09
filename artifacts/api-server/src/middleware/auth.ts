@@ -5,10 +5,10 @@ import { eq, and, isNull, gt, ne } from "drizzle-orm";
 import crypto from "crypto";
 
 // ─── Types ────────────────────────────────────────────────────────────────
-export interface AuthedRequest extends Request {
+export type AuthedRequest = Request & {
   user: User;
   session: { id: number; token: string; deviceId: string | null };
-}
+};
 
 // ─── Token helpers ────────────────────────────────────────────────────────
 export function generateToken(): string {
@@ -116,8 +116,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     db.update(userSessionsTable).set({ lastSeenAt: now }).where(eq(userSessionsTable.id, row.sessionId)).catch(() => {});
     db.update(usersTable).set({ lastSeen: now }).where(eq(usersTable.id, row.userId)).catch(() => {});
 
-    (req as AuthedRequest).user = row.user;
-    (req as AuthedRequest).session = { id: row.sessionId, token: row.sessionToken, deviceId: row.sessionDeviceId };
+    (req as any).user = row.user;
+    (req as any).session = { id: row.sessionId, token: row.sessionToken, deviceId: row.sessionDeviceId };
     next();
   } catch (err) {
     console.error("[auth] requireAuth failed", err);
@@ -129,7 +129,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 export function requireRole(...allowed: UserRole[]) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     // requireAuth must run first
-    const user = (req as AuthedRequest).user;
+    const user = (req as any).user;
     if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
     if (!allowed.includes(user.role)) {
       res.status(403).json({ error: "Insufficient permissions" });

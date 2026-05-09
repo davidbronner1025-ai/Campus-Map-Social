@@ -401,3 +401,611 @@ Import stack:
  
  | import "./artifacts/campus-mobile/index"
 
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+
+Unable to resolve "../api/client" from "artifacts\campus-mobile\src\screens\MapScreen.tsx"
+
+Import stack:
+
+ artifacts\campus-mobile\src\screens\MapScreen.tsx
+ | import "../api/client"
+
+ artifacts\campus-mobile\src\navigation\AppTabs.tsx
+ | import "../screens/MapScreen"
+
+ artifacts\campus-mobile\App.tsx
+ | import "./src/navigation/AppTabs"
+
+ artifacts\campus-mobile\index.js
+ | import "./App"
+
+ 
+ | import "./artifacts/campus-mobile/index"
+

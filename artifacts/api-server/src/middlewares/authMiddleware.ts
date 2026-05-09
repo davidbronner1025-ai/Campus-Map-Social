@@ -10,6 +10,7 @@ import {
   type SessionData,
 } from "../lib/auth";
 
+/*
 declare global {
   namespace Express {
     interface User extends AuthUser {}
@@ -25,6 +26,7 @@ declare global {
     }
   }
 }
+*/
 
 async function refreshIfExpired(
   sid: string,
@@ -61,7 +63,7 @@ export function requireReplitAuth(
   res: Response,
   next: NextFunction,
 ): void {
-  if (!req.isAuthenticated || !req.isAuthenticated()) {
+  if (!(req as any).isAuthenticated || !(req as any).isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized — Replit auth required" });
     return;
   }
@@ -73,9 +75,9 @@ export async function authMiddleware(
   res: Response,
   next: NextFunction,
 ) {
-  req.isAuthenticated = function (this: Request) {
-    return this.user != null;
-  } as Request["isAuthenticated"];
+  (req as any).isAuthenticated = function (this: Request) {
+    return (this as any).user != null;
+  } as any;
 
   const sid = getSessionId(req);
   if (!sid) {
@@ -97,6 +99,6 @@ export async function authMiddleware(
     return;
   }
 
-  req.user = refreshed.user;
+  (req as any).user = refreshed.user;
   next();
 }

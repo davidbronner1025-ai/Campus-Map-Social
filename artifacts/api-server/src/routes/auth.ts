@@ -193,7 +193,7 @@ router.post("/auth/verify-otp", async (req: Request, res: Response) => {
 // ─── POST /auth/logout — revoke current session ────────────────────────────
 router.post("/auth/logout", requireAuth, async (req: Request, res: Response) => {
   try {
-    const session = (req as AuthedRequest).session;
+    const session = (req as any).session;
     await revokeSession(session.id);
     res.json({ success: true });
   } catch (err) {
@@ -205,7 +205,7 @@ router.post("/auth/logout", requireAuth, async (req: Request, res: Response) => 
 // ─── POST /auth/logout-all — revoke ALL sessions for this user ────────────
 router.post("/auth/logout-all", requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = (req as AuthedRequest).user.id;
+    const userId = (req as any).user.id;
     await revokeAllUserSessions(userId);
     res.json({ success: true });
   } catch (err) {
@@ -217,8 +217,8 @@ router.post("/auth/logout-all", requireAuth, async (req: Request, res: Response)
 // ─── GET /auth/sessions — list this user's active sessions ────────────────
 router.get("/auth/sessions", requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = (req as AuthedRequest).user.id;
-    const currentSessionId = (req as AuthedRequest).session.id;
+    const userId = (req as any).user.id;
+    const currentSessionId = (req as any).session.id;
     const rows = await db.select({
       id: userSessionsTable.id,
       deviceId: userSessionsTable.deviceId,
@@ -247,7 +247,7 @@ router.get("/auth/sessions", requireAuth, async (req: Request, res: Response) =>
 // ─── DELETE /auth/sessions/:id — revoke a specific session (own only) ─────
 router.delete("/auth/sessions/:id", requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = (req as AuthedRequest).user.id;
+    const userId = (req as any).user.id;
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid session id" }); return; }
     // Verify ownership before revoking
@@ -267,7 +267,7 @@ router.delete("/auth/sessions/:id", requireAuth, async (req: Request, res: Respo
 
 // ─── GET /auth/me — return current user info (used by client on app boot) ──
 router.get("/auth/me", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as AuthedRequest).user;
+  const user = (req as any).user;
   res.json({
     id: user.id,
     phone: user.phone,
