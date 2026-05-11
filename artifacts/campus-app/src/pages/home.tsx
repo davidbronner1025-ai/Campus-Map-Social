@@ -421,7 +421,7 @@ function LocationDetailSheet({
               Post here
             </button>
           )}
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={onClose} aria-label="סגור" className="p-2 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -757,7 +757,7 @@ function MessageCard({
           </span>
         </div>
         {isOwn && (
-          <button onClick={() => onDelete(msg.id)} className="p-1 text-muted-foreground hover:text-destructive transition-colors">
+          <button onClick={() => onDelete(msg.id)} aria-label="מחק הודעה" className="p-1 text-muted-foreground hover:text-destructive transition-colors">
             <Trash2 className="w-4 h-4" />
           </button>
         )}
@@ -831,7 +831,7 @@ function RepliesSheet({ msg, currentUserId, onClose }: { msg: NearbyMessage; cur
     <div className="fixed inset-0 z-50 flex flex-col bg-background" style={{ maxWidth: 480, margin: "0 auto" }}>
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border bg-card/80 backdrop-blur-sm">
-        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
+        <button onClick={onClose} aria-label="סגור" className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
           <X className="w-5 h-5" />
         </button>
         <div>
@@ -935,7 +935,7 @@ function ComposeSheet({ onClose, onPosted, userLat, userLng, locationLabel }: {
               <p className="text-xs text-primary mt-0.5">📍 {locationLabel}</p>
             )}
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
+          <button onClick={onClose} aria-label="סגור" className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
             <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
@@ -1076,7 +1076,7 @@ function EventCard({
         </div>
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           {isCreator ? (
-            <button onClick={e => { e.stopPropagation(); onDelete(event.id); }}
+            <button onClick={e => { e.stopPropagation(); onDelete(event.id); }} aria-label="מחק אירוע"
               className="p-1 text-muted-foreground hover:text-destructive transition-colors">
               <Trash2 className="w-4 h-4" />
             </button>
@@ -1129,14 +1129,14 @@ function EventDetailSheet({
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background" style={{ maxWidth: 480, margin: "0 auto" }}>
       <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border bg-card/80 backdrop-blur-sm">
-        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
+        <button onClick={onClose} aria-label="סגור" className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
           <X className="w-5 h-5" />
         </button>
         <div className="flex-1">
           <p className="text-sm font-semibold">Event Details</p>
         </div>
         {isCreator && (
-          <button onClick={handleDelete} disabled={acting}
+          <button onClick={handleDelete} disabled={acting} aria-label="מחק הודעה"
             className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
             <Trash2 className="w-4 h-4" />
           </button>
@@ -1268,7 +1268,7 @@ function CreateEventSheet({ onClose, onCreated, userLat, userLng }: {
       <div className="px-5 pb-safe space-y-4" style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}>
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-foreground text-base">Create Event</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
+          <button onClick={onClose} aria-label="סגור" className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
             <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
@@ -1595,7 +1595,7 @@ function BulletinTab({ currentUserId }: { currentUserId: number }) {
                           <span className="font-medium">{p.likesCount}</span>
                         </button>
                         {(p.isMine || p.userId === currentUserId) && (
-                          <button onClick={() => handleDelete(p)}
+                          <button onClick={() => handleDelete(p)} aria-label="מחק פוסט"
                             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500 transition-colors mr-auto">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1639,7 +1639,7 @@ function BulletinTab({ currentUserId }: { currentUserId: number }) {
                 <h3 className="text-base font-bold text-foreground">
                   פוסט חדש · {BULLETIN_CATS.find(c => c.key === cat)?.label}
                 </h3>
-                <button onClick={() => setComposing(false)} className="p-1.5 rounded-lg hover:bg-secondary">
+                <button onClick={() => setComposing(false)} aria-label="סגור" className="p-1.5 rounded-lg hover:bg-secondary">
                   <X className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
@@ -1981,11 +1981,11 @@ export default function HomePage() {
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={fetchAll} className="p-2 rounded-xl hover:bg-secondary transition-colors" disabled={loading}>
+          <button onClick={fetchAll} aria-label="רענן מידע" className="p-2 rounded-xl hover:bg-secondary transition-colors" disabled={loading}>
             <RefreshCw className={`w-4 h-4 text-muted-foreground ${loading ? "animate-spin" : ""}`} />
           </button>
           <NotificationBell />
-          <button onClick={() => navigate("/profile")} className="p-2 rounded-xl hover:bg-secondary transition-colors">
+          <button onClick={() => navigate("/profile")} aria-label="פרופיל" className="p-2 rounded-xl hover:bg-secondary transition-colors">
             <User className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
