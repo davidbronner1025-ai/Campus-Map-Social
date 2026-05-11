@@ -3,7 +3,7 @@ import {
   timestamp, jsonb, real, date, boolean, uniqueIndex, index
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
+import { z } from "zod";
 
 const latLngSchema = z.object({ lat: z.number(), lng: z.number() });
 

@@ -260,8 +260,14 @@ function BuildingPanel({ locationId }: { locationId:number }) {
           <form onSubmit={aForm.handleSubmit(d=>createAnn.mutate({locationId,data:d},{onSuccess:()=>{aForm.reset();reA();}}))}>
             <div className="bg-card border border-border rounded-xl p-3 space-y-2.5">
               <p className="text-xs font-semibold text-foreground">New Announcement</p>
-              <input {...aForm.register("title")} placeholder="Title" className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground focus:outline-none focus:border-primary"/>
-              <textarea {...aForm.register("content")} placeholder="Content" rows={2} className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground focus:outline-none focus:border-primary resize-none"/>
+              <div>
+                <input {...aForm.register("title")} placeholder="Title" className={`w-full px-3 py-2 rounded-lg bg-background border text-sm text-foreground focus:outline-none ${aForm.formState.errors.title ? "border-destructive focus:border-destructive" : "border-border focus:border-primary"}`}/>
+                {aForm.formState.errors.title && <p className="text-[10px] text-destructive mt-1 ml-1">{aForm.formState.errors.title.message}</p>}
+              </div>
+              <div>
+                <textarea {...aForm.register("content")} placeholder="Content" rows={2} className={`w-full px-3 py-2 rounded-lg bg-background border text-sm text-foreground focus:outline-none resize-none ${aForm.formState.errors.content ? "border-destructive focus:border-destructive" : "border-border focus:border-primary"}`}/>
+                {aForm.formState.errors.content && <p className="text-[10px] text-destructive mt-1 ml-1">{aForm.formState.errors.content.message}</p>}
+              </div>
               <div className="flex gap-2">
                 <select {...aForm.register("priority")} className="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground focus:outline-none">
                   <option value="normal">Normal</option><option value="important">Important</option><option value="urgent">Urgent</option>
@@ -430,7 +436,10 @@ function SportsPanel({ locationId }: { locationId:number }) {
             </select>
             <input {...gForm.register("maxPlayers")} type="number" min={2} max={100} placeholder="Max players" className="px-3 py-2 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none focus:border-primary"/>
           </div>
-          <input {...gForm.register("scheduledAt")} type="datetime-local" className="w-full px-3 py-2 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none"/>
+          <div>
+            <input {...gForm.register("scheduledAt")} type="datetime-local" className={`w-full px-3 py-2 rounded-lg bg-background border text-xs text-foreground focus:outline-none ${gForm.formState.errors.scheduledAt ? "border-destructive" : "border-border"}`}/>
+            {gForm.formState.errors.scheduledAt && <p className="text-[10px] text-destructive mt-1 ml-1">Invalid date</p>}
+          </div>
           <input {...gForm.register("description")} placeholder="Description (optional)" className="w-full px-3 py-2 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none focus:border-primary"/>
           <button type="submit" disabled={createGame.isPending} className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-40">Create Game</button>
         </div>
@@ -1032,7 +1041,10 @@ export default function LocationsPage() {
               ))}
             </div>
 
-            <input {...lForm.register("name")} placeholder="Location name" className="w-full px-4 py-3 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-primary transition-colors"/>
+            <div>
+              <input {...lForm.register("name")} placeholder="Location name" className={`w-full px-4 py-3 rounded-xl bg-card border text-sm text-foreground focus:outline-none transition-colors ${lForm.formState.errors.name ? "border-destructive focus:border-destructive" : "border-border focus:border-primary"}`}/>
+              {lForm.formState.errors.name && <p className="text-xs text-destructive mt-1.5 ml-1">{lForm.formState.errors.name.message}</p>}
+            </div>
             <textarea {...lForm.register("description")} placeholder="Description" rows={2} className="w-full px-4 py-3 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-primary resize-none transition-colors"/>
             <input {...lForm.register("adminName")} placeholder="Admin name (optional)" className="w-full px-4 py-3 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-primary transition-colors"/>
 
@@ -1145,7 +1157,8 @@ export default function LocationsPage() {
 
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Name</label>
-                <input {...editForm.register("name")} className="w-full px-4 py-3 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-primary" />
+                <input {...editForm.register("name")} className={`w-full px-4 py-3 rounded-xl bg-background border text-sm text-foreground focus:outline-none ${editForm.formState.errors.name ? "border-destructive focus:border-destructive" : "border-border focus:border-primary"}`} />
+                {editForm.formState.errors.name && <p className="text-xs text-destructive mt-1.5 ml-1">{editForm.formState.errors.name.message}</p>}
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Description</label>

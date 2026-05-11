@@ -6,6 +6,7 @@ import { ShieldCheck, KeyRound, Eye, EyeOff, Lock } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { Layout } from "@/components/layout";
+import RootPage from "@/pages/root";
 import SetupPage from "@/pages/setup";
 import LocationsPage from "@/pages/locations";
 import UsersPage from "@/pages/users";
@@ -94,7 +95,7 @@ function AppRouter() {
   return (
     <Switch>
       <Route path="/">
-        <Layout active="setup"><SetupPage /></Layout>
+        <RootPage />
       </Route>
       <Route path="/setup">
         <Layout active="setup"><SetupPage /></Layout>
@@ -112,7 +113,7 @@ function AppRouter() {
         <Layout active="shops"><ShopsAdminPage /></Layout>
       </Route>
       <Route>
-        <Layout active="setup"><SetupPage /></Layout>
+        <RootPage />
       </Route>
     </Switch>
   );

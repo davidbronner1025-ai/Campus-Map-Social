@@ -21,8 +21,29 @@ const router: IRouter = Router();
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 async function getCampusId(): Promise<number | null> {
-  const c = await db.select().from(campusTable).limit(1);
-  return c.length ? c[0].id : null;
+  try {
+    const c = await db.select({ id: campusTable.id }).from(campusTable).limit(1);
+    return c.length ? c[0].id : null;
+  } catch (err) {
+    console.error("[locations] getCampusId failed:", err);
+    return null;
+  }
+}
+
+// Helper to ensure managers have names
+async function enrichLocationsWithManager(locations: any[]) {
+  return Promise.all(locations.map(async (loc) => {
+    if (loc.managerId) {
+      try {
+        const [mgr] = await db.select({ displayName: usersTable.displayName })
+          .from(usersTable).where(eq(usersTable.id, loc.managerId));
+        if (mgr) return { ...loc, managerName: mgr.displayName || "Assigned" };
+      } catch (err) {
+        console.error(`[locations] Failed to enrich manager for loc ${loc.id}:`, err);
+      }
+    }
+    return loc;
+  }));
 }
 
 // 🔐 PIN check middleware for location writes
@@ -31,7 +52,8 @@ const requirePin = (req: any, res: any, next: any) => {
   const authHeader = req.headers.authorization?.replace("Bearer ", "");
   const pin = pinHeader || authHeader;
   const expectedPin = process.env.VITE_ADMIN_PIN || "1234";
-  if (!pin || pin !== expectedPin) {
+  if (!pin || pin.trim() !== expectedPin.trim()) {
+    console.warn(`[locations] Unauthorized write attempt. Received PIN: [${pin}], Expected: [${expectedPin}]`);
     return res.status(401).json({ error: "Unauthorized — valid admin PIN required" });
   }
   next();
@@ -39,41 +61,51 @@ const requirePin = (req: any, res: any, next: any) => {
 
 // ─── Locations ──────────────────────────────────────────────────────────────
 
-async function enrichLocationsWithManager(locations: any[]) {
-  return Promise.all(locations.map(async (loc) => {
-    if (loc.managerId) {
-      const [mgr] = await db.select({ displayName: usersTable.displayName })
-        .from(usersTable).where(eq(usersTable.id, loc.managerId));
-      if (mgr) return { ...loc, managerName: mgr.displayName || "Assigned" };
-    }
-    return loc;
-  }));
-}
-
 router.get("/locations", async (_req, res) => {
   try {
     const locations = await db.select().from(locationsTable).orderBy(desc(locationsTable.createdAt));
     res.json(await enrichLocationsWithManager(locations));
   } catch (err) {
+    console.error("[locations] fetch failed:", err);
     res.status(500).json({ error: String(err) });
   }
 });
 
 router.post("/locations", requirePin, async (req, res) => {
   try {
+    console.log("[locations] Create request body:", JSON.stringify(req.body));
     const body = CreateLocationBody.parse(req.body);
-    const managerId = body.managerId != null ? Number(body.managerId) : null;
     const campusId = await getCampusId();
     if (!campusId) {
-      res.status(400).json({ error: "Campus not configured yet." });
+      console.error("[locations] Create failed: No campus configured.");
+      res.status(400).json({ error: "Campus not configured yet. Please go to Setup page first." });
       return;
     }
-    const created = await db.insert(locationsTable).values({ ...body, campusId, managerId }).returning();
+    const managerId = body.managerId != null ? Number(body.managerId) : null;
+    
+    const insertObj = {
+      campusId,
+      name: body.name,
+      description: body.description || null,
+      type: body.type,
+      color: body.color,
+      adminName: body.adminName || null,
+      managerId,
+      lat: body.lat,
+      lng: body.lng,
+      polygon: body.polygon || [],
+      osmName: body.osmName || null,
+      updatedAt: new Date(),
+    };
+
+    const created = await db.insert(locationsTable).values(insertObj).returning();
+    console.log("[locations] Successfully created location:", created[0].id);
     const enriched = await enrichLocationsWithManager(created);
     res.status(201).json(enriched[0]);
-  } catch (err) {
+  } catch (err: any) {
     console.error("[locations] create failed:", err);
-    res.status(400).json({ error: String(err) });
+    const msg = err.name === "ZodError" ? "Validation failed: " + JSON.stringify(err.errors) : String(err);
+    res.status(err.name === "ZodError" ? 400 : 500).json({ error: msg });
   }
 });
 
@@ -90,22 +122,30 @@ router.get("/locations/:locationId", async (req, res) => {
 });
 
 router.put("/locations/:locationId", requirePin, async (req, res) => {
+  const locationId = Number(req.params.locationId);
   try {
-    const { locationId } = UpdateLocationParams.parse({ locationId: Number(req.params.locationId) });
     const body = UpdateLocationBody.parse(req.body);
     const managerId = body.managerId !== undefined ? (body.managerId != null ? Number(body.managerId) : null) : undefined;
-    const setObj: any = { ...body, updatedAt: new Date() };
+    
+    const setObj: any = {
+      ...body,
+      updatedAt: new Date()
+    };
     if (managerId !== undefined) setObj.managerId = managerId;
+
     const updated = await db.update(locationsTable)
       .set(setObj)
       .where(eq(locationsTable.id, locationId))
       .returning();
+
     if (!updated.length) { res.status(404).json({ error: "Location not found" }); return; }
+    console.log("[locations] Successfully updated location:", locationId);
     const enriched = await enrichLocationsWithManager(updated);
     res.json(enriched[0]);
-  } catch (err) {
+  } catch (err: any) {
     console.error("[locations] update failed:", err);
-    res.status(400).json({ error: String(err) });
+    const msg = err.name === "ZodError" ? "Validation failed" : String(err);
+    res.status(err.name === "ZodError" ? 400 : 500).json({ error: msg });
   }
 });
 
@@ -121,25 +161,6 @@ router.delete("/locations/:locationId", requirePin, async (req, res) => {
   }
 });
 
-// PATCH /locations/:locationId/floors — update floor data for a location
-router.patch("/locations/:locationId/floors", async (req, res) => {
-  try {
-    const locationId = Number(req.params.locationId);
-    const { floorData } = req.body;
-    if (!Array.isArray(floorData)) {
-      res.status(400).json({ error: "floorData must be an array" });
-      return;
-    }
-    const updated = await db.update(locationsTable)
-      .set({ floorData, updatedAt: new Date() })
-      .where(eq(locationsTable.id, locationId))
-      .returning();
-    if (!updated.length) { res.status(404).json({ error: "Location not found" }); return; }
-    res.json(updated[0]);
-  } catch (err) {
-    res.status(400).json({ error: String(err) });
-  }
-});
 
 // GET /locations/:locationId/crowd — returns message count in last 2h as crowd proxy
 router.get("/locations/:locationId/crowd", async (req, res) => {
@@ -180,7 +201,7 @@ router.get("/locations/:locationId/announcements", async (req, res) => {
   }
 });
 
-router.post("/locations/:locationId/announcements", async (req, res) => {
+router.post("/locations/:locationId/announcements", requirePin, async (req, res) => {
   try {
     const { locationId } = CreateAnnouncementParams.parse({ locationId: Number(req.params.locationId) });
     const body = CreateAnnouncementBody.parse(req.body);
@@ -191,7 +212,7 @@ router.post("/locations/:locationId/announcements", async (req, res) => {
   }
 });
 
-router.delete("/announcements/:announcementId", async (req, res) => {
+router.delete("/announcements/:announcementId", requirePin, async (req, res) => {
   try {
     const { announcementId } = DeleteAnnouncementParams.parse({ announcementId: Number(req.params.announcementId) });
     await db.delete(announcementsTable).where(eq(announcementsTable.id, announcementId));
@@ -214,7 +235,7 @@ router.get("/locations/:locationId/schedules", async (req, res) => {
   }
 });
 
-router.post("/locations/:locationId/schedules", async (req, res) => {
+router.post("/locations/:locationId/schedules", requirePin, async (req, res) => {
   try {
     const { locationId } = CreateScheduleEntryParams.parse({ locationId: Number(req.params.locationId) });
     const body = CreateScheduleEntryBody.parse(req.body);
@@ -225,7 +246,7 @@ router.post("/locations/:locationId/schedules", async (req, res) => {
   }
 });
 
-router.delete("/schedules/:scheduleId", async (req, res) => {
+router.delete("/schedules/:scheduleId", requirePin, async (req, res) => {
   try {
     const { scheduleId } = DeleteScheduleEntryParams.parse({ scheduleId: Number(req.params.scheduleId) });
     await db.delete(schedulesTable).where(eq(schedulesTable.id, scheduleId));
@@ -259,7 +280,7 @@ router.get("/locations/:locationId/menus", async (req, res) => {
   }
 });
 
-router.post("/locations/:locationId/menus", async (req, res) => {
+router.post("/locations/:locationId/menus", requirePin, async (req, res) => {
   try {
     const { locationId } = CreateMenuParams.parse({ locationId: Number(req.params.locationId) });
     const body = CreateMenuBody.parse(req.body);
@@ -303,7 +324,7 @@ router.get("/locations/:locationId/games", async (req, res) => {
   }
 });
 
-router.post("/locations/:locationId/games", async (req, res) => {
+router.post("/locations/:locationId/games", requirePin, async (req, res) => {
   try {
     const { locationId } = CreateGameParams.parse({ locationId: Number(req.params.locationId) });
     const body = CreateGameBody.parse(req.body);
@@ -315,7 +336,7 @@ router.post("/locations/:locationId/games", async (req, res) => {
   }
 });
 
-router.delete("/games/:gameId", async (req, res) => {
+router.delete("/games/:gameId", requirePin, async (req, res) => {
   try {
     const { gameId } = DeleteGameParams.parse({ gameId: Number(req.params.gameId) });
     await db.delete(gameSessionsTable).where(eq(gameSessionsTable.id, gameId));

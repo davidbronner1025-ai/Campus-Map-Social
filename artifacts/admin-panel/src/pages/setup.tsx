@@ -6,7 +6,8 @@ import * as z from "zod";
 import { MapContainer, Marker, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import { Save, Navigation, MapPin, Search, Loader2, X, SlidersHorizontal, CheckCircle, Layers } from "lucide-react";
-import { useGetCampus, useSetCampus } from "@workspace/api-client-react";
+import { useGetCampus, useSetCampus, getGetCampusQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -107,6 +108,7 @@ export default function SetupPage() {
   const { toast } = useToast();
   const { data: campus, isLoading } = useGetCampus({ query: { retry: false } });
   const setCampus = useSetCampus();
+  const queryClient = useQueryClient();
 
   const [searchQ, setSearchQ] = useState("");
   const [searchRes, setSearchRes] = useState<SearchResult[]>([]);
@@ -178,6 +180,7 @@ export default function SetupPage() {
     setCampus.mutate({ data }, {
       onSuccess: () => {
         setSaved(true);
+        queryClient.invalidateQueries({ queryKey: getGetCampusQueryKey() });
         toast({ title: "Campus saved", description: `${data.name} has been configured successfully.` });
         setTimeout(() => { setSaved(false); nav("/locations"); }, 1200);
       },

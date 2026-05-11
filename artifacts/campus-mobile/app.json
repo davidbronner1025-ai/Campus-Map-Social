@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Campus",
+    "slug": "campus-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "campus",
+    "userInterfaceStyle": "dark",
+    "web": {
+      "bundler": "metro"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.campus.social",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Campus uses your location to show nearby campus activity."
+      }
+    },
+    "android": {
+      "package": "com.campus.social",
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+    },
+    "extra": {
+      "apiUrl": "http://localhost:5000/api"
+    }
+  }
+}
