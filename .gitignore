@@ -52,4 +52,5 @@ Thumbs.db
 .local/
 
 # Large local 3D assets (copy from Downloads / asset pipeline)
-artifacts/game-map/public/models/*.glb
+# artifacts/game-map/public/models/*.glb
+
