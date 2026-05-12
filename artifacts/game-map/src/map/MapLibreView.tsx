@@ -2,7 +2,31 @@ import { useEffect, useRef } from "react";
 import maplibregl, { type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { ZonePolygon, PlayerMarker, DrawingState, SelectedItem } from "../types/map";
-import { MAP_CENTER } from "../data/campusData";
+import {
+  CAMPUS_GLTF_REFERENCE_SPAN_M,
+  getCampusAnchorLatLng,
+  getCampusPolygonSpanMeters,
+  MAP_CENTER,
+} from "../data/campusData";
+import { computeCampusModelTransform, createCampusGltfCustomLayer } from "./campusGltfLayer";
+
+const CAMPUS_GLB_PATH = "models/campus-solar-island.glb";
+
+function campusGlbUrl(): string {
+  const fromEnv = import.meta.env.VITE_CAMPUS_GLB_URL;
+  if (typeof fromEnv === "string" && fromEnv.trim().length > 0) {
+    return fromEnv.trim();
+  }
+  const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+  return `${base}${CAMPUS_GLB_PATH}`;
+}
+
+function polygonScaleForGltf(boundary: [number, number][]): number {
+  const spanM = getCampusPolygonSpanMeters(boundary);
+  if (spanM == null || spanM < 5) return 1;
+  const raw = spanM / CAMPUS_GLTF_REFERENCE_SPAN_M;
+  return Math.min(15, Math.max(0.12, raw));
+}
 
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
@@ -91,8 +115,10 @@ export function MapLibreView({
   const loadedRef    = useRef(false);
   const zonesRef     = useRef(zones);
   const drawingRef   = useRef(drawing);
+  const campusBoundaryRef = useRef(campusBoundary);
   zonesRef.current   = zones;
   drawingRef.current = drawing;
+  campusBoundaryRef.current = campusBoundary;
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -109,7 +135,7 @@ export function MapLibreView({
         attributionControl: false,
         maxZoom: 20,
         minZoom: 14,
-
+        canvasContextAttributes: { antialias: true },
       });
     } catch (err) {
       console.warn("[MapLibre] WebGL init failed, switching to 2D fallback", err);
@@ -178,6 +204,16 @@ export function MapLibreView({
         paint: { "circle-radius": 5, "circle-color": "#ffffff", "circle-stroke-color": "#dc2626", "circle-stroke-width": 2 },
       });
 
+      map.addLayer(
+        createCampusGltfCustomLayer(campusGlbUrl(), () => {
+          const boundary = campusBoundaryRef.current;
+          const { lat, lng } = getCampusAnchorLatLng(boundary);
+          const bearingRad = (map.getBearing() * Math.PI) / 180;
+          const polyScale = polygonScaleForGltf(boundary);
+          return computeCampusModelTransform(lng, lat, 0, -bearingRad, polyScale);
+        }),
+      );
+
       loadedRef.current = true;
       syncLabels(map, zonesRef.current);
     });
@@ -227,6 +263,7 @@ export function MapLibreView({
   useEffect(() => {
     const map = mapRef.current; if (!map || !loadedRef.current) return;
     (map.getSource("campus-boundary") as GeoJSONSource)?.setData(boundaryToGeoJson(campusBoundary));
+    map.triggerRepaint();
   }, [campusBoundary]);
 
   useEffect(() => {

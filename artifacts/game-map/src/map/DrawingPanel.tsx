@@ -145,7 +145,7 @@ export function DrawingPanel({
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ color: "#6b7280", fontSize: 12, background: "#f1f5f9", borderRadius: 6, padding: "6px 10px" }}>
-            {drawing.mode === "zone" && "לחץ על המפה להוסיף נקודות לפוליגון (מינ׳ 3)"}
+            {drawing.mode === "zone" && "לחץ על המפה להוסיף נקודות לפוליגון (מינ׳ 3). צבע אדום = שטח קמפוס (מודל 3D)."}
             {drawing.mode === "building" && "לחץ על המפה למיקום המבנה"}
             {drawing.mode === "point" && "לחץ על המפה למיקום הנקודה"}
           </div>
