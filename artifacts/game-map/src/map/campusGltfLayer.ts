@@ -48,6 +48,7 @@ export function createCampusGltfCustomLayer(
     renderingMode: "3d",
     onAdd(map, gl) {
       mapInstance = map;
+      camera.projectionMatrixAutoUpdate = false;
       const directionalLight = new THREE.DirectionalLight(0xffffff, 1.4);
       directionalLight.position.set(0, -70, 100).normalize();
       scene.add(directionalLight);
@@ -82,7 +83,16 @@ export function createCampusGltfCustomLayer(
       renderer.autoClear = false;
     },
     render(_gl, args) {
+      const projectionData = args.defaultProjectionData;
+      if (!projectionData || !projectionData.mainMatrix) {
+        return;
+      }
+
       const modelTransform = getModelTransform();
+      if (!modelTransform || isNaN(modelTransform.translateX)) {
+        return;
+      }
+
       const rotationX = new THREE.Matrix4().makeRotationAxis(
         new THREE.Vector3(1, 0, 0),
         modelTransform.rotateX,
@@ -95,7 +105,8 @@ export function createCampusGltfCustomLayer(
         new THREE.Vector3(0, 0, 1),
         modelTransform.rotateZ,
       );
-      const m = new THREE.Matrix4().fromArray(args.defaultProjectionData.mainMatrix);
+
+      const m = new THREE.Matrix4().fromArray(projectionData.mainMatrix);
       const l = new THREE.Matrix4()
         .makeTranslation(
           modelTransform.translateX,
@@ -112,6 +123,7 @@ export function createCampusGltfCustomLayer(
         .multiply(rotationX)
         .multiply(rotationY)
         .multiply(rotationZ);
+
       camera.projectionMatrix = m.multiply(l);
       renderer.resetState();
       renderer.render(scene, camera);
