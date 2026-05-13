@@ -1,5 +1,5 @@
 import * as THREE from "three";
-console.log("=== campusGltfLayer VERSION 2.1 ===");
+console.log("=== campusGltfLayer VERSION 2.2 ===");
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import maplibregl from "maplibre-gl";
@@ -42,9 +42,13 @@ export function createCampusGltfCustomLayer(
       const mapInstance = map; // Local reference for callbacks
       (this as any).mapInstance = map;
       
-      const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
+      const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 2.0);
       scene.add(hemiLight);
-      scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+      scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+      
+      const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+      dirLight.position.set(0, 100, 0);
+      scene.add(dirLight);
 
       // Test marker: A HUGE red cube that ignores depth to ensure it's seen
       const testGeo = new THREE.BoxGeometry(50, 50, 50);
@@ -129,21 +133,19 @@ export function createCampusGltfCustomLayer(
         renderer.dispose();
       }
     },
-    render(_gl, args) {
+    render(glOrArgs: any, maybeArgs?: any) {
       if (!renderer || !renderer.getContext()) return;
       
-      // Wake up MapLibre for the first few frames
-      if (!(this as any)._wakeUp) (this as any)._wakeUp = 0;
-      if ((this as any)._wakeUp < 100) {
-        (this as any)._wakeUp++;
-        (this as any).mapInstance?.triggerRepaint();
-      }
-
-      const matrix = (args && (args as any).defaultProjectionMatrix) ? (args as any).defaultProjectionMatrix : args;
+      // Determine GL and Matrix based on call signature (Object vs Multi-args)
+      const gl = maybeArgs ? glOrArgs : glOrArgs.gl;
+      const args = maybeArgs ? maybeArgs : glOrArgs;
       
+      // Handle modelViewProjectionMatrix (MapLibre 5+) or direct array
+      const matrix = args.modelViewProjectionMatrix || args.defaultProjectionMatrix || (Array.isArray(args) ? args : null);
+
       if (!matrix) {
         if (!(this as any)._loggedMatrixError) {
-          console.error("[Campus3D] Render missing matrix!", { args });
+          console.error("[Campus3D] Render missing matrix! Args:", args);
           (this as any)._loggedMatrixError = true;
         }
         return;
@@ -174,12 +176,18 @@ export function createCampusGltfCustomLayer(
 
       camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix);
       
+      // Diagnostic log for matrix values on frame 0
+      if ((this as any)._renderCount === 0) {
+        console.log("[Campus3D] Matrix Sample:", matrix.slice(0, 4));
+      }
+
       // Animate test cube
       modelContainer.traverse(obj => {
         if ((obj as any).isTestCube) {
-          obj.rotation.y += 0.02;
-          obj.rotation.x += 0.01;
+          obj.rotation.y += 0.05;
+          obj.rotation.x += 0.02;
         }
+        obj.frustumCulled = false;
       });
 
       renderer.resetState();
