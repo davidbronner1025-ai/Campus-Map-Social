@@ -56,15 +56,22 @@ export function createCampusGltfCustomLayer(
       scene.add(directionalLight2);
       scene.add(new THREE.AmbientLight(0xffffff, 0.35));
       const loader = new GLTFLoader();
+      console.log("[Campus3D] Starting GLB load:", modelUrl);
       loader.load(
         modelUrl,
         (gltf) => {
+          console.log("[Campus3D] Model loaded successfully");
           scene.add(gltf.scene);
           mapInstance.triggerRepaint();
         },
-        undefined,
+        (xhr) => {
+          if (xhr.lengthComputable) {
+            const percent = (xhr.loaded / xhr.total) * 100;
+            if (percent % 10 === 0) console.log(`[Campus3D] Loading: ${percent.toFixed(0)}%`);
+          }
+        },
         (err) => {
-          console.warn("[CampusGltfLayer] Failed to load GLB:", modelUrl, err);
+          console.error("[Campus3D] Failed to load GLB:", modelUrl, err);
         },
       );
       renderer = new THREE.WebGLRenderer({

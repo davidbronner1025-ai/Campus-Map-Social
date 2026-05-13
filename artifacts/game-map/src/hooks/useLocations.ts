@@ -18,17 +18,28 @@ export function useLocations() {
 
   useEffect(() => {
     const base = window.location.origin;
+    console.log("[useLocations] Fetching locations from:", `${base}/api/locations`);
     fetch(`${base}/api/locations`)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data: ApiLocation[]) => {
+        console.log("[useLocations] Data received:", data?.length, "locations");
+        if (!Array.isArray(data)) {
+          console.error("[useLocations] Data is not an array:", data);
+          setZones([]);
+          setLoading(false);
+          return;
+        }
         const parsed: ZonePolygon[] = data
           .filter(loc => loc.polygon && loc.polygon.length >= 3)
           .map(loc => ({
             id: String(loc.id),
-            name: loc.name,
+            name: loc.name || "מיקום ללא שם",
             color: ZONE_COLORS[loc.type] ?? ZONE_COLORS.other,
             coordinates: (loc.polygon as Array<{ lat: number; lng: number }>).map(
-              p => [p.lat, p.lng] as [number, number]
+              p => [p.lat ?? 0, p.lng ?? 0] as [number, number]
             ),
             state: "neutral" as const,
             activityScore: 0,
@@ -39,8 +50,8 @@ export function useLocations() {
         setLoading(false);
       })
       .catch(e => {
-        console.error("[useLocations]", e);
-        setError("שגיאה בטעינת מיקומים");
+        console.error("[useLocations] Error:", e);
+        setError(`שגיאה בטעינת מיקומים: ${e.message}`);
         setLoading(false);
       });
   }, []);

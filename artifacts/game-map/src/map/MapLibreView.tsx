@@ -204,15 +204,31 @@ export function MapLibreView({
         paint: { "circle-radius": 5, "circle-color": "#ffffff", "circle-stroke-color": "#dc2626", "circle-stroke-width": 2 },
       });
 
-      map.addLayer(
-        createCampusGltfCustomLayer(campusGlbUrl(), () => {
-          const boundary = campusBoundaryRef.current;
-          const { lat, lng } = getCampusAnchorLatLng(boundary);
-          const bearingRad = (map.getBearing() * Math.PI) / 180;
-          const polyScale = polygonScaleForGltf(boundary);
-          return computeCampusModelTransform(lng, lat, 0, -bearingRad, polyScale);
-        }),
-      );
+      console.log("[MapLibre] Style loaded. Initializing custom layers...");
+      
+      try {
+        const glbUrl = campusGlbUrl();
+        console.log("[MapLibre] GLB URL:", glbUrl);
+        
+        map.addLayer(
+          createCampusGltfCustomLayer(glbUrl, () => {
+            const boundary = campusBoundaryRef.current;
+            const anchor = getCampusAnchorLatLng(boundary);
+            const bearingRad = (map.getBearing() * Math.PI) / 180;
+            const polyScale = polygonScaleForGltf(boundary);
+            
+            // Debug log every few seconds to avoid spamming
+            if (Math.random() < 0.01) {
+              console.log("[Campus3D] Model Transform - Lat:", anchor.lat, "Lng:", anchor.lng, "Scale:", polyScale);
+            }
+            
+            return computeCampusModelTransform(anchor.lng, anchor.lat, 0, -bearingRad, polyScale);
+          }),
+        );
+        console.log("[MapLibre] 3D Model Layer added");
+      } catch (err) {
+        console.error("[MapLibre] Failed to add 3D model layer:", err);
+      }
 
       loadedRef.current = true;
       syncLabels(map, zonesRef.current);
