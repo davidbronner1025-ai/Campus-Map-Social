@@ -184,30 +184,37 @@ export function MapLibreView({
 
       map.addLayer({ id: "buildings-3d", type: "fill-extrusion", source: "campus-zones",
         paint: {
-          "fill-extrusion-color": ["coalesce", ["get", "color"], "#64748b"],
-          "fill-extrusion-height": ["coalesce", ["to-number", ["get", "height"]], 6],
-          "fill-extrusion-base": ["coalesce", ["to-number", ["get", "base_height"]], 0],
+          "fill-extrusion-color": ["to-color", ["get", "color"], "#64748b"],
+          "fill-extrusion-height": ["to-number", ["get", "height"], 6],
+          "fill-extrusion-base": ["to-number", ["get", "base_height"], 0],
           "fill-extrusion-opacity": ["interpolate", ["linear"], ["zoom"], 16, 0.0, 17, 0.62, 18, 0.78],
         },
       });
       map.addLayer({ id: "buildings-roof", type: "fill-extrusion", source: "campus-zones",
         paint: {
           "fill-extrusion-color": "#ffffff",
-          "fill-extrusion-height": ["+", ["coalesce", ["to-number", ["get", "height"]], 6], 0.05],
-          "fill-extrusion-base": ["max", 0, ["-", ["coalesce", ["to-number", ["get", "height"]], 6], 0.4]],
+          "fill-extrusion-height": ["+", ["to-number", ["get", "height"], 6], 0.05],
+          "fill-extrusion-base": ["max", 0, ["-", ["to-number", ["get", "height"], 6], 0.4]],
           "fill-extrusion-opacity": 0.18,
         },
       });
       map.addLayer({ id: "buildings-flat", type: "fill", source: "campus-zones",
-        paint: { "fill-color": ["coalesce", ["get", "color"], "#64748b"], "fill-opacity": ["interpolate", ["linear"], ["zoom"], 15, 0.18, 18, 0.0] },
+        paint: { 
+          "fill-color": ["to-color", ["get", "color"], "#64748b"], 
+          "fill-opacity": ["interpolate", ["linear"], ["zoom"], 15, 0.18, 18, 0.0] 
+        },
       });
       map.addLayer({ id: "buildings-outline", type: "line", source: "campus-zones",
-        paint: { "line-color": ["coalesce", ["get", "color"], "#64748b"], "line-width": 1.8, "line-opacity": 0.70 },
+        paint: { 
+          "line-color": ["to-color", ["get", "color"], "#64748b"], 
+          "line-width": 1.8, 
+          "line-opacity": 0.70 
+        },
       });
       map.addLayer({ id: "presence-dots", type: "circle", source: "presence",
         paint: {
           "circle-radius": ["interpolate", ["linear"], ["zoom"], 15, 3, 19, 7],
-          "circle-color": ["coalesce", ["get", "color"], "#3b82f6"],
+          "circle-color": ["to-color", ["get", "color"], "#3b82f6"],
           "circle-stroke-color": "#ffffff",
           "circle-stroke-width": 1.5,
           "circle-opacity": 0.92,
