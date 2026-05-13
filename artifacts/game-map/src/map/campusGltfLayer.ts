@@ -124,6 +124,16 @@ export function createCampusGltfCustomLayer(
         const scale = new THREE.Vector3();
         const quaternion = new THREE.Quaternion();
         transform.decompose(position, quaternion, scale);
+        
+        // Diagnostic log (runs once)
+        if (!(this as any)._loggedTransform) {
+          console.log("[Campus3D] Render Transform:", { 
+            pos: [position.x.toFixed(6), position.y.toFixed(6), position.z.toFixed(6)], 
+            scale: [scale.x.toFixed(6), scale.y.toFixed(6), scale.z.toFixed(6)] 
+          });
+          (this as any)._loggedTransform = true;
+        }
+
         modelContainer.position.copy(position);
         modelContainer.scale.copy(scale);
         modelContainer.quaternion.copy(quaternion);

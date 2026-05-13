@@ -236,13 +236,21 @@ export function MapLibreView({
           map.addLayer(
             createCampusGltfCustomLayer(glbUrl, () => {
               const boundary = campusBoundaryRef.current;
-              if (!boundary || boundary.length < 3) {
-                return { translateX: 0, translateY: 0, translateZ: 0, rotateX: 0, rotateY: 0, rotateZ: 0, scale: 0 };
-              }
               const anchor = getCampusAnchorLatLng(boundary);
+              const polyScale = (boundary && boundary.length >= 3) 
+                ? polygonScaleForGltf(boundary) 
+                : 1.0;
+              
+              // In MapLibre, bearing is clockwise. Our model transform needs the inverse to stay static.
               const bearingRad = (map.getBearing() * Math.PI) / 180;
-              const polyScale = polygonScaleForGltf(boundary);
-              return computeCampusModelTransform(anchor.lng, anchor.lat, 0.15, -bearingRad, polyScale);
+              
+              return computeCampusModelTransform(
+                anchor.lng, 
+                anchor.lat, 
+                1.0, // Slightly higher to avoid Z-fighting with ground
+                -bearingRad, 
+                polyScale
+              );
             }),
           );
         }
