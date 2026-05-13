@@ -1,81 +1,43 @@
-import maplibregl from "maplibre-gl";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { CAMPUS_GLTF_SCALE_MULTIPLIER } from "../data/campusData";
-export type CampusModelTransform = {
-  translateX: number;
-  translateY: number;
-  translateZ: number;
-  rotateX: number;
-  rotateY: number;
-  rotateZ: number;
-  scale: number;
-};
-export function computeCampusModelTransform(
-  lng: number,
-  lat: number,
-  altitudeMeters: number,
-  rotateYRad: number,
-  /** Extra factor from polygon size (1 = default). */
-  polygonScaleFactor = 1,
-): CampusModelTransform {
-  const modelRotate = [Math.PI / 2, rotateYRad, 0] as const;
-  const mc = maplibregl.MercatorCoordinate.fromLngLat([lng, lat], altitudeMeters);
-  return {
-    translateX: mc.x,
-    translateY: mc.y,
-    translateZ: mc.z,
-    rotateX: modelRotate[0],
-    rotateY: modelRotate[1],
-    rotateZ: modelRotate[2],
-    scale:
-      mc.meterInMercatorCoordinateUnits() *
-      CAMPUS_GLTF_SCALE_MULTIPLIER *
-      polygonScaleFactor,
-  };
+import maplibregl from "maplibre-gl";
+
+export const CAMPUS_GLTF_REFERENCE_SPAN_M = 450;
+
+export function computeCampusModelTransform(lng: number, lat: number, altitude: number, rotateZ: number, scale: number) {
+  const modelAsMercatorCoordinate = maplibregl.MercatorCoordinate.fromLngLat([lng, lat], altitude);
+  const modelRotate = [Math.PI / 2, rotateZ, 0];
+  const modelScale = modelAsMercatorCoordinate.meterInMercatorCoordinateUnits() * scale;
+
+  const translation = new THREE.Vector3(
+    modelAsMercatorCoordinate.x,
+    modelAsMercatorCoordinate.y,
+    modelAsMercatorCoordinate.z
+  );
+  
+  const rotation = new THREE.Euler(modelRotate[0], modelRotate[1], modelRotate[2], "XYZ");
+  const scaleVec = new THREE.Vector3(modelScale, -modelScale, modelScale);
+
+  return new THREE.Matrix4().compose(translation, new THREE.Quaternion().setFromEuler(rotation), scaleVec);
 }
-const DEBUG_GLB = false;
 
 export function createCampusGltfCustomLayer(
   modelUrl: string,
-  getModelTransform: () => CampusModelTransform,
+  getTransform: () => { translateX: number; translateY: number; translateZ: number; rotateX: number; rotateY: number; rotateZ: number; scale: number } | THREE.Matrix4,
+  onLoad?: () => void
 ): maplibregl.CustomLayerInterface {
-  let mapInstance!: maplibregl.Map;
-  let renderer!: THREE.WebGLRenderer;
+  let renderer: THREE.WebGLRenderer | null = null;
   const scene = new THREE.Scene();
   const camera = new THREE.Camera();
-  const rotationX = new THREE.Matrix4();
-  const rotationY = new THREE.Matrix4();
-  const rotationZ = new THREE.Matrix4();
-  const l = new THREE.Matrix4();
-  const vecX = new THREE.Vector3(1, 0, 0);
-  const vecY = new THREE.Vector3(0, 1, 0);
-  const vecZ = new THREE.Vector3(0, 0, 1);
-  const scaleVec = new THREE.Vector3();
-
   const modelContainer = new THREE.Group();
-  modelContainer.matrixAutoUpdate = false;
   scene.add(modelContainer);
 
-  const debugCube = new THREE.Mesh(
-    new THREE.BoxGeometry(20, 20, 20),
-    new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, depthTest: false })
-  );
-  debugCube.renderOrder = 9999;
-  if (DEBUG_GLB) {
-    modelContainer.add(debugCube);
-  }
-
   return {
-    id: "campus-solar-island-gltf",
+    id: "campus-gltf-layer",
     type: "custom",
     renderingMode: "3d",
     onAdd(map, gl) {
-      console.log("[Campus3D] Layer onAdd called");
-      mapInstance = map;
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
-      directionalLight.position.set(50, 70, 100).normalize();
-      scene.add(directionalLight);
+      const mapInstance = map;
       
       const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
       scene.add(hemiLight);
@@ -83,6 +45,7 @@ export function createCampusGltfCustomLayer(
       
       console.log("[Campus3D] Starting GLB load:", modelUrl);
       const loader = new GLTFLoader();
+      
       loader.load(
         modelUrl,
         (gltf) => {
@@ -91,10 +54,6 @@ export function createCampusGltfCustomLayer(
           const box = new THREE.Box3().setFromObject(model);
           const center = new THREE.Vector3();
           box.getCenter(center);
-          const size = new THREE.Vector3();
-          box.getSize(size);
-          
-          console.log("[Campus3D] Model Bounding Box:", { center, size });
           
           model.traverse(child => {
             if ((child as THREE.Mesh).isMesh) {
@@ -102,59 +61,36 @@ export function createCampusGltfCustomLayer(
               const mesh = child as THREE.Mesh;
               if (mesh.material) {
                 const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-                materials.forEach(m => {
-                  m.side = THREE.DoubleSide;
-                });
+                materials.forEach(m => { m.side = THREE.DoubleSide; });
               }
             }
           });
-          
-      let lastLoadedBytes = 0;
-      const watchdog = setTimeout(() => {
-        if (lastLoadedBytes === 0) {
-          console.warn("[Campus3D] WATCHDOG: 10s passed with 0 bytes loaded. Potential hang or network block.");
-        }
-      }, 10000);
-
-      loader.load(
-        modelUrl,
-        (gltf) => {
-          clearTimeout(watchdog);
-          const model = gltf.scene;
-          console.log("[Campus3D] GLB Load Successful:", modelUrl);
-          
-          // Compute bounding box to center the model
-          const box = new THREE.Box3().setFromObject(model);
-          const center = box.getCenter(new THREE.Vector3());
           
           // Center the model so it rotates around its centroid
           model.position.sub(center);
           modelContainer.add(model);
           console.log("[Campus3D] Model added to scene and centered.");
           mapInstance.triggerRepaint();
+          onLoad?.();
         },
         (xhr) => {
-          lastLoadedBytes = xhr.loaded;
-          const total = xhr.total > 0 ? xhr.total : 87000000; // Estimated 83MB
-          const progress = (xhr.loaded / total * 100).toFixed(1);
-          
-          // Log progress every 4MB to keep console readable but informative
-          if (xhr.loaded % (1024 * 1024 * 4) < (1024 * 1024)) {
+          const total = xhr.total > 0 ? xhr.total : 87000000;
+          const progress = ((xhr.loaded / total) * 100).toFixed(1);
+          if (xhr.loaded % (1024 * 1024 * 5) < (1024 * 1024)) {
             console.log(`[Campus3D] GLB Download: ${progress}% (${(xhr.loaded / (1024 * 1024)).toFixed(1)}MB)`);
           }
         },
         (err) => {
-          clearTimeout(watchdog);
           console.error("[Campus3D] GLB Load Failed:", modelUrl, err);
-        },
+        }
       );
       
       renderer = new THREE.WebGLRenderer({
         canvas: map.getCanvas(),
         context: gl,
-        antialias: false, // MapLibre usually handles AA, turning off to save GPU memory
+        antialias: false,
         powerPreference: "high-performance",
-        precision: "mediump", // Less precise but more stable for large models
+        precision: "mediump",
       });
       renderer.autoClear = false;
       renderer.toneMapping = THREE.NoToneMapping;
@@ -169,48 +105,21 @@ export function createCampusGltfCustomLayer(
       if (!renderer || !renderer.getContext()) return;
       if (renderer.getContext().isContextLost()) return;
 
-      const projectionData = args.defaultProjectionData;
-      if (!projectionData || !projectionData.mainMatrix) return;
-
-      try {
-        const modelTransform = getModelTransform();
-        if (!modelTransform || 
-            isNaN(modelTransform.translateX) || 
-            isNaN(modelTransform.translateY) || 
-            isNaN(modelTransform.scale) ||
-            modelTransform.scale <= 0) {
-          return;
-        }
-
-        rotationX.makeRotationAxis(vecX, modelTransform.rotateX);
-        rotationY.makeRotationAxis(vecY, modelTransform.rotateY);
-        rotationZ.makeRotationAxis(vecZ, modelTransform.rotateZ);
-
-        camera.projectionMatrix.fromArray(projectionData.mainMatrix);
-        scaleVec.set(modelTransform.scale, -modelTransform.scale, modelTransform.scale);
-        
-        l.makeTranslation(
-          modelTransform.translateX,
-          modelTransform.translateY,
-          modelTransform.translateZ,
-        )
-        .scale(scaleVec)
-        .multiply(rotationX)
-        .multiply(rotationY)
-        .multiply(rotationZ);
-
-        modelContainer.matrix.copy(l);
-        
-        renderer.resetState();
-        renderer.render(scene, camera);
-        
-        if (!window.__CAMPUS_3D_FIRST_FRAME__) {
-          console.log("[Campus3D] First frame rendered successfully");
-          window.__CAMPUS_3D_FIRST_FRAME__ = true;
-        }
-      } catch (err) {
-        console.error("[Campus3D] Render loop error:", err);
+      const transform = getTransform();
+      if (transform instanceof THREE.Matrix4) {
+        modelContainer.quaternion.setFromRotationMatrix(transform);
+        const position = new THREE.Vector3();
+        const scale = new THREE.Vector3();
+        const quaternion = new THREE.Quaternion();
+        transform.decompose(position, quaternion, scale);
+        modelContainer.position.copy(position);
+        modelContainer.scale.copy(scale);
+        modelContainer.quaternion.copy(quaternion);
       }
+
+      camera.projectionMatrix = new THREE.Matrix4().fromArray(args.defaultProjectionMatrix);
+      renderer.resetState();
+      renderer.render(scene, camera);
     },
   };
 }
