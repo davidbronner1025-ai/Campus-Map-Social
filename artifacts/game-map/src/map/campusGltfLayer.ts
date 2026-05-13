@@ -34,6 +34,8 @@ export function computeCampusModelTransform(
       polygonScaleFactor,
   };
 }
+const DEBUG_GLB = false;
+
 export function createCampusGltfCustomLayer(
   modelUrl: string,
   getModelTransform: () => CampusModelTransform,
@@ -60,13 +62,16 @@ export function createCampusGltfCustomLayer(
     new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, depthTest: false })
   );
   debugCube.renderOrder = 9999;
-  modelContainer.add(debugCube);
+  if (DEBUG_GLB) {
+    modelContainer.add(debugCube);
+  }
 
   return {
     id: "campus-solar-island-gltf",
     type: "custom",
     renderingMode: "3d",
     onAdd(map, gl) {
+      console.log("[Campus3D] Layer onAdd called");
       mapInstance = map;
       const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
       directionalLight.position.set(50, 70, 100).normalize();
@@ -76,16 +81,20 @@ export function createCampusGltfCustomLayer(
       scene.add(hemiLight);
       scene.add(new THREE.AmbientLight(0xffffff, 0.8));
       
+      console.log("[Campus3D] Starting GLB load:", modelUrl);
       const loader = new GLTFLoader();
       loader.load(
         modelUrl,
         (gltf) => {
+          console.log("[Campus3D] GLB Load Success");
           const model = gltf.scene;
           const box = new THREE.Box3().setFromObject(model);
           const center = new THREE.Vector3();
           box.getCenter(center);
+          const size = new THREE.Vector3();
+          box.getSize(size);
           
-          console.log("[Campus3D] Model Bounding Box Center:", center);
+          console.log("[Campus3D] Model Bounding Box:", { center, size });
           
           model.traverse(child => {
             if ((child as THREE.Mesh).isMesh) {
@@ -103,16 +112,17 @@ export function createCampusGltfCustomLayer(
           // Center the model so it rotates around its centroid
           model.position.sub(center);
           modelContainer.add(model);
+          console.log("[Campus3D] Model added to scene");
           mapInstance.triggerRepaint();
         },
         (xhr) => {
           if (xhr.total > 0) {
             const p = (xhr.loaded / xhr.total) * 100;
-            if (Math.floor(p) % 10 === 0) {
-              console.log(`[Campus3D] GLB Progress: ${p.toFixed(0)}% (${xhr.loaded}/${xhr.total})`);
+            if (Math.floor(p) % 5 === 0) {
+              console.log(`[Campus3D] GLB Progress: ${p.toFixed(1)}%`);
             }
           } else {
-            if (xhr.loaded > 0 && xhr.loaded % (1024 * 1024 * 5) === 0) {
+            if (xhr.loaded > 0 && xhr.loaded % (1024 * 1024 * 2) === 0) {
               console.log(`[Campus3D] GLB Loaded: ${(xhr.loaded / (1024 * 1024)).toFixed(1)}MB`);
             }
           }
@@ -130,12 +140,17 @@ export function createCampusGltfCustomLayer(
       renderer.autoClear = false;
       renderer.toneMapping = THREE.NoToneMapping;
     },
+    onRemove() {
+      console.log("[Campus3D] Layer onRemove called. Cleaning up renderer.");
+      if (renderer) {
+        renderer.dispose();
+      }
+    },
     render(_gl, args) {
       const projectionData = args.defaultProjectionData;
       if (!projectionData || !projectionData.mainMatrix) return;
 
       const modelTransform = getModelTransform();
-      // Guard against null/NaN/Infinite values which disrupt the rendering pipeline
       if (!modelTransform || 
           isNaN(modelTransform.translateX) || 
           isNaN(modelTransform.translateY) || 
@@ -159,7 +174,6 @@ export function createCampusGltfCustomLayer(
       .multiply(rotationY)
       .multiply(rotationZ);
 
-      // Single update for the whole container
       modelContainer.matrix.copy(l);
       
       renderer.resetState();

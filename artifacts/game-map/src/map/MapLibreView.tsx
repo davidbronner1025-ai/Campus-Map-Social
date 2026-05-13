@@ -162,6 +162,16 @@ export function MapLibreView({
     map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "bottom-right");
 
     map.on("load", () => {
+      console.log("[MapLibre] Style loaded. Initializing layers...");
+      
+      const canvas = map.getCanvas();
+      canvas.addEventListener("webglcontextlost", (e) => {
+        console.warn("[MapLibre] WebGL context lost!", e);
+      }, false);
+      canvas.addEventListener("webglcontextrestored", () => {
+        console.log("[MapLibre] WebGL context restored.");
+      }, false);
+
       map.addSource("campus-boundary", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("campus-zones",    { type: "geojson", data: zonesToGeoJson(zonesRef.current) });
       map.addSource("presence",        { type: "geojson", data: { type: "FeatureCollection", features: [] } });
@@ -175,15 +185,15 @@ export function MapLibreView({
       map.addLayer({ id: "buildings-3d", type: "fill-extrusion", source: "campus-zones",
         paint: {
           "fill-extrusion-color": ["coalesce", ["get", "color"], "#64748b"],
-          "fill-extrusion-height": ["coalesce", ["get", "height"], 6],
-          "fill-extrusion-base": ["coalesce", ["get", "base_height"], 0],
+          "fill-extrusion-height": ["coalesce", ["to-number", ["get", "height"]], 6],
+          "fill-extrusion-base": ["coalesce", ["to-number", ["get", "base_height"]], 0],
           "fill-extrusion-opacity": ["interpolate", ["linear"], ["zoom"], 16, 0.0, 17, 0.62, 18, 0.78],
         },
       });
       map.addLayer({ id: "buildings-roof", type: "fill-extrusion", source: "campus-zones",
         paint: {
           "fill-extrusion-color": "#ffffff",
-          "fill-extrusion-height": ["coalesce", ["to-number", ["get", "height"]], 6],
+          "fill-extrusion-height": ["coalesce", ["to-number", ["get", "height"]], 6.05],
           "fill-extrusion-base": ["max", 0, ["-", ["coalesce", ["to-number", ["get", "height"]], 6], 0.4]],
           "fill-extrusion-opacity": 0.18,
         },
@@ -215,19 +225,39 @@ export function MapLibreView({
       
       try {
         const glbUrl = campusGlbUrl();
+        const fallbackUrl = CAMPUS_GLB_PATH; // Relative fallback
         
-        map.addLayer(
-          createCampusGltfCustomLayer(glbUrl, () => {
-            const boundary = campusBoundaryRef.current;
-            const anchor = getCampusAnchorLatLng(boundary);
-            const bearingRad = (map.getBearing() * Math.PI) / 180;
-            const polyScale = polygonScaleForGltf(boundary);
-            
-            return computeCampusModelTransform(anchor.lng, anchor.lat, 0.15, -bearingRad, polyScale);
-          }),
-        );
+        console.log("[MapLibre] Initializing GLB Layer. Primary:", glbUrl, "Fallback:", fallbackUrl);
+        
+        // Check primary URL
+        fetch(glbUrl, { method: "HEAD" }).then(r => {
+          const finalUrl = r.ok ? glbUrl : fallbackUrl;
+          if (!r.ok) console.warn("[MapLibre] Primary GLB URL 404, using fallback:", fallbackUrl);
+          
+          map.addLayer(
+            createCampusGltfCustomLayer(finalUrl, () => {
+              const boundary = campusBoundaryRef.current;
+              const anchor = getCampusAnchorLatLng(boundary);
+              const bearingRad = (map.getBearing() * Math.PI) / 180;
+              const polyScale = polygonScaleForGltf(boundary);
+              return computeCampusModelTransform(anchor.lng, anchor.lat, 0.15, -bearingRad, polyScale);
+            }),
+          );
+        }).catch(err => {
+          console.error("[MapLibre] GLB Check failed, attempting primary anyway:", glbUrl, err);
+          map.addLayer(
+            createCampusGltfCustomLayer(glbUrl, () => {
+              const boundary = campusBoundaryRef.current;
+              const anchor = getCampusAnchorLatLng(boundary);
+              const bearingRad = (map.getBearing() * Math.PI) / 180;
+              const polyScale = polygonScaleForGltf(boundary);
+              return computeCampusModelTransform(anchor.lng, anchor.lat, 0.15, -bearingRad, polyScale);
+            }),
+          );
+        });
+
       } catch (err) {
-        console.error("[MapLibre] Failed to add 3D model layer:", err);
+        console.error("[MapLibre] Critical failure in 3D layer setup:", err);
       }
   
       loadedRef.current = true;
