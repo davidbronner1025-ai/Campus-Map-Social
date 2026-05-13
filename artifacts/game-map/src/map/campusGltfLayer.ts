@@ -51,6 +51,11 @@ export function createCampusGltfCustomLayer(
   const vecY = new THREE.Vector3(0, 1, 0);
   const vecZ = new THREE.Vector3(0, 0, 1);
   const scaleVec = new THREE.Vector3();
+  const debugCube = new THREE.Mesh(
+    new THREE.BoxGeometry(20, 20, 20),
+    new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, depthTest: false })
+  );
+  debugCube.renderOrder = 9999;
 
   return {
     id: "campus-solar-island-gltf",
@@ -58,32 +63,68 @@ export function createCampusGltfCustomLayer(
     renderingMode: "3d",
     onAdd(map, gl) {
       mapInstance = map;
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.4);
-      directionalLight.position.set(0, -70, 100).normalize();
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+      directionalLight.position.set(50, 70, 100).normalize();
       scene.add(directionalLight);
-      const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.9);
-      directionalLight2.position.set(0, 70, 100).normalize();
-      scene.add(directionalLight2);
-      scene.add(new THREE.AmbientLight(0xffffff, 0.35));
-      const loader = new GLTFLoader();
       
+      const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+      scene.add(hemiLight);
+      scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+      scene.add(debugCube);
+      
+      const loader = new GLTFLoader();
       loader.load(
         modelUrl,
         (gltf) => {
-          scene.add(gltf.scene);
+          const model = gltf.scene;
+          const box = new THREE.Box3().setFromObject(model);
+          const size = new THREE.Vector3();
+          box.getSize(size);
+          const center = new THREE.Vector3();
+          box.getCenter(center);
+          
+          console.log("[Campus3D] Model Bounding Box:", {
+            min: box.min,
+            max: box.max,
+            size: size,
+            center: center
+          });
+          
+          model.traverse(child => {
+            if ((child as THREE.Mesh).isMesh) {
+              child.frustumCulled = false;
+              // Make materials visible if they were problematic
+              const mesh = child as THREE.Mesh;
+              if (mesh.material) {
+                const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                materials.forEach(m => {
+                  m.side = THREE.DoubleSide;
+                });
+              }
+            }
+          });
+          
+          scene.add(model);
           mapInstance.triggerRepaint();
         },
-        undefined,
+        (xhr) => {
+          if (xhr.lengthComputable) {
+             const p = (xhr.loaded / xhr.total) * 100;
+             if (Math.floor(p) % 25 === 0) console.log(`[Campus3D] Loading: ${p.toFixed(0)}%`);
+          }
+        },
         (err) => {
           console.error("[Campus3D] Failed to load GLB:", modelUrl, err);
         },
       );
+      
       renderer = new THREE.WebGLRenderer({
         canvas: map.getCanvas(),
         context: gl,
         antialias: true,
       });
       renderer.autoClear = false;
+      renderer.toneMapping = THREE.NoToneMapping; // Disable for debug
     },
     render(_gl, args) {
       const projectionData = args.defaultProjectionData;
@@ -96,7 +137,7 @@ export function createCampusGltfCustomLayer(
       rotationY.makeRotationAxis(vecY, modelTransform.rotateY);
       rotationZ.makeRotationAxis(vecZ, modelTransform.rotateZ);
 
-      m.fromArray(projectionData.mainMatrix);
+      camera.projectionMatrix.fromArray(projectionData.mainMatrix);
       scaleVec.set(modelTransform.scale, -modelTransform.scale, modelTransform.scale);
       
       l.makeTranslation(
@@ -109,7 +150,16 @@ export function createCampusGltfCustomLayer(
       .multiply(rotationY)
       .multiply(rotationZ);
 
-      camera.projectionMatrix.copy(m).multiply(l);
+      debugCube.matrixAutoUpdate = false;
+      debugCube.matrix.copy(l);
+      
+      scene.children.forEach(child => {
+        if (child !== directionalLight && child !== hemiLight) {
+          (child as THREE.Object3D).matrixAutoUpdate = false;
+          (child as THREE.Object3D).matrix.copy(l);
+        }
+      });
+
       renderer.resetState();
       renderer.render(scene, camera);
     },

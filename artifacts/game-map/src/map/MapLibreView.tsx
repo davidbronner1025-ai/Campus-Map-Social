@@ -17,8 +17,11 @@ function campusGlbUrl(): string {
   if (typeof fromEnv === "string" && fromEnv.trim().length > 0) {
     return fromEnv.trim();
   }
-  const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
-  return `${base}${CAMPUS_GLB_PATH}`;
+  // Use relative path for better compatibility in Replit subfolders
+  const url = CAMPUS_GLB_PATH; 
+  console.log("[MapLibre] env.BASE_URL:", import.meta.env.BASE_URL);
+  console.log("[MapLibre] Requested GLB URL:", url);
+  return url;
 }
 
 function polygonScaleForGltf(boundary: [number, number][]): number {
@@ -177,7 +180,7 @@ export function MapLibreView({
         paint: {
           "fill-extrusion-color": "#ffffff",
           "fill-extrusion-height": ["coalesce", ["get", "height"], 6],
-          "fill-extrusion-base": ["-", ["coalesce", ["get", "height"], 6], 0.4],
+          "fill-extrusion-base": ["max", 0, ["-", ["coalesce", ["get", "height"], 6], 0.4]],
           "fill-extrusion-opacity": 0.18,
         },
       });
@@ -216,7 +219,7 @@ export function MapLibreView({
             const bearingRad = (map.getBearing() * Math.PI) / 180;
             const polyScale = polygonScaleForGltf(boundary);
             
-            return computeCampusModelTransform(anchor.lng, anchor.lat, 0, -bearingRad, polyScale);
+            return computeCampusModelTransform(anchor.lng, anchor.lat, 0.08, -bearingRad, polyScale);
           }),
         );
       } catch (err) {
