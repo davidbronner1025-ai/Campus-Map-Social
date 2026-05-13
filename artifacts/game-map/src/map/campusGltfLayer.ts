@@ -1,4 +1,5 @@
 import * as THREE from "three";
+console.log("=== campusGltfLayer VERSION 2.1 ===");
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import maplibregl from "maplibre-gl";
@@ -55,7 +56,15 @@ export function createCampusGltfCustomLayer(
       });
       const testMesh = new THREE.Mesh(testGeo, testMat);
       testMesh.position.set(0, 25, 0); 
+      (testMesh as any).isTestCube = true; // Mark for animation
       modelContainer.add(testMesh);
+      
+      // Add a yellow ground plane at the anchor
+      const groundGeo = new THREE.PlaneGeometry(200, 200);
+      const groundMat = new THREE.MeshBasicMaterial({ color: 0xffff00, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.rotation.x = Math.PI / 2;
+      modelContainer.add(ground);
       
       console.log("[Campus3D] Starting GLB load:", modelUrl);
       
@@ -164,6 +173,15 @@ export function createCampusGltfCustomLayer(
       }
 
       camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix);
+      
+      // Animate test cube
+      modelContainer.traverse(obj => {
+        if ((obj as any).isTestCube) {
+          obj.rotation.y += 0.02;
+          obj.rotation.x += 0.01;
+        }
+      });
+
       renderer.resetState();
       renderer.render(scene, camera);
     },
