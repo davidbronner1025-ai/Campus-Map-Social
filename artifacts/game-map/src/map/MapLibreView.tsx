@@ -247,39 +247,37 @@ export function MapLibreView({
       
       try {
         const glbUrl = campusGlbUrl();
-        if (!glbUrl || glbUrl.includes("undefined")) {
-          console.warn("[MapLibre] Skipping 3D GLB layer: No valid URL.");
-        } else {
-          console.log("[MapLibre] Initializing 3D GLB Layer from:", glbUrl);
-          try {
-            map.addLayer(
-              createCampusGltfCustomLayer(glbUrl, () => {
-                const boundary = campusBoundaryRef.current;
-                const anchor = getCampusAnchorLatLng(boundary);
-                const polyScale = (boundary && boundary.length >= 3) 
-                  ? polygonScaleForGltf(boundary) 
-                  : 1.5;
-                
-                console.log(`[Campus3D] Initializing with polyScale: ${polyScale}, is3D: ${is3D}`);
-                
-                // In MapLibre, bearing is clockwise. Our model transform needs the inverse to stay static.
-                const bearingRad = (map.getBearing() * Math.PI) / 180;
-                
-                return computeCampusModelTransform(
-                  anchor.lng, 
-                  anchor.lat, 
-                  0.5, // Stable altitude
-                  -bearingRad, 
-                  polyScale
-                );
-              }, () => {
-                // Force a repaint when the GLB actually loads its assets
-                map.triggerRepaint();
-              }),
-            );
-            console.log("[MapLibre] 3D GLB Layer added to map instance.");
-          } catch (e) {
-            console.error("[MapLibre] Error adding 3D Layer:", e);
+        // Temporarily disabled 3D layer
+        if (false) {
+          if (!glbUrl || glbUrl.includes("undefined")) {
+            console.warn("[MapLibre] Skipping 3D GLB layer: No valid URL.");
+          } else {
+            console.log("[MapLibre] Initializing 3D GLB Layer from:", glbUrl);
+            try {
+              map.addLayer(
+                createCampusGltfCustomLayer(glbUrl, () => {
+                  const boundary = campusBoundaryRef.current;
+                  const anchor = getCampusAnchorLatLng(boundary);
+                  const polyScale = (boundary && boundary.length >= 3) 
+                    ? polygonScaleForGltf(boundary) 
+                    : 1.5;
+                  
+                  const bearingRad = (map.getBearing() * Math.PI) / 180;
+                  
+                  return computeCampusModelTransform(
+                    anchor.lng, 
+                    anchor.lat, 
+                    0.5, 
+                    -bearingRad, 
+                    polyScale
+                  );
+                }, () => {
+                  map.triggerRepaint();
+                }),
+              );
+            } catch (e) {
+              console.error("[MapLibre] Error adding 3D Layer:", e);
+            }
           }
         }
       } catch (err) {
