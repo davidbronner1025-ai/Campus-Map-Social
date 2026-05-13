@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import type { DrawingMode, DrawingState, ZonePolygon, Building, GamePoint } from "../types/map";
 import { POINT_TYPE_COLORS } from "./utils";
 
@@ -137,11 +137,11 @@ export function DrawingPanel({
       </div>
 
       {drawing.mode === "none" ? (
-        <>
+        <React.Fragment>
           {modeBtn("+ הוסף אזור / פוליגון", "zone", "#2563eb")}
           {modeBtn("+ הוסף מבנה", "building", "#059669")}
           {modeBtn("+ הוסף נקודת עניין", "point", "#ea580c")}
-        </>
+        </React.Fragment>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ color: "#6b7280", fontSize: 12, background: "#f1f5f9", borderRadius: 6, padding: "6px 10px" }}>

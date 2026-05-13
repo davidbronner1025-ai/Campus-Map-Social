@@ -42,13 +42,22 @@ export function createCampusGltfCustomLayer(
   let renderer!: THREE.WebGLRenderer;
   const scene = new THREE.Scene();
   const camera = new THREE.Camera();
+  const rotationX = new THREE.Matrix4();
+  const rotationY = new THREE.Matrix4();
+  const rotationZ = new THREE.Matrix4();
+  const m = new THREE.Matrix4();
+  const l = new THREE.Matrix4();
+  const vecX = new THREE.Vector3(1, 0, 0);
+  const vecY = new THREE.Vector3(0, 1, 0);
+  const vecZ = new THREE.Vector3(0, 0, 1);
+  const scaleVec = new THREE.Vector3();
+
   return {
     id: "campus-solar-island-gltf",
     type: "custom",
     renderingMode: "3d",
     onAdd(map, gl) {
       mapInstance = map;
-      camera.projectionMatrixAutoUpdate = false;
       const directionalLight = new THREE.DirectionalLight(0xffffff, 1.4);
       directionalLight.position.set(0, -70, 100).normalize();
       scene.add(directionalLight);
@@ -57,20 +66,14 @@ export function createCampusGltfCustomLayer(
       scene.add(directionalLight2);
       scene.add(new THREE.AmbientLight(0xffffff, 0.35));
       const loader = new GLTFLoader();
-      console.log("[Campus3D] Starting GLB load:", modelUrl);
+      
       loader.load(
         modelUrl,
         (gltf) => {
-          console.log("[Campus3D] Model loaded successfully");
           scene.add(gltf.scene);
           mapInstance.triggerRepaint();
         },
-        (xhr) => {
-          if (xhr.lengthComputable) {
-            const percent = (xhr.loaded / xhr.total) * 100;
-            if (percent % 10 === 0) console.log(`[Campus3D] Loading: ${percent.toFixed(0)}%`);
-          }
-        },
+        undefined,
         (err) => {
           console.error("[Campus3D] Failed to load GLB:", modelUrl, err);
         },
@@ -84,50 +87,31 @@ export function createCampusGltfCustomLayer(
     },
     render(_gl, args) {
       const projectionData = args.defaultProjectionData;
-      if (!projectionData || !projectionData.mainMatrix) {
-        return;
-      }
+      if (!projectionData || !projectionData.mainMatrix) return;
 
       const modelTransform = getModelTransform();
-      if (!modelTransform || isNaN(modelTransform.translateX)) {
-        return;
-      }
+      if (!modelTransform || isNaN(modelTransform.translateX)) return;
 
-      const rotationX = new THREE.Matrix4().makeRotationAxis(
-        new THREE.Vector3(1, 0, 0),
-        modelTransform.rotateX,
-      );
-      const rotationY = new THREE.Matrix4().makeRotationAxis(
-        new THREE.Vector3(0, 1, 0),
-        modelTransform.rotateY,
-      );
-      const rotationZ = new THREE.Matrix4().makeRotationAxis(
-        new THREE.Vector3(0, 0, 1),
-        modelTransform.rotateZ,
-      );
+      rotationX.makeRotationAxis(vecX, modelTransform.rotateX);
+      rotationY.makeRotationAxis(vecY, modelTransform.rotateY);
+      rotationZ.makeRotationAxis(vecZ, modelTransform.rotateZ);
 
-      const m = new THREE.Matrix4().fromArray(projectionData.mainMatrix);
-      const l = new THREE.Matrix4()
-        .makeTranslation(
-          modelTransform.translateX,
-          modelTransform.translateY,
-          modelTransform.translateZ,
-        )
-        .scale(
-          new THREE.Vector3(
-            modelTransform.scale,
-            -modelTransform.scale,
-            modelTransform.scale,
-          ),
-        )
-        .multiply(rotationX)
-        .multiply(rotationY)
-        .multiply(rotationZ);
+      m.fromArray(projectionData.mainMatrix);
+      scaleVec.set(modelTransform.scale, -modelTransform.scale, modelTransform.scale);
+      
+      l.makeTranslation(
+        modelTransform.translateX,
+        modelTransform.translateY,
+        modelTransform.translateZ,
+      )
+      .scale(scaleVec)
+      .multiply(rotationX)
+      .multiply(rotationY)
+      .multiply(rotationZ);
 
-      camera.projectionMatrix = m.multiply(l);
+      camera.projectionMatrix.copy(m).multiply(l);
       renderer.resetState();
       renderer.render(scene, camera);
-      mapInstance.triggerRepaint();
     },
   };
 }

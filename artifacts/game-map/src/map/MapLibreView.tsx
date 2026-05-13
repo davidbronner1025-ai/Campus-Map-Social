@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import maplibregl, { type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { ZonePolygon, PlayerMarker, DrawingState, SelectedItem } from "../types/map";
@@ -116,6 +116,7 @@ export function MapLibreView({
   const zonesRef     = useRef(zones);
   const drawingRef   = useRef(drawing);
   const campusBoundaryRef = useRef(campusBoundary);
+  const labelsRef    = useRef<maplibregl.Marker[]>([]);
   zonesRef.current   = zones;
   drawingRef.current = drawing;
   campusBoundaryRef.current = campusBoundary;
@@ -204,11 +205,9 @@ export function MapLibreView({
         paint: { "circle-radius": 5, "circle-color": "#ffffff", "circle-stroke-color": "#dc2626", "circle-stroke-width": 2 },
       });
 
-      console.log("[MapLibre] Style loaded. Initializing custom layers...");
       
       try {
         const glbUrl = campusGlbUrl();
-        console.log("[MapLibre] GLB URL:", glbUrl);
         
         map.addLayer(
           createCampusGltfCustomLayer(glbUrl, () => {
@@ -217,21 +216,15 @@ export function MapLibreView({
             const bearingRad = (map.getBearing() * Math.PI) / 180;
             const polyScale = polygonScaleForGltf(boundary);
             
-            // Debug log every few seconds to avoid spamming
-            if (Math.random() < 0.01) {
-              console.log("[Campus3D] Model Transform - Lat:", anchor.lat, "Lng:", anchor.lng, "Scale:", polyScale);
-            }
-            
             return computeCampusModelTransform(anchor.lng, anchor.lat, 0, -bearingRad, polyScale);
           }),
         );
-        console.log("[MapLibre] 3D Model Layer added");
       } catch (err) {
         console.error("[MapLibre] Failed to add 3D model layer:", err);
       }
-
+  
       loadedRef.current = true;
-      syncLabels(map, zonesRef.current);
+      syncLabels(map, zonesRef.current, labelsRef);
     });
 
     map.on("click", (e) => {
@@ -253,7 +246,7 @@ export function MapLibreView({
 
     mapRef.current = map;
     return () => {
-      removeLabels(map);
+      removeLabels(labelsRef);
       map.remove();
       mapRef.current = null;
       loadedRef.current = false;
@@ -268,7 +261,7 @@ export function MapLibreView({
   useEffect(() => {
     const map = mapRef.current; if (!map || !loadedRef.current) return;
     (map.getSource("campus-zones") as GeoJSONSource)?.setData(zonesToGeoJson(zones));
-    syncLabels(map, zones);
+    syncLabels(map, zones, labelsRef);
   }, [zones]);
 
   useEffect(() => {
@@ -295,8 +288,8 @@ export function MapLibreView({
   );
 }
 
-function syncLabels(map: maplibregl.Map, zones: ZonePolygon[]) {
-  removeLabels(map);
+function syncLabels(map: maplibregl.Map, zones: ZonePolygon[], labelsRef: React.RefObject<maplibregl.Marker[]>) {
+  removeLabels(labelsRef);
   const STATE_EMOJI: Record<string, string> = { hot: "🔥", active: "⚡", neutral: "" };
   const markers = zones.map(z => {
     const lat = z.coordinates.reduce((s, c) => s + c[0], 0) / z.coordinates.length;
@@ -318,10 +311,14 @@ function syncLabels(map: maplibregl.Map, zones: ZonePolygon[]) {
     ">${emoji ? `<span style="font-size:11px">${emoji}</span>` : ""}${z.name}${badge}</div>`;
     return new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([lng, lat]).addTo(map);
   });
-  (map as any).__labels = markers;
+  if (labelsRef.current) {
+    labelsRef.current.push(...markers);
+  }
 }
 
-function removeLabels(map: maplibregl.Map) {
-  ((map as any).__labels as maplibregl.Marker[] | undefined)?.forEach(m => m.remove());
-  (map as any).__labels = [];
+function removeLabels(labelsRef: React.RefObject<maplibregl.Marker[]>) {
+  labelsRef.current?.forEach(m => m.remove());
+  if (labelsRef.current) {
+    labelsRef.current.length = 0;
+  }
 }
