@@ -77,7 +77,7 @@ export function CampusHUD({
         <LayerToggle label="אירועים" active={showNodes} color="#ea580c" onToggle={onToggleNodes} />
 
         {webGLAvailable && (
-          <React.Fragment>
+          <div key="3d-toggle-section">
             <div style={{ borderTop: "1px solid #e8ecf0", margin: "9px 0 6px" }} />
             <button
               onClick={onToggle3D}
@@ -94,7 +94,7 @@ export function CampusHUD({
               <span style={{ fontSize: 14 }}>{is3D ? "🏢" : "🗺️"}</span>
               {is3D ? "מצב 3D" : "מצב 2D"}
             </button>
-          </React.Fragment>
+          </div>
         )}
       </motion.div>
     </div>
