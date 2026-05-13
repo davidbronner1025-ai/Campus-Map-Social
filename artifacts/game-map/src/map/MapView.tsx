@@ -42,6 +42,15 @@ export function MapView() {
   const [userZones, setUserZones]           = useState<ZonePolygon[]>([]);
   const [campusBoundary, setCampusBoundary] = useState<[number, number][]>([]);
 
+  // Automatically find campus boundary from zones based on name or color
+  useEffect(() => {
+    const campusZone = zones.find(z => z.name === "שטח הקמפוס" || z.color === "#dc2626");
+    if (campusZone) {
+      console.log("[MapView] Campus boundary detected:", campusZone.name);
+      setCampusBoundary(campusZone.coordinates);
+    }
+  }, [zones]);
+
   const handleSelect = useCallback((item: SelectedItem) => {
     if (drawing.mode !== "none") return;
     setSelected(item);
