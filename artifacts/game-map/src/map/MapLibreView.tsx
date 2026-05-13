@@ -377,7 +377,8 @@ function syncLabels(map: maplibregl.Map, zones: ZonePolygon[], labelsRef: React.
       direction:rtl;transform:translateX(-50%);
     ">${emoji ? `<span style="font-size:11px">${emoji}</span>` : ""}${z.name}${badge}</div>`;
     return new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([lng, lat]).addTo(map);
-  });
+  }).filter((m): m is maplibregl.Marker => m !== null);
+  
   if (labelsRef.current) {
     labelsRef.current.push(...markers);
   }
