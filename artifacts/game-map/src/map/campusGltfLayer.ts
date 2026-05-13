@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import maplibregl from "maplibre-gl";
 
 export const CAMPUS_GLTF_REFERENCE_SPAN_M = 450;
@@ -44,7 +45,12 @@ export function createCampusGltfCustomLayer(
       scene.add(new THREE.AmbientLight(0xffffff, 0.8));
       
       console.log("[Campus3D] Starting GLB load:", modelUrl);
+      
+      const dracoLoader = new DRACOLoader();
+      dracoLoader.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.6/");
+      
       const loader = new GLTFLoader();
+      loader.setDRACOLoader(dracoLoader);
       
       loader.load(
         modelUrl,
