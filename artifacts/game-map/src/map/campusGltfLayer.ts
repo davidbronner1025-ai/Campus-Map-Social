@@ -40,9 +40,16 @@ export function createCampusGltfCustomLayer(
     onAdd(map, gl) {
       const mapInstance = map;
       
-      const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+      const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
       scene.add(hemiLight);
-      scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+      scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+
+      // Test marker: A red cube to verify rendering
+      const testGeo = new THREE.BoxGeometry(15, 15, 15);
+      const testMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const testMesh = new THREE.Mesh(testGeo, testMat);
+      testMesh.position.set(0, 7.5, 0); 
+      modelContainer.add(testMesh);
       
       console.log("[Campus3D] Starting GLB load:", modelUrl);
       
@@ -125,13 +132,14 @@ export function createCampusGltfCustomLayer(
         const quaternion = new THREE.Quaternion();
         transform.decompose(position, quaternion, scale);
         
-        // Diagnostic log (runs once)
-        if (!(this as any)._loggedTransform) {
-          console.log("[Campus3D] Render Transform:", { 
+        // Forced diagnostic log for the first 10 frames
+        if (!(this as any)._renderCount) (this as any)._renderCount = 0;
+        if ((this as any)._renderCount < 10) {
+          console.log(`[Campus3D] Frame ${(this as any)._renderCount}:`, { 
             pos: [position.x.toFixed(6), position.y.toFixed(6), position.z.toFixed(6)], 
             scale: [scale.x.toFixed(6), scale.y.toFixed(6), scale.z.toFixed(6)] 
           });
-          (this as any)._loggedTransform = true;
+          (this as any)._renderCount++;
         }
 
         modelContainer.position.copy(position);

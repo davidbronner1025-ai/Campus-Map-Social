@@ -239,7 +239,7 @@ export function MapLibreView({
               const anchor = getCampusAnchorLatLng(boundary);
               const polyScale = (boundary && boundary.length >= 3) 
                 ? polygonScaleForGltf(boundary) 
-                : 1.0;
+                : 1.5;
               
               // In MapLibre, bearing is clockwise. Our model transform needs the inverse to stay static.
               const bearingRad = (map.getBearing() * Math.PI) / 180;
@@ -247,7 +247,7 @@ export function MapLibreView({
               return computeCampusModelTransform(
                 anchor.lng, 
                 anchor.lat, 
-                1.0, // Slightly higher to avoid Z-fighting with ground
+                2.5, // Slightly higher to avoid Z-fighting with ground
                 -bearingRad, 
                 polyScale
               );
