@@ -82,7 +82,7 @@ export default function NotificationBell() {
 
   return (
     <div className="relative">
-      <button onClick={handleOpen} className="p-2 rounded-xl hover:bg-secondary transition-colors relative">
+      <button onClick={handleOpen} aria-label="Notifications" className="p-2 rounded-xl hover:bg-secondary transition-colors relative">
         <Bell className="w-4 h-4 text-muted-foreground" />
         {unreadCount > 0 && (
           <div className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-0.5">
@@ -110,12 +110,12 @@ export default function NotificationBell() {
                 <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
                 <div className="flex items-center gap-1">
                   {unreadCount > 0 && (
-                    <button onClick={handleMarkAllRead}
+                    <button onClick={handleMarkAllRead} aria-label="Mark all read"
                       className="p-1.5 rounded-lg hover:bg-secondary transition-colors" title="Mark all read">
                       <CheckCheck className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
                   )}
-                  <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
+                  <button onClick={() => setOpen(false)} aria-label="Close" className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
                     <X className="w-3.5 h-3.5 text-muted-foreground" />
                   </button>
                 </div>
