@@ -288,7 +288,7 @@ export function MapLibreView({
   
       loadedRef.current = true;
       syncLabels(map, zonesRef.current, labelsRef);
-    });
+    }
 
     map.on("click", (e) => {
       const d = drawingRef.current;
