@@ -45,17 +45,22 @@ export function createCampusGltfCustomLayer(
   const rotationX = new THREE.Matrix4();
   const rotationY = new THREE.Matrix4();
   const rotationZ = new THREE.Matrix4();
-  const m = new THREE.Matrix4();
   const l = new THREE.Matrix4();
   const vecX = new THREE.Vector3(1, 0, 0);
   const vecY = new THREE.Vector3(0, 1, 0);
   const vecZ = new THREE.Vector3(0, 0, 1);
   const scaleVec = new THREE.Vector3();
+
+  const modelContainer = new THREE.Group();
+  modelContainer.matrixAutoUpdate = false;
+  scene.add(modelContainer);
+
   const debugCube = new THREE.Mesh(
     new THREE.BoxGeometry(20, 20, 20),
     new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, depthTest: false })
   );
   debugCube.renderOrder = 9999;
+  modelContainer.add(debugCube);
 
   return {
     id: "campus-solar-island-gltf",
@@ -70,7 +75,6 @@ export function createCampusGltfCustomLayer(
       const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
       scene.add(hemiLight);
       scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-      scene.add(debugCube);
       
       const loader = new GLTFLoader();
       loader.load(
@@ -78,22 +82,14 @@ export function createCampusGltfCustomLayer(
         (gltf) => {
           const model = gltf.scene;
           const box = new THREE.Box3().setFromObject(model);
-          const size = new THREE.Vector3();
-          box.getSize(size);
           const center = new THREE.Vector3();
           box.getCenter(center);
           
-          console.log("[Campus3D] Model Bounding Box:", {
-            min: box.min,
-            max: box.max,
-            size: size,
-            center: center
-          });
+          console.log("[Campus3D] Model Bounding Box Center:", center);
           
           model.traverse(child => {
             if ((child as THREE.Mesh).isMesh) {
               child.frustumCulled = false;
-              // Make materials visible if they were problematic
               const mesh = child as THREE.Mesh;
               if (mesh.material) {
                 const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
@@ -104,17 +100,25 @@ export function createCampusGltfCustomLayer(
             }
           });
           
-          scene.add(model);
+          // Center the model so it rotates around its centroid
+          model.position.sub(center);
+          modelContainer.add(model);
           mapInstance.triggerRepaint();
         },
         (xhr) => {
-          if (xhr.lengthComputable) {
-             const p = (xhr.loaded / xhr.total) * 100;
-             if (Math.floor(p) % 25 === 0) console.log(`[Campus3D] Loading: ${p.toFixed(0)}%`);
+          if (xhr.total > 0) {
+            const p = (xhr.loaded / xhr.total) * 100;
+            if (Math.floor(p) % 10 === 0) {
+              console.log(`[Campus3D] GLB Progress: ${p.toFixed(0)}% (${xhr.loaded}/${xhr.total})`);
+            }
+          } else {
+            if (xhr.loaded > 0 && xhr.loaded % (1024 * 1024 * 5) === 0) {
+              console.log(`[Campus3D] GLB Loaded: ${(xhr.loaded / (1024 * 1024)).toFixed(1)}MB`);
+            }
           }
         },
         (err) => {
-          console.error("[Campus3D] Failed to load GLB:", modelUrl, err);
+          console.error("[Campus3D] Critical failure loading GLB:", modelUrl, err);
         },
       );
       
@@ -124,14 +128,19 @@ export function createCampusGltfCustomLayer(
         antialias: true,
       });
       renderer.autoClear = false;
-      renderer.toneMapping = THREE.NoToneMapping; // Disable for debug
+      renderer.toneMapping = THREE.NoToneMapping;
     },
     render(_gl, args) {
       const projectionData = args.defaultProjectionData;
       if (!projectionData || !projectionData.mainMatrix) return;
 
       const modelTransform = getModelTransform();
-      if (!modelTransform || isNaN(modelTransform.translateX)) return;
+      // Guard against null/NaN/Infinite values which disrupt the rendering pipeline
+      if (!modelTransform || 
+          isNaN(modelTransform.translateX) || 
+          isNaN(modelTransform.translateY) || 
+          isNaN(modelTransform.scale) ||
+          modelTransform.scale <= 0) return;
 
       rotationX.makeRotationAxis(vecX, modelTransform.rotateX);
       rotationY.makeRotationAxis(vecY, modelTransform.rotateY);
@@ -150,16 +159,9 @@ export function createCampusGltfCustomLayer(
       .multiply(rotationY)
       .multiply(rotationZ);
 
-      debugCube.matrixAutoUpdate = false;
-      debugCube.matrix.copy(l);
+      // Single update for the whole container
+      modelContainer.matrix.copy(l);
       
-      scene.children.forEach(child => {
-        if (child !== directionalLight && child !== hemiLight) {
-          (child as THREE.Object3D).matrixAutoUpdate = false;
-          (child as THREE.Object3D).matrix.copy(l);
-        }
-      });
-
       renderer.resetState();
       renderer.render(scene, camera);
     },

@@ -17,9 +17,13 @@ function campusGlbUrl(): string {
   if (typeof fromEnv === "string" && fromEnv.trim().length > 0) {
     return fromEnv.trim();
   }
-  // Use relative path for better compatibility in Replit subfolders
-  const url = CAMPUS_GLB_PATH; 
-  console.log("[MapLibre] env.BASE_URL:", import.meta.env.BASE_URL);
+  
+  // Robust path resolution for Replit/Subpaths
+  const base = import.meta.env.BASE_URL || "/";
+  const path = CAMPUS_GLB_PATH;
+  const url = base.endsWith("/") ? `${base}${path}` : `${base}/${path}`;
+  
+  console.log("[MapLibre] env.BASE_URL:", base);
   console.log("[MapLibre] Requested GLB URL:", url);
   return url;
 }
@@ -172,15 +176,15 @@ export function MapLibreView({
         paint: {
           "fill-extrusion-color": ["coalesce", ["get", "color"], "#64748b"],
           "fill-extrusion-height": ["coalesce", ["get", "height"], 6],
-          "fill-extrusion-base": 0,
+          "fill-extrusion-base": ["coalesce", ["get", "base_height"], 0],
           "fill-extrusion-opacity": ["interpolate", ["linear"], ["zoom"], 16, 0.0, 17, 0.62, 18, 0.78],
         },
       });
       map.addLayer({ id: "buildings-roof", type: "fill-extrusion", source: "campus-zones",
         paint: {
           "fill-extrusion-color": "#ffffff",
-          "fill-extrusion-height": ["coalesce", ["get", "height"], 6],
-          "fill-extrusion-base": ["max", 0, ["-", ["coalesce", ["get", "height"], 6], 0.4]],
+          "fill-extrusion-height": ["coalesce", ["to-number", ["get", "height"]], 6],
+          "fill-extrusion-base": ["max", 0, ["-", ["coalesce", ["to-number", ["get", "height"]], 6], 0.4]],
           "fill-extrusion-opacity": 0.18,
         },
       });
@@ -219,7 +223,7 @@ export function MapLibreView({
             const bearingRad = (map.getBearing() * Math.PI) / 180;
             const polyScale = polygonScaleForGltf(boundary);
             
-            return computeCampusModelTransform(anchor.lng, anchor.lat, 0.08, -bearingRad, polyScale);
+            return computeCampusModelTransform(anchor.lng, anchor.lat, 0.15, -bearingRad, polyScale);
           }),
         );
       } catch (err) {
@@ -295,8 +299,10 @@ function syncLabels(map: maplibregl.Map, zones: ZonePolygon[], labelsRef: React.
   removeLabels(labelsRef);
   const STATE_EMOJI: Record<string, string> = { hot: "🔥", active: "⚡", neutral: "" };
   const markers = zones.map(z => {
-    const lat = z.coordinates.reduce((s, c) => s + c[0], 0) / z.coordinates.length;
-    const lng = z.coordinates.reduce((s, c) => s + c[1], 0) / z.coordinates.length;
+    if (!z.coordinates || z.coordinates.length === 0) return null;
+    const lat = z.coordinates.reduce((s, c) => s + (Number(c[0]) || 0), 0) / z.coordinates.length;
+    const lng = z.coordinates.reduce((s, c) => s + (Number(c[1]) || 0), 0) / z.coordinates.length;
+    if (isNaN(lat) || isNaN(lng)) return null;
     const emoji = STATE_EMOJI[z.state ?? "neutral"] ?? "";
     const badge = (z.activityScore ?? 0) > 0
       ? `<span style="background:${z.color};color:#fff;border-radius:8px;padding:0 5px;font-size:10px;font-weight:800;line-height:15px;display:inline-block;margin-right:3px;">${z.activityScore}</span>`
