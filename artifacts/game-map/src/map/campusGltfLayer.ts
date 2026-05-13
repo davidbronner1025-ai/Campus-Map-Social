@@ -38,15 +38,21 @@ export function createCampusGltfCustomLayer(
     type: "custom",
     renderingMode: "3d",
     onAdd(map, gl) {
+      const mapInstance = map; // Local reference for callbacks
       (this as any).mapInstance = map;
       
       const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
       scene.add(hemiLight);
       scene.add(new THREE.AmbientLight(0xffffff, 1.0));
 
-      // Test marker: A HUGE red cube to verify rendering
+      // Test marker: A HUGE red cube that ignores depth to ensure it's seen
       const testGeo = new THREE.BoxGeometry(50, 50, 50);
-      const testMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.8 });
+      const testMat = new THREE.MeshBasicMaterial({ 
+        color: 0xff0000, 
+        transparent: true, 
+        opacity: 0.8,
+        depthTest: false // Force it to draw over the map
+      });
       const testMesh = new THREE.Mesh(testGeo, testMat);
       testMesh.position.set(0, 25, 0); 
       modelContainer.add(testMesh);
@@ -94,7 +100,7 @@ export function createCampusGltfCustomLayer(
           }
         },
         (err) => {
-          console.error("[Campus3D] GLB Load Failed:", modelUrl, err);
+          console.error("[Campus3D] GLB Load Failed (Catch):", modelUrl, err);
         }
       );
       

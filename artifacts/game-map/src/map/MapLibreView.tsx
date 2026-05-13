@@ -50,7 +50,9 @@ function ll2geo(coords: [number, number][]): [number, number][] {
 function zonesToGeoJson(zones: ZonePolygon[]) {
   return {
     type: "FeatureCollection" as const,
-    features: zones.map(z => ({
+    features: zones
+      .filter(z => z.coordinates && z.coordinates.length >= 3)
+      .map(z => ({
       type: "Feature" as const,
       properties: {
         id: z.id,
@@ -150,6 +152,7 @@ export function MapLibreView({
 
     // Catch WebGL context loss
     map.on("error", (e: any) => {
+      console.error("[MapLibre] Map Error:", e?.error || e);
       if (e?.error?.message?.includes("WebGL") || e?.error?.type === "webglcontextcreationerror") {
         console.warn("[MapLibre] WebGL error, switching to fallback");
         onWebGLFail();
@@ -158,8 +161,23 @@ export function MapLibreView({
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "bottom-right");
 
-    map.on("load", () => {
-      console.log("[MapLibre] Style loaded. Initializing layers...");
+    map.on("style.load", () => {
+      console.log("[MapLibre] Style loaded event fired.");
+      initLayers();
+    });
+
+    // Fallback if load events hang
+    const fallbackTimer = setTimeout(() => {
+      console.log("[MapLibre] Fallback: Force-initializing layers after 4s timeout.");
+      initLayers();
+    }, 4000);
+
+    function initLayers() {
+      if ((map as any)._layersInitialized) return;
+      (map as any)._layersInitialized = true;
+      clearTimeout(fallbackTimer);
+      
+      console.log("[MapLibre] Initializing layers...");
       
       const canvas = map.getCanvas();
       canvas.addEventListener("webglcontextlost", (e) => {
@@ -182,9 +200,9 @@ export function MapLibreView({
       map.addLayer({ id: "buildings-3d", type: "fill-extrusion", source: "campus-zones",
         paint: {
           "fill-extrusion-color": "#64748b",
-          "fill-extrusion-height": 6,
+          "fill-extrusion-height": ["coalesce", ["get", "height"], 6],
           "fill-extrusion-base": 0,
-          "fill-extrusion-opacity": ["interpolate", ["linear"], ["zoom"], 16, 0.0, 17, 0.62, 18, 0.78],
+          "fill-extrusion-opacity": ["interpolate", ["linear"], ["zoom"], 16, 0, 17, 0.6, 18, 0.8],
         },
       });
       map.addLayer({ id: "buildings-roof", type: "fill-extrusion", source: "campus-zones",
@@ -198,7 +216,7 @@ export function MapLibreView({
       map.addLayer({ id: "buildings-flat", type: "fill", source: "campus-zones",
         paint: { 
           "fill-color": "#64748b", 
-          "fill-opacity": ["interpolate", ["linear"], ["zoom"], 15, 0.18, 18, 0.0] 
+          "fill-opacity": ["interpolate", ["linear"], ["zoom"], 15, 0.2, 18, 0] 
         },
       });
       map.addLayer({ id: "buildings-outline", type: "line", source: "campus-zones",
@@ -241,6 +259,8 @@ export function MapLibreView({
                 const polyScale = (boundary && boundary.length >= 3) 
                   ? polygonScaleForGltf(boundary) 
                   : 1.5;
+                
+                console.log(`[Campus3D] Initializing with polyScale: ${polyScale}, is3D: ${is3D}`);
                 
                 // In MapLibre, bearing is clockwise. Our model transform needs the inverse to stay static.
                 const bearingRad = (map.getBearing() * Math.PI) / 180;
