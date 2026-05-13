@@ -13,19 +13,16 @@ import { computeCampusModelTransform, createCampusGltfCustomLayer } from "./camp
 const CAMPUS_GLB_PATH = "models/campus-solar-island.glb";
 
 function campusGlbUrl(): string {
+  // Use GitHub raw content as the primary stable source to save Replit resources
+  const GITHUB_MODEL_URL = "https://raw.githubusercontent.com/davidbronner1025-ai/Campus-Map-Social/master/artifacts/game-map/public/models/campus-solar-island.glb";
+  
   const fromEnv = import.meta.env.VITE_CAMPUS_GLB_URL;
   if (typeof fromEnv === "string" && fromEnv.trim().length > 0) {
     return fromEnv.trim();
   }
   
-  // Robust path resolution for Replit/Subpaths
-  const base = import.meta.env.BASE_URL || "/";
-  const path = CAMPUS_GLB_PATH;
-  const url = base.endsWith("/") ? `${base}${path}` : `${base}/${path}`;
-  
-  console.log("[MapLibre] env.BASE_URL:", base);
-  console.log("[MapLibre] Requested GLB URL:", url);
-  return url;
+  console.log("[MapLibre] Using GitHub-hosted GLB to save Replit resources.");
+  return GITHUB_MODEL_URL;
 }
 
 function polygonScaleForGltf(boundary: [number, number][]): number {
@@ -232,41 +229,20 @@ export function MapLibreView({
       
       try {
         const glbUrl = campusGlbUrl();
-        const fallbackUrl = CAMPUS_GLB_PATH; // Relative fallback
+        console.log("[MapLibre] Initializing 3D GLB Layer from:", glbUrl);
         
-        console.log("[MapLibre] Initializing GLB Layer. Primary:", glbUrl, "Fallback:", fallbackUrl);
-        
-        // Check primary URL
-        fetch(glbUrl, { method: "HEAD" }).then(r => {
-          const finalUrl = r.ok ? glbUrl : fallbackUrl;
-          if (!r.ok) console.warn("[MapLibre] Primary GLB URL 404, using fallback:", fallbackUrl);
-          
-          map.addLayer(
-            createCampusGltfCustomLayer(finalUrl, () => {
-              const boundary = campusBoundaryRef.current;
-              if (!boundary || !boundary.geometry) {
-                // Return a dummy transform with scale 0 if boundary isn't ready
-                return { translateX: 0, translateY: 0, translateZ: 0, rotateX: 0, rotateY: 0, rotateZ: 0, scale: 0 };
-              }
-              const anchor = getCampusAnchorLatLng(boundary);
-              const bearingRad = (map.getBearing() * Math.PI) / 180;
-              const polyScale = polygonScaleForGltf(boundary);
-              return computeCampusModelTransform(anchor.lng, anchor.lat, 0.15, -bearingRad, polyScale);
-            }),
-          );
-        }).catch(err => {
-          console.error("[MapLibre] GLB Check failed, attempting primary anyway:", glbUrl, err);
-          map.addLayer(
-            createCampusGltfCustomLayer(glbUrl, () => {
-              const boundary = campusBoundaryRef.current;
-              const anchor = getCampusAnchorLatLng(boundary);
-              const bearingRad = (map.getBearing() * Math.PI) / 180;
-              const polyScale = polygonScaleForGltf(boundary);
-              return computeCampusModelTransform(anchor.lng, anchor.lat, 0.15, -bearingRad, polyScale);
-            }),
-          );
-        });
-
+        map.addLayer(
+          createCampusGltfCustomLayer(glbUrl, () => {
+            const boundary = campusBoundaryRef.current;
+            if (!boundary || boundary.length < 3) {
+              return { translateX: 0, translateY: 0, translateZ: 0, rotateX: 0, rotateY: 0, rotateZ: 0, scale: 0 };
+            }
+            const anchor = getCampusAnchorLatLng(boundary);
+            const bearingRad = (map.getBearing() * Math.PI) / 180;
+            const polyScale = polygonScaleForGltf(boundary);
+            return computeCampusModelTransform(anchor.lng, anchor.lat, 0.15, -bearingRad, polyScale);
+          }),
+        );
       } catch (err) {
         console.error("[MapLibre] Critical failure in 3D layer setup:", err);
       }
