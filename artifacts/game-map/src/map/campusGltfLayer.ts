@@ -105,9 +105,15 @@ export function createCampusGltfCustomLayer(
       if (!renderer || !renderer.getContext()) return;
       if (renderer.getContext().isContextLost()) return;
 
+      // MapLibre passes the matrix either as the second argument or inside an object
+      const matrix = (args && (args as any).defaultProjectionMatrix) ? (args as any).defaultProjectionMatrix : args;
+      
+      if (!matrix || !Array.isArray(matrix) && !(matrix instanceof Float64Array) && !(matrix instanceof Float32Array)) {
+        return; 
+      }
+
       const transform = getTransform();
       if (transform instanceof THREE.Matrix4) {
-        modelContainer.quaternion.setFromRotationMatrix(transform);
         const position = new THREE.Vector3();
         const scale = new THREE.Vector3();
         const quaternion = new THREE.Quaternion();
@@ -117,7 +123,7 @@ export function createCampusGltfCustomLayer(
         modelContainer.quaternion.copy(quaternion);
       }
 
-      camera.projectionMatrix = new THREE.Matrix4().fromArray(args.defaultProjectionMatrix);
+      camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix);
       renderer.resetState();
       renderer.render(scene, camera);
     },

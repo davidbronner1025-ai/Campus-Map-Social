@@ -229,22 +229,25 @@ export function MapLibreView({
       
       try {
         const glbUrl = campusGlbUrl();
-        console.log("[MapLibre] Initializing 3D GLB Layer from:", glbUrl);
-        
-        map.addLayer(
-          createCampusGltfCustomLayer(glbUrl, () => {
-            const boundary = campusBoundaryRef.current;
-            if (!boundary || boundary.length < 3) {
-              return { translateX: 0, translateY: 0, translateZ: 0, rotateX: 0, rotateY: 0, rotateZ: 0, scale: 0 };
-            }
-            const anchor = getCampusAnchorLatLng(boundary);
-            const bearingRad = (map.getBearing() * Math.PI) / 180;
-            const polyScale = polygonScaleForGltf(boundary);
-            return computeCampusModelTransform(anchor.lng, anchor.lat, 0.15, -bearingRad, polyScale);
-          }),
-        );
+        if (!glbUrl || glbUrl.includes("undefined")) {
+          console.warn("[MapLibre] Skipping 3D GLB layer: No valid URL.");
+        } else {
+          console.log("[MapLibre] Initializing 3D GLB Layer from:", glbUrl);
+          map.addLayer(
+            createCampusGltfCustomLayer(glbUrl, () => {
+              const boundary = campusBoundaryRef.current;
+              if (!boundary || boundary.length < 3) {
+                return { translateX: 0, translateY: 0, translateZ: 0, rotateX: 0, rotateY: 0, rotateZ: 0, scale: 0 };
+              }
+              const anchor = getCampusAnchorLatLng(boundary);
+              const bearingRad = (map.getBearing() * Math.PI) / 180;
+              const polyScale = polygonScaleForGltf(boundary);
+              return computeCampusModelTransform(anchor.lng, anchor.lat, 0.15, -bearingRad, polyScale);
+            }),
+          );
+        }
       } catch (err) {
-        console.error("[MapLibre] Critical failure in 3D layer setup:", err);
+        console.error("[MapLibre] 3D layer setup failed (non-critical):", err);
       }
   
       loadedRef.current = true;
