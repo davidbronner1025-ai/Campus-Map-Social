@@ -233,26 +233,34 @@ export function MapLibreView({
           console.warn("[MapLibre] Skipping 3D GLB layer: No valid URL.");
         } else {
           console.log("[MapLibre] Initializing 3D GLB Layer from:", glbUrl);
-          map.addLayer(
-            createCampusGltfCustomLayer(glbUrl, () => {
-              const boundary = campusBoundaryRef.current;
-              const anchor = getCampusAnchorLatLng(boundary);
-              const polyScale = (boundary && boundary.length >= 3) 
-                ? polygonScaleForGltf(boundary) 
-                : 1.5;
-              
-              // In MapLibre, bearing is clockwise. Our model transform needs the inverse to stay static.
-              const bearingRad = (map.getBearing() * Math.PI) / 180;
-              
-              return computeCampusModelTransform(
-                anchor.lng, 
-                anchor.lat, 
-                2.5, // Slightly higher to avoid Z-fighting with ground
-                -bearingRad, 
-                polyScale
-              );
-            }),
-          );
+          try {
+            map.addLayer(
+              createCampusGltfCustomLayer(glbUrl, () => {
+                const boundary = campusBoundaryRef.current;
+                const anchor = getCampusAnchorLatLng(boundary);
+                const polyScale = (boundary && boundary.length >= 3) 
+                  ? polygonScaleForGltf(boundary) 
+                  : 1.5;
+                
+                // In MapLibre, bearing is clockwise. Our model transform needs the inverse to stay static.
+                const bearingRad = (map.getBearing() * Math.PI) / 180;
+                
+                return computeCampusModelTransform(
+                  anchor.lng, 
+                  anchor.lat, 
+                  2.5, // Slightly higher to avoid Z-fighting with ground
+                  -bearingRad, 
+                  polyScale
+                );
+              }, () => {
+                // Force a repaint when the GLB actually loads its assets
+                map.triggerRepaint();
+              }),
+            );
+            console.log("[MapLibre] 3D GLB Layer added to map instance.");
+          } catch (e) {
+            console.error("[MapLibre] Error adding 3D Layer:", e);
+          }
         }
       } catch (err) {
         console.error("[MapLibre] 3D layer setup failed (non-critical):", err);

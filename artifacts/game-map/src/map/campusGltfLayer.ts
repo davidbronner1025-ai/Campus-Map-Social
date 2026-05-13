@@ -38,17 +38,17 @@ export function createCampusGltfCustomLayer(
     type: "custom",
     renderingMode: "3d",
     onAdd(map, gl) {
-      const mapInstance = map;
+      (this as any).mapInstance = map;
       
       const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
       scene.add(hemiLight);
       scene.add(new THREE.AmbientLight(0xffffff, 1.0));
 
-      // Test marker: A red cube to verify rendering
-      const testGeo = new THREE.BoxGeometry(15, 15, 15);
-      const testMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      // Test marker: A HUGE red cube to verify rendering
+      const testGeo = new THREE.BoxGeometry(50, 50, 50);
+      const testMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.8 });
       const testMesh = new THREE.Mesh(testGeo, testMat);
-      testMesh.position.set(0, 7.5, 0); 
+      testMesh.position.set(0, 25, 0); 
       modelContainer.add(testMesh);
       
       console.log("[Campus3D] Starting GLB load:", modelUrl);
@@ -116,13 +116,22 @@ export function createCampusGltfCustomLayer(
     },
     render(_gl, args) {
       if (!renderer || !renderer.getContext()) return;
-      if (renderer.getContext().isContextLost()) return;
+      
+      // Wake up MapLibre for the first few frames
+      if (!(this as any)._wakeUp) (this as any)._wakeUp = 0;
+      if ((this as any)._wakeUp < 100) {
+        (this as any)._wakeUp++;
+        (this as any).mapInstance?.triggerRepaint();
+      }
 
-      // MapLibre passes the matrix either as the second argument or inside an object
       const matrix = (args && (args as any).defaultProjectionMatrix) ? (args as any).defaultProjectionMatrix : args;
       
-      if (!matrix || !Array.isArray(matrix) && !(matrix instanceof Float64Array) && !(matrix instanceof Float32Array)) {
-        return; 
+      if (!matrix) {
+        if (!(this as any)._loggedMatrixError) {
+          console.error("[Campus3D] Render missing matrix!", { args });
+          (this as any)._loggedMatrixError = true;
+        }
+        return;
       }
 
       const transform = getTransform();
@@ -137,7 +146,8 @@ export function createCampusGltfCustomLayer(
         if ((this as any)._renderCount < 10) {
           console.log(`[Campus3D] Frame ${(this as any)._renderCount}:`, { 
             pos: [position.x.toFixed(6), position.y.toFixed(6), position.z.toFixed(6)], 
-            scale: [scale.x.toFixed(6), scale.y.toFixed(6), scale.z.toFixed(6)] 
+            scale: [scale.x.toFixed(6), scale.y.toFixed(6), scale.z.toFixed(6)],
+            matrixType: Array.isArray(matrix) ? "Array" : (matrix instanceof Float64Array ? "Float64" : typeof matrix)
           });
           (this as any)._renderCount++;
         }
