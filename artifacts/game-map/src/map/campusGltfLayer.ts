@@ -1,5 +1,4 @@
 import * as THREE from "three";
-console.log("=== campusGltfLayer VERSION 2.2 ===");
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import maplibregl from "maplibre-gl";
@@ -42,35 +41,7 @@ export function createCampusGltfCustomLayer(
       const mapInstance = map; // Local reference for callbacks
       (this as any).mapInstance = map;
       
-      const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 2.0);
-      scene.add(hemiLight);
-      scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-      
-      const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-      dirLight.position.set(0, 100, 0);
-      scene.add(dirLight);
-
-      // Test marker: A HUGE red cube that ignores depth to ensure it's seen
-      const testGeo = new THREE.BoxGeometry(50, 50, 50);
-      const testMat = new THREE.MeshBasicMaterial({ 
-        color: 0xff0000, 
-        transparent: true, 
-        opacity: 0.8,
-        depthTest: false // Force it to draw over the map
-      });
-      const testMesh = new THREE.Mesh(testGeo, testMat);
-      testMesh.position.set(0, 25, 0); 
-      (testMesh as any).isTestCube = true; // Mark for animation
-      modelContainer.add(testMesh);
-      
-      // Add a yellow ground plane at the anchor
-      const groundGeo = new THREE.PlaneGeometry(200, 200);
-      const groundMat = new THREE.MeshBasicMaterial({ color: 0xffff00, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
-      const ground = new THREE.Mesh(groundGeo, groundMat);
-      ground.rotation.x = Math.PI / 2;
-      modelContainer.add(ground);
-      
-      console.log("[Campus3D] Starting GLB load:", modelUrl);
+      console.log("[Campus3D] Loading model...");
       
       const dracoLoader = new DRACOLoader();
       dracoLoader.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.6/");
@@ -136,20 +107,10 @@ export function createCampusGltfCustomLayer(
     render(glOrArgs: any, maybeArgs?: any) {
       if (!renderer || !renderer.getContext()) return;
       
-      // Determine GL and Matrix based on call signature (Object vs Multi-args)
-      const gl = maybeArgs ? glOrArgs : glOrArgs.gl;
       const args = maybeArgs ? maybeArgs : glOrArgs;
-      
-      // Handle modelViewProjectionMatrix (MapLibre 5+) or direct array
       const matrix = args.modelViewProjectionMatrix || args.defaultProjectionMatrix || (Array.isArray(args) ? args : null);
 
-      if (!matrix) {
-        if (!(this as any)._loggedMatrixError) {
-          console.error("[Campus3D] Render missing matrix! Args:", args);
-          (this as any)._loggedMatrixError = true;
-        }
-        return;
-      }
+      if (!matrix) return;
 
       const transform = getTransform();
       if (transform instanceof THREE.Matrix4) {
@@ -157,17 +118,6 @@ export function createCampusGltfCustomLayer(
         const scale = new THREE.Vector3();
         const quaternion = new THREE.Quaternion();
         transform.decompose(position, quaternion, scale);
-        
-        // Forced diagnostic log for the first 10 frames
-        if (!(this as any)._renderCount) (this as any)._renderCount = 0;
-        if ((this as any)._renderCount < 10) {
-          console.log(`[Campus3D] Frame ${(this as any)._renderCount}:`, { 
-            pos: [position.x.toFixed(6), position.y.toFixed(6), position.z.toFixed(6)], 
-            scale: [scale.x.toFixed(6), scale.y.toFixed(6), scale.z.toFixed(6)],
-            matrixType: Array.isArray(matrix) ? "Array" : (matrix instanceof Float64Array ? "Float64" : typeof matrix)
-          });
-          (this as any)._renderCount++;
-        }
 
         modelContainer.position.copy(position);
         modelContainer.scale.copy(scale);
@@ -176,17 +126,7 @@ export function createCampusGltfCustomLayer(
 
       camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix);
       
-      // Diagnostic log for matrix values on frame 0
-      if ((this as any)._renderCount === 0) {
-        console.log("[Campus3D] Matrix Sample:", matrix.slice(0, 4));
-      }
-
-      // Animate test cube
       modelContainer.traverse(obj => {
-        if ((obj as any).isTestCube) {
-          obj.rotation.y += 0.05;
-          obj.rotation.x += 0.02;
-        }
         obj.frustumCulled = false;
       });
 

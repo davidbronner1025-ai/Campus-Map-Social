@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from "react";
-console.log("=== MapLibreView VERSION 2.1 ===");
 import maplibregl, { type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { ZonePolygon, PlayerMarker, DrawingState, SelectedItem } from "../types/map";
@@ -33,8 +32,7 @@ function polygonScaleForGltf(boundary: [number, number][]): number {
   return Math.min(15, Math.max(0.12, raw));
 }
 
-const STYLE_URL = "https://tiles.openfreemap.org/styles/positron?v=2.1";
-console.log("[MapLibre] Style URL defined with cache-buster 2.1");
+const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
 const ZONE_3D_HEIGHTS: Record<string, number> = {
   "#2563eb": 14,
@@ -270,7 +268,7 @@ export function MapLibreView({
                 return computeCampusModelTransform(
                   anchor.lng, 
                   anchor.lat, 
-                  50, // High altitude for visibility test
+                  0.5, // Stable altitude
                   -bearingRad, 
                   polyScale
                 );
