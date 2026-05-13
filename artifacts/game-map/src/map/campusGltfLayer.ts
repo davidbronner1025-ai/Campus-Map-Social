@@ -109,26 +109,43 @@ export function createCampusGltfCustomLayer(
             }
           });
           
+      let lastLoadedBytes = 0;
+      const watchdog = setTimeout(() => {
+        if (lastLoadedBytes === 0) {
+          console.warn("[Campus3D] WATCHDOG: 10s passed with 0 bytes loaded. Potential hang or network block.");
+        }
+      }, 10000);
+
+      loader.load(
+        modelUrl,
+        (gltf) => {
+          clearTimeout(watchdog);
+          const model = gltf.scene;
+          console.log("[Campus3D] GLB Load Successful:", modelUrl);
+          
+          // Compute bounding box to center the model
+          const box = new THREE.Box3().setFromObject(model);
+          const center = box.getCenter(new THREE.Vector3());
+          
           // Center the model so it rotates around its centroid
           model.position.sub(center);
           modelContainer.add(model);
-          console.log("[Campus3D] Model added to scene");
+          console.log("[Campus3D] Model added to scene and centered.");
           mapInstance.triggerRepaint();
         },
         (xhr) => {
-          if (xhr.total > 0) {
-            const p = (xhr.loaded / xhr.total) * 100;
-            if (Math.floor(p) % 5 === 0) {
-              console.log(`[Campus3D] GLB Progress: ${p.toFixed(1)}%`);
-            }
-          } else {
-            if (xhr.loaded > 0 && xhr.loaded % (1024 * 1024 * 2) === 0) {
-              console.log(`[Campus3D] GLB Loaded: ${(xhr.loaded / (1024 * 1024)).toFixed(1)}MB`);
-            }
+          lastLoadedBytes = xhr.loaded;
+          const total = xhr.total > 0 ? xhr.total : 87000000; // Estimated 83MB
+          const progress = (xhr.loaded / total * 100).toFixed(1);
+          
+          // Log progress every 4MB to keep console readable but informative
+          if (xhr.loaded % (1024 * 1024 * 4) < (1024 * 1024)) {
+            console.log(`[Campus3D] GLB Download: ${progress}% (${(xhr.loaded / (1024 * 1024)).toFixed(1)}MB)`);
           }
         },
         (err) => {
-          console.error("[Campus3D] Critical failure loading GLB:", modelUrl, err);
+          clearTimeout(watchdog);
+          console.error("[Campus3D] GLB Load Failed:", modelUrl, err);
         },
       );
       
