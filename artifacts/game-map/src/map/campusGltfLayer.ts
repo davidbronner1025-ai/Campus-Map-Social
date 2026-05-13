@@ -135,7 +135,9 @@ export function createCampusGltfCustomLayer(
       renderer = new THREE.WebGLRenderer({
         canvas: map.getCanvas(),
         context: gl,
-        antialias: true,
+        antialias: false, // MapLibre usually handles AA, turning off to save GPU memory
+        powerPreference: "high-performance",
+        precision: "mediump", // Less precise but more stable for large models
       });
       renderer.autoClear = false;
       renderer.toneMapping = THREE.NoToneMapping;
