@@ -8,16 +8,14 @@ export const CAMPUS_GLTF_REFERENCE_SPAN_M = 450;
 export function computeCampusModelTransform(lng: number, lat: number, altitude: number, rotateZ: number, scale: number) {
   const modelAsMercatorCoordinate = maplibregl.MercatorCoordinate.fromLngLat([lng, lat], altitude);
   const modelRotate = [Math.PI / 2, rotateZ, 0];
-  const modelScale = modelAsMercatorCoordinate.meterInMercatorCoordinateUnits() * scale;
-
-  const translation = new THREE.Vector3(
-    modelAsMercatorCoordinate.x,
-    modelAsMercatorCoordinate.y,
-    modelAsMercatorCoordinate.z
-  );
   
+  // Use a fallback-safe scale: if polyScale is weirdly small, ensure it's at least visible
+  const baseScale = modelAsMercatorCoordinate.meterInMercatorCoordinateUnits();
+  const finalScale = baseScale * (scale > 0.01 ? scale : 1.0);
+
+  const translation = new THREE.Vector3(modelAsMercatorCoordinate.x, modelAsMercatorCoordinate.y, modelAsMercatorCoordinate.z);
   const rotation = new THREE.Euler(modelRotate[0], modelRotate[1], modelRotate[2], "XYZ");
-  const scaleVec = new THREE.Vector3(modelScale, -modelScale, modelScale);
+  const scaleVec = new THREE.Vector3(finalScale, -finalScale, finalScale);
 
   return new THREE.Matrix4().compose(translation, new THREE.Quaternion().setFromEuler(rotation), scaleVec);
 }
@@ -40,6 +38,11 @@ export function createCampusGltfCustomLayer(
     onAdd(map, gl) {
       const mapInstance = map; // Local reference for callbacks
       (this as any).mapInstance = map;
+      
+      scene.add(new THREE.AmbientLight(0xffffff, 2.0));
+      const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+      dirLight.position.set(50, 100, 50);
+      scene.add(dirLight);
       
       console.log("[Campus3D] Loading model...");
       
@@ -91,12 +94,12 @@ export function createCampusGltfCustomLayer(
       renderer = new THREE.WebGLRenderer({
         canvas: map.getCanvas(),
         context: gl,
-        antialias: false,
-        powerPreference: "high-performance",
-        precision: "mediump",
+        antialias: true,
+        alpha: true,
+        preserveDrawingBuffer: true
       });
       renderer.autoClear = false;
-      renderer.toneMapping = THREE.NoToneMapping;
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
     },
     onRemove() {
       console.log("[Campus3D] Layer onRemove called. Cleaning up renderer.");
