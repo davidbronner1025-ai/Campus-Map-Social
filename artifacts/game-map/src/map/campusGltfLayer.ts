@@ -149,37 +149,51 @@ export function createCampusGltfCustomLayer(
       }
     },
     render(_gl, args) {
+      if (!renderer || !renderer.getContext()) return;
+      if (renderer.getContext().isContextLost()) return;
+
       const projectionData = args.defaultProjectionData;
       if (!projectionData || !projectionData.mainMatrix) return;
 
-      const modelTransform = getModelTransform();
-      if (!modelTransform || 
-          isNaN(modelTransform.translateX) || 
-          isNaN(modelTransform.translateY) || 
-          isNaN(modelTransform.scale) ||
-          modelTransform.scale <= 0) return;
+      try {
+        const modelTransform = getModelTransform();
+        if (!modelTransform || 
+            isNaN(modelTransform.translateX) || 
+            isNaN(modelTransform.translateY) || 
+            isNaN(modelTransform.scale) ||
+            modelTransform.scale <= 0) {
+          return;
+        }
 
-      rotationX.makeRotationAxis(vecX, modelTransform.rotateX);
-      rotationY.makeRotationAxis(vecY, modelTransform.rotateY);
-      rotationZ.makeRotationAxis(vecZ, modelTransform.rotateZ);
+        rotationX.makeRotationAxis(vecX, modelTransform.rotateX);
+        rotationY.makeRotationAxis(vecY, modelTransform.rotateY);
+        rotationZ.makeRotationAxis(vecZ, modelTransform.rotateZ);
 
-      camera.projectionMatrix.fromArray(projectionData.mainMatrix);
-      scaleVec.set(modelTransform.scale, -modelTransform.scale, modelTransform.scale);
-      
-      l.makeTranslation(
-        modelTransform.translateX,
-        modelTransform.translateY,
-        modelTransform.translateZ,
-      )
-      .scale(scaleVec)
-      .multiply(rotationX)
-      .multiply(rotationY)
-      .multiply(rotationZ);
+        camera.projectionMatrix.fromArray(projectionData.mainMatrix);
+        scaleVec.set(modelTransform.scale, -modelTransform.scale, modelTransform.scale);
+        
+        l.makeTranslation(
+          modelTransform.translateX,
+          modelTransform.translateY,
+          modelTransform.translateZ,
+        )
+        .scale(scaleVec)
+        .multiply(rotationX)
+        .multiply(rotationY)
+        .multiply(rotationZ);
 
-      modelContainer.matrix.copy(l);
-      
-      renderer.resetState();
-      renderer.render(scene, camera);
+        modelContainer.matrix.copy(l);
+        
+        renderer.resetState();
+        renderer.render(scene, camera);
+        
+        if (!window.__CAMPUS_3D_FIRST_FRAME__) {
+          console.log("[Campus3D] First frame rendered successfully");
+          window.__CAMPUS_3D_FIRST_FRAME__ = true;
+        }
+      } catch (err) {
+        console.error("[Campus3D] Render loop error:", err);
+      }
     },
   };
 }

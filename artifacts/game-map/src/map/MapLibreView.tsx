@@ -193,7 +193,7 @@ export function MapLibreView({
       map.addLayer({ id: "buildings-roof", type: "fill-extrusion", source: "campus-zones",
         paint: {
           "fill-extrusion-color": "#ffffff",
-          "fill-extrusion-height": ["coalesce", ["to-number", ["get", "height"]], 6.05],
+          "fill-extrusion-height": ["+", ["coalesce", ["to-number", ["get", "height"]], 6], 0.05],
           "fill-extrusion-base": ["max", 0, ["-", ["coalesce", ["to-number", ["get", "height"]], 6], 0.4]],
           "fill-extrusion-opacity": 0.18,
         },
@@ -237,6 +237,10 @@ export function MapLibreView({
           map.addLayer(
             createCampusGltfCustomLayer(finalUrl, () => {
               const boundary = campusBoundaryRef.current;
+              if (!boundary || !boundary.geometry) {
+                // Return a dummy transform with scale 0 if boundary isn't ready
+                return { translateX: 0, translateY: 0, translateZ: 0, rotateX: 0, rotateY: 0, rotateZ: 0, scale: 0 };
+              }
               const anchor = getCampusAnchorLatLng(boundary);
               const bearingRad = (map.getBearing() * Math.PI) / 180;
               const polyScale = polygonScaleForGltf(boundary);
