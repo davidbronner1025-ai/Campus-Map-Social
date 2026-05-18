@@ -82,10 +82,17 @@ export default function NotificationBell() {
 
   return (
     <div className="relative">
-      <button onClick={handleOpen} className="p-2 rounded-xl hover:bg-secondary transition-colors relative">
-        <Bell className="w-4 h-4 text-muted-foreground" />
+      <button
+        onClick={handleOpen}
+        className="p-2 rounded-xl hover:bg-secondary transition-colors relative"
+        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+      >
+        <Bell className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
         {unreadCount > 0 && (
-          <div className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+          <div
+            className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-0.5"
+            aria-hidden="true"
+          >
             {unreadCount > 99 ? "99+" : unreadCount}
           </div>
         )}
@@ -110,13 +117,21 @@ export default function NotificationBell() {
                 <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
                 <div className="flex items-center gap-1">
                   {unreadCount > 0 && (
-                    <button onClick={handleMarkAllRead}
-                      className="p-1.5 rounded-lg hover:bg-secondary transition-colors" title="Mark all read">
-                      <CheckCheck className="w-3.5 h-3.5 text-muted-foreground" />
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
+                      title="Mark all read"
+                      aria-label="Mark all notifications as read"
+                    >
+                      <CheckCheck className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
                     </button>
                   )}
-                  <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
-                    <X className="w-3.5 h-3.5 text-muted-foreground" />
+                  <button
+                    onClick={() => setOpen(false)}
+                    className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
+                    aria-label="Close notifications"
+                  >
+                    <X className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
                   </button>
                 </div>
               </div>
