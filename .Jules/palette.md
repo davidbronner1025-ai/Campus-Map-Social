@@ -1,0 +1,3 @@
+## 2024-05-23 - NotificationBell Accessibility
+**Learning:** React state variables (like `open`) in notification dropdown components must be directly mapped to `aria-expanded` attributes on trigger buttons. Keyboard users rely on focus rings to understand current location, and without `focus-visible:ring-2` on Lucide React icon-only buttons, it is impossible to navigate the UI properly without a mouse.
+**Action:** When auditing custom navigation elements or overlays built with Radix or Headless UI, ensure to manually test keyboard tabs and confirm `focus-visible` styling is applied directly alongside structural `aria-expanded` and semantic `aria-label` tags.
