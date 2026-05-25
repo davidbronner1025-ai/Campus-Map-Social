@@ -1,0 +1,3 @@
+## 2024-05-25 - Icon-Only Buttons Require ARIA Labels and Focus Rings
+**Learning:** Icon-only buttons (like the Notification Bell, Mark All Read, and Close buttons) lack semantic meaning for screen readers and miss clear visual indicators when navigated via keyboard. Adding proper ARIA labels and focus-visible rings using Tailwind significantly enhances accessibility and usability.
+**Action:** Always ensure that any icon-only interactive element has an `aria-label` providing context and `focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring` classes to match the app's design system focus indicators.
