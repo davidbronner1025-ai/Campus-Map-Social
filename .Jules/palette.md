@@ -1,0 +1,3 @@
+## $(date +%Y-%m-%d) - Notification Bell Accessibility
+**Learning:** Added ARIA labels and focus rings to the Notification Bell component. The `campus-app` lacks a globally configured linting tool and a dedicated test runner. Thus, ensuring code correctly transpiles using `pnpm run typecheck` and building via Vite using `PORT` and `BASE_PATH` environment variables are essential verification steps.
+**Action:** When working in `campus-app`, rely on `npx prettier --write <file>`, `pnpm run typecheck`, and `PORT=3000 BASE_PATH=/ pnpm run build` to verify changes, rather than generic `pnpm lint` or `pnpm test` commands. For visual verification, mock the exact expected data structure in Playwright, bypassing login using localStorage to render private routes correctly.
