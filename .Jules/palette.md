@@ -1,0 +1,3 @@
+## 2024-05-24 - NotificationBell Accessibility Improvements
+**Learning:** Common interactive elements like notification dropdowns often miss critical accessible names (`aria-label`) and keyboard focus states on icon-only buttons (bell, close, mark-read). Also, accessibility attributes should match the specific language of the component's surrounding text (English here, despite other parts of the app being in Hebrew).
+**Action:** Consistently enforce `aria-label` and `focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none` on all icon-only action buttons, especially within flyouts/modals where they manage crucial user flows.
