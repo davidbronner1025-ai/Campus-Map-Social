@@ -1,0 +1,3 @@
+## 2024-05-24 - Localization and Language Matching for ARIA in Mixed-Language Contexts
+**Learning:** The `campus-app` contains a mix of Hebrew and English interfaces (e.g., NotificationBell uses English, while dev login uses Hebrew). Applying a generic language assumption for ARIA labels causes confusing screen reader behavior if the label's language doesn't match the visible context.
+**Action:** Always verify the language of the specific component being edited rather than assuming the global app language, and ensure ARIA labels and screen reader text (`sr-only`) strictly match the component's localized language.

@@ -82,7 +82,12 @@ export default function NotificationBell() {
 
   return (
     <div className="relative">
-      <button onClick={handleOpen} className="p-2 rounded-xl hover:bg-secondary transition-colors relative">
+      <button
+        onClick={handleOpen}
+        aria-label="Notifications"
+        aria-expanded={open}
+        className="p-2 rounded-xl hover:bg-secondary transition-colors relative focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
         <Bell className="w-4 h-4 text-muted-foreground" />
         {unreadCount > 0 && (
           <div className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-0.5">
@@ -111,11 +116,14 @@ export default function NotificationBell() {
                 <div className="flex items-center gap-1">
                   {unreadCount > 0 && (
                     <button onClick={handleMarkAllRead}
-                      className="p-1.5 rounded-lg hover:bg-secondary transition-colors" title="Mark all read">
+                      className="p-1.5 rounded-lg hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      title="Mark all read" aria-label="Mark all read">
                       <CheckCheck className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
                   )}
-                  <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
+                  <button onClick={() => setOpen(false)}
+                    aria-label="Close notifications"
+                    className="p-1.5 rounded-lg hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                     <X className="w-3.5 h-3.5 text-muted-foreground" />
                   </button>
                 </div>
@@ -130,7 +138,7 @@ export default function NotificationBell() {
                 )}
                 {notifs.map(n => (
                   <button key={n.id} onClick={() => handleTap(n)}
-                    className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/50 ${!n.read ? "bg-primary/5" : ""}`}>
+                    className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${!n.read ? "bg-primary/5" : ""}`}>
                     <div className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
                       {getNotifIcon(n.type)}
                     </div>
@@ -141,7 +149,9 @@ export default function NotificationBell() {
                       <p className="text-[10px] text-muted-foreground mt-0.5">{timeAgo(n.createdAt)}</p>
                     </div>
                     {!n.read && (
-                      <div className="mt-2 w-2 h-2 rounded-full bg-primary flex-shrink-0" />
+                      <div className="mt-2 w-2 h-2 rounded-full bg-primary flex-shrink-0">
+                        <span className="sr-only">Unread</span>
+                      </div>
                     )}
                   </button>
                 ))}
