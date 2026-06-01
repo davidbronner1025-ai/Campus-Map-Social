@@ -51,9 +51,9 @@ const requirePin = (req: any, res: any, next: any) => {
   const pinHeader = req.headers["x-admin-pin"] as string;
   const authHeader = req.headers.authorization?.replace("Bearer ", "");
   const pin = pinHeader || authHeader;
-  const expectedPin = process.env.VITE_ADMIN_PIN || "1234";
-  if (!pin || pin.trim() !== expectedPin.trim()) {
-    console.warn(`[locations] Unauthorized write attempt. Received PIN: [${pin}], Expected: [${expectedPin}]`);
+  const expectedPin = process.env.VITE_ADMIN_PIN;
+  if (!expectedPin || !pin || pin.trim() !== expectedPin.trim()) {
+    console.warn(`[locations] Unauthorized write attempt. Received PIN: [${pin}], Expected: [${expectedPin ? "REDACTED" : "UNDEFINED"}]`);
     return res.status(401).json({ error: "Unauthorized — valid admin PIN required" });
   }
   next();

@@ -12,9 +12,9 @@ router.use("/admin", (req: Request, res: Response, next) => {
   const authHeader = req.headers.authorization?.replace("Bearer ", "");
   const pin = pinHeader || authHeader;
   
-  const expectedPin = process.env.VITE_ADMIN_PIN || "1234";
-  if (!pin || pin.trim() !== expectedPin.trim()) {
-    console.warn(`[admin] Unauthorized access attempt. Received PIN: [${pin}], Expected: [${expectedPin}]`);
+  const expectedPin = process.env.VITE_ADMIN_PIN;
+  if (!expectedPin || !pin || pin.trim() !== expectedPin.trim()) {
+    console.warn(`[admin] Unauthorized access attempt. Received PIN: [${pin}], Expected: [${expectedPin ? "REDACTED" : "UNDEFINED"}]`);
     res.status(401).json({ error: "Unauthorized — invalid admin PIN" });
     return;
   }
