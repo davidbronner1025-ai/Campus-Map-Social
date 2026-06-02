@@ -1878,19 +1878,23 @@ export default function HomePage() {
   const locationCenterRef = useRef(locationCenter);
   useEffect(() => { locationCenterRef.current = locationCenter; }, [locationCenter]);
 
+  const posRef = useRef(pos);
+  useEffect(() => { posRef.current = pos; }, [pos]);
+
   const fetchAll = useCallback(async () => {
-    const coord = pos
-      ? { lat: pos.lat, lng: pos.lng }
+    const currentPos = posRef.current;
+    const coord = currentPos
+      ? { lat: currentPos.lat, lng: currentPos.lng }
       : locationCenterRef.current
         ? { lat: locationCenterRef.current[0], lng: locationCenterRef.current[1] }
         : null;
     if (!coord) return;
-    const radius = pos ? 300 : 800;
+    const radius = currentPos ? 300 : 800;
     setLoading(true);
     try {
       const [msgs, users, evts] = await Promise.allSettled([
         getNearbyMessages(coord.lat, coord.lng, radius),
-        pos ? getNearbyUsers(coord.lat, coord.lng, 500) : Promise.resolve<NearbyUser[]>([]),
+        currentPos ? getNearbyUsers(coord.lat, coord.lng, 500) : Promise.resolve<NearbyUser[]>([]),
         getNearbyEvents(coord.lat, coord.lng, 1000),
       ]);
       if (msgs.status === "fulfilled") setMessages(msgs.value);
@@ -1905,17 +1909,18 @@ export default function HomePage() {
       }
       setLastRefresh(new Date());
     } catch {} finally { setLoading(false); }
-  }, [pos]);
+  }, []);
 
   // Initial fetch + periodic refresh every 15s (runs when GPS or campus center becomes available)
   useEffect(() => {
-    const coord = pos || locationCenter;
-    if (!coord) return;
+    if (!pos && !locationCenter) return;
+    
+    // Fetch immediately when location source is established or changes type (e.g. from campus center to GPS)
     fetchAll();
+    
     const interval = setInterval(fetchAll, 15_000);
     return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pos, locationCenter, fetchAll]);
+  }, [!!pos, !!locationCenter, fetchAll]);
 
   // Deep-link from notifications: ?viewEvent=ID or ?viewMessage=ID
   useEffect(() => {
@@ -2091,7 +2096,7 @@ export default function HomePage() {
               iconSize: undefined as any,
             });
             return (
-              <React.Fragment key={loc.id}>
+              <FeatureGroup key={loc.id}>
                 <Polygon
                   positions={positions}
                   pathOptions={{
@@ -2108,7 +2113,7 @@ export default function HomePage() {
                   icon={labelIcon}
                   eventHandlers={{ click: () => setSelectedLocation(loc) }}
                 />
-              </React.Fragment>
+              </FeatureGroup>
             );
           })}
 
