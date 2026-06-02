@@ -17,6 +17,7 @@ app.use(helmet({
   // We serve only JSON to a separate frontend; CSP not relevant here.
   contentSecurityPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" },
+  frameguard: false, // Allow iframing within Replit workspace preview
 }));
 
 // ── CORS ──

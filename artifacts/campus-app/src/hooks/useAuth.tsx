@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import {
   TOKEN_KEY, getMe, logoutCurrentSession, setUnauthorizedHandler,
+  safeGetStorage, safeSetStorage, safeRemoveStorage,
   type UserProfile,
 } from "@/lib/api";
 
@@ -17,18 +18,18 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setTokenState] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
+  const [token, setTokenState] = useState<string | null>(() => safeGetStorage(TOKEN_KEY));
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const setToken = useCallback((t: string | null) => {
     setTokenState(t);
-    if (t) localStorage.setItem(TOKEN_KEY, t);
-    else localStorage.removeItem(TOKEN_KEY);
+    if (t) safeSetStorage(TOKEN_KEY, t);
+    else safeRemoveStorage(TOKEN_KEY);
   }, []);
 
   const refreshUser = useCallback(async () => {
-    if (!localStorage.getItem(TOKEN_KEY)) {
+    if (!safeGetStorage(TOKEN_KEY)) {
       setUser(null);
       setIsLoading(false);
       return;

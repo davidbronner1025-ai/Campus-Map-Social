@@ -4,18 +4,30 @@ export const TOKEN_KEY = "campus_token";
 const DEVICE_ID_KEY = "campus_device_id";
 const APP_VERSION = "1.0.0";
 
+export function safeGetStorage(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+
+export function safeSetStorage(key: string, value: string): void {
+  try { localStorage.setItem(key, value); } catch {}
+}
+
+export function safeRemoveStorage(key: string): void {
+  try { localStorage.removeItem(key); } catch {}
+}
+
 function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  return safeGetStorage(TOKEN_KEY);
 }
 
 // Stable per-browser device ID (created once, persisted in localStorage).
 // This is a pseudonymous identifier — NOT linked to phone-level identifiers.
 export function getDeviceId(): string {
-  let id = localStorage.getItem(DEVICE_ID_KEY);
+  let id = safeGetStorage(DEVICE_ID_KEY);
   if (!id) {
     const random = (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
     id = `web-${random}`;
-    localStorage.setItem(DEVICE_ID_KEY, id);
+    safeSetStorage(DEVICE_ID_KEY, id);
   }
   return id;
 }
@@ -42,7 +54,7 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   });
   if (res.status === 401 && getToken()) {
     // Token was rejected — clear and redirect.
-    localStorage.removeItem(TOKEN_KEY);
+    safeRemoveStorage(TOKEN_KEY);
     onUnauthorized?.();
   }
   if (!res.ok) {
