@@ -1800,7 +1800,7 @@ function ShopsTab() {
 export default function HomePage() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
-  const { pos, error: locError, requestPermission } = useLocationEngine(true);
+  const { pos, error: locError, requestPermission, forceUpdate } = useLocationEngine(true);
 
   const [messages, setMessages] = useState<NearbyMessage[]>([]);
   const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
@@ -2005,6 +2005,32 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* ── MAP CONTROLS (Outside Map) ── */}
+      {activeTab === "map" && (
+        <div className="flex items-center justify-end gap-2 px-4 py-2 bg-card/90 backdrop-blur-md border-b border-border flex-shrink-0 z-20">
+          <button
+            onClick={() => setShowPeople(p => !p)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all border ${
+              showPeople
+                ? "bg-primary/90 text-primary-foreground border-primary/50"
+                : "bg-secondary text-muted-foreground border-border"
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            {nearbyUsers.length > 0 ? nearbyUsers.length : ""} People
+          </button>
+
+          <button
+            onClick={() => { forceUpdate(); fetchAll(); }}
+            className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all border bg-secondary text-foreground border-border hover:bg-secondary/80 active:scale-95"
+            title="איפוס מיקום"
+          >
+            <Navigation className="w-3.5 h-3.5" />
+            איפוס מיקום
+          </button>
+        </div>
+      )}
+
       {/* ── MAP ── */}
       <div className="relative" style={{
         height: (activeTab === "shops" || activeTab === "bulletin")
@@ -2131,19 +2157,6 @@ export default function HomePage() {
 
         {/* Pulse Ticker */}
         {activeTab === "map" && <PulseTicker messages={messages} />}
-
-        {/* People toggle */}
-        <button
-          onClick={() => setShowPeople(p => !p)}
-          className={`absolute top-3 right-3 z-10 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all shadow-lg backdrop-blur-sm border ${
-            showPeople
-              ? "bg-primary/90 text-primary-foreground border-primary/50"
-              : "bg-card/80 text-muted-foreground border-border"
-          }`}
-        >
-          <Users className="w-3.5 h-3.5" />
-          {nearbyUsers.length > 0 ? nearbyUsers.length : ""} People
-        </button>
 
         {/* Location permission notice — only shown when no GPS AND no campus center yet */}
         {!pos && !locError && !locationCenter && (

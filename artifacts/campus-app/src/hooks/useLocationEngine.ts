@@ -83,5 +83,16 @@ export function useLocationEngine(enabled: boolean) {
     navigator.geolocation.getCurrentPosition(onPosition, onError, { ...GEO_OPTIONS, timeout: 8000 });
   }, [onPosition, onError]);
 
-  return { pos, error, permissionState, requestPermission };
+  const forceUpdate = useCallback(() => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        onPosition(position);
+        pushToServer(position.coords.latitude, position.coords.longitude);
+      },
+      onError,
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 10_000 }
+    );
+  }, [onPosition, onError, pushToServer]);
+
+  return { pos, error, permissionState, requestPermission, forceUpdate };
 }
