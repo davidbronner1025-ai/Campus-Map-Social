@@ -14,7 +14,7 @@ const requirePin = (req: any, res: any, next: any) => {
   
   const expectedPin = process.env.VITE_ADMIN_PIN || "1234";
   if (!pin || pin.trim() !== expectedPin.trim()) {
-    console.warn(`[campus] Unauthorized write attempt. Received PIN: [${pin}], Expected: [${expectedPin}]`);
+    console.warn("[campus] Unauthorized write attempt.");
     res.status(401).json({ error: "Unauthorized — invalid admin PIN" });
     return;
   }
@@ -39,7 +39,6 @@ router.get("/campus", async (_req, res) => {
 // POST /campus — PROTECTED
 router.post("/campus", requirePin, async (req, res) => {
   try {
-    console.log("[campus] Setup request received:", JSON.stringify(req.body));
     const body = SetCampusBody.parse(req.body);
     const existing = await db.select().from(campusTable).limit(1);
     
@@ -55,7 +54,6 @@ router.post("/campus", requirePin, async (req, res) => {
         })
         .where(eq(campusTable.id, existing[0].id))
         .returning();
-      console.log("[campus] Successfully updated existing campus.");
       res.json(updated[0]);
     } else {
       const created = await db
@@ -67,7 +65,6 @@ router.post("/campus", requirePin, async (req, res) => {
           defaultZoom: body.defaultZoom,
         })
         .returning();
-      console.log("[campus] Successfully created new campus configuration.");
       res.status(201).json(created[0]);
     }
   } catch (err: any) {

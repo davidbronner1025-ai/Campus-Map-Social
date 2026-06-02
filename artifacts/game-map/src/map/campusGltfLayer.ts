@@ -4,6 +4,7 @@ import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import maplibregl from "maplibre-gl";
 
 export const CAMPUS_GLTF_REFERENCE_SPAN_M = 450;
+const MAP_DEBUG = import.meta.env.DEV && import.meta.env.VITE_DEBUG_MAP === "true";
 
 export function computeCampusModelTransform(lng: number, lat: number, altitude: number, rotateZ: number, scale: number) {
   const modelAsMercatorCoordinate = maplibregl.MercatorCoordinate.fromLngLat([lng, lat], altitude);
@@ -44,7 +45,7 @@ export function createCampusGltfCustomLayer(
       dirLight.position.set(50, 100, 50);
       scene.add(dirLight);
       
-      console.log("[Campus3D] Loading model...");
+      if (MAP_DEBUG) console.debug("[Campus3D] Loading model...");
       
       const dracoLoader = new DRACOLoader();
       dracoLoader.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.6/");
@@ -55,7 +56,7 @@ export function createCampusGltfCustomLayer(
       loader.load(
         modelUrl,
         (gltf) => {
-          console.log("[Campus3D] GLB Load Success");
+          if (MAP_DEBUG) console.debug("[Campus3D] GLB load success");
           const model = gltf.scene;
           const box = new THREE.Box3().setFromObject(model);
           const center = new THREE.Vector3();
@@ -75,15 +76,15 @@ export function createCampusGltfCustomLayer(
           // Center the model so it rotates around its centroid
           model.position.sub(center);
           modelContainer.add(model);
-          console.log("[Campus3D] Model added to scene and centered.");
+          if (MAP_DEBUG) console.debug("[Campus3D] Model added to scene and centered.");
           mapInstance.triggerRepaint();
           onLoad?.();
         },
         (xhr) => {
           const total = xhr.total > 0 ? xhr.total : 87000000;
           const progress = ((xhr.loaded / total) * 100).toFixed(1);
-          if (xhr.loaded % (1024 * 1024 * 5) < (1024 * 1024)) {
-            console.log(`[Campus3D] GLB Download: ${progress}% (${(xhr.loaded / (1024 * 1024)).toFixed(1)}MB)`);
+          if (MAP_DEBUG && xhr.loaded % (1024 * 1024 * 5) < (1024 * 1024)) {
+            console.debug(`[Campus3D] GLB download ${progress}% (${(xhr.loaded / (1024 * 1024)).toFixed(1)}MB)`);
           }
         },
         (err) => {
@@ -102,7 +103,7 @@ export function createCampusGltfCustomLayer(
       renderer.outputColorSpace = THREE.SRGBColorSpace;
     },
     onRemove() {
-      console.log("[Campus3D] Layer onRemove called. Cleaning up renderer.");
+      if (MAP_DEBUG) console.debug("[Campus3D] Layer removed. Cleaning renderer.");
       if (renderer) {
         renderer.dispose();
       }

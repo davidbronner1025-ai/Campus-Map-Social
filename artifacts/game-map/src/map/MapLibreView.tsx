@@ -2,35 +2,8 @@ import React, { useEffect, useRef } from "react";
 import maplibregl, { type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { ZonePolygon, PlayerMarker, DrawingState, SelectedItem } from "../types/map";
-import {
-  CAMPUS_GLTF_REFERENCE_SPAN_M,
-  getCampusAnchorLatLng,
-  getCampusPolygonSpanMeters,
-  MAP_CENTER,
-} from "../data/campusData";
-import { computeCampusModelTransform, createCampusGltfCustomLayer } from "./campusGltfLayer";
-
-const CAMPUS_GLB_PATH = "models/campus-solar-island.glb";
-
-function campusGlbUrl(): string {
-  // Use GitHub raw content as the primary stable source to save Replit resources
-  const GITHUB_MODEL_URL = "https://raw.githubusercontent.com/davidbronner1025-ai/Campus-Map-Social/master/artifacts/game-map/public/models/campus-solar-island.glb";
-  
-  const fromEnv = import.meta.env.VITE_CAMPUS_GLB_URL;
-  if (typeof fromEnv === "string" && fromEnv.trim().length > 0) {
-    return fromEnv.trim();
-  }
-  
-  console.log("[MapLibre] Using GitHub-hosted GLB to save Replit resources.");
-  return GITHUB_MODEL_URL;
-}
-
-function polygonScaleForGltf(boundary: [number, number][]): number {
-  const spanM = getCampusPolygonSpanMeters(boundary);
-  if (spanM == null || spanM < 5) return 1;
-  const raw = spanM / CAMPUS_GLTF_REFERENCE_SPAN_M;
-  return Math.min(15, Math.max(0.12, raw));
-}
+import { MAP_CENTER } from "../data/campusData";
+const MAP_DEBUG = import.meta.env.DEV && import.meta.env.VITE_DEBUG_MAP === "true";
 
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
@@ -162,13 +135,13 @@ export function MapLibreView({
     map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "bottom-right");
 
     map.on("style.load", () => {
-      console.log("[MapLibre] Style loaded event fired.");
+      if (MAP_DEBUG) console.debug("[MapLibre] Style loaded event fired.");
       initLayers();
     });
 
     // Fallback if load events hang
     const fallbackTimer = setTimeout(() => {
-      console.log("[MapLibre] Fallback: Force-initializing layers after 4s timeout.");
+      if (MAP_DEBUG) console.debug("[MapLibre] Fallback init after 4s timeout.");
       initLayers();
     }, 4000);
 
@@ -177,14 +150,14 @@ export function MapLibreView({
       (map as any)._layersInitialized = true;
       clearTimeout(fallbackTimer);
       
-      console.log("[MapLibre] Initializing layers...");
+      if (MAP_DEBUG) console.debug("[MapLibre] Initializing layers...");
       
       const canvas = map.getCanvas();
       canvas.addEventListener("webglcontextlost", (e) => {
         console.warn("[MapLibre] WebGL context lost!", e);
       }, false);
       canvas.addEventListener("webglcontextrestored", () => {
-        console.log("[MapLibre] WebGL context restored.");
+        if (MAP_DEBUG) console.debug("[MapLibre] WebGL context restored.");
       }, false);
 
       map.addSource("campus-boundary", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
@@ -244,45 +217,8 @@ export function MapLibreView({
         paint: { "circle-radius": 5, "circle-color": "#ffffff", "circle-stroke-color": "#dc2626", "circle-stroke-width": 2 },
       });
 
-      
-      try {
-        const glbUrl = campusGlbUrl();
-        // Temporarily disabled 3D layer
-        if (false) {
-          if (!glbUrl || glbUrl.includes("undefined")) {
-            console.warn("[MapLibre] Skipping 3D GLB layer: No valid URL.");
-          } else {
-            console.log("[MapLibre] Initializing 3D GLB Layer from:", glbUrl);
-            try {
-              map.addLayer(
-                createCampusGltfCustomLayer(glbUrl, () => {
-                  const boundary = campusBoundaryRef.current;
-                  const anchor = getCampusAnchorLatLng(boundary);
-                  const polyScale = (boundary && boundary.length >= 3) 
-                    ? polygonScaleForGltf(boundary) 
-                    : 1.5;
-                  
-                  const bearingRad = (map.getBearing() * Math.PI) / 180;
-                  
-                  return computeCampusModelTransform(
-                    anchor.lng, 
-                    anchor.lat, 
-                    0.5, 
-                    -bearingRad, 
-                    polyScale
-                  );
-                }, () => {
-                  map.triggerRepaint();
-                }),
-              );
-            } catch (e) {
-              console.error("[MapLibre] Error adding 3D Layer:", e);
-            }
-          }
-        }
-      } catch (err) {
-        console.error("[MapLibre] 3D layer setup failed (non-critical):", err);
-      }
+      // 3D GLB layer is intentionally disabled until model integration is re-enabled.
+      // Keep only explicit, active logic in this file to avoid dead-code drift.
   
       loadedRef.current = true;
       syncLabels(map, zonesRef.current, labelsRef);

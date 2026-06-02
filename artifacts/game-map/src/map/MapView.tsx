@@ -46,7 +46,6 @@ export function MapView() {
   useEffect(() => {
     const campusZone = zones.find(z => z.name === "שטח הקמפוס" || z.color === "#dc2626");
     if (campusZone) {
-      console.log("[MapView] Campus boundary detected:", campusZone.name);
       setCampusBoundary(campusZone.coordinates);
     }
   }, [zones]);

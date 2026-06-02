@@ -68,7 +68,7 @@ router.post("/auth/request-otp", async (req: Request, res: Response) => {
     // configure the SMS_PROVIDER_* secrets and replace this log with an API call.
     // The OTP must NEVER be returned to the client in production.
     if (isProd) {
-      console.log(`[auth] [PROD-TODO] Send SMS to ${phone}: code=${otp}`);
+      console.warn("[auth] SMS provider is not configured in production mode.");
       res.json({ success: true, message: "קוד אימות נשלח" });
     } else {
       console.log(`[auth] [DEV] OTP for ${phone}: ${otp}`);

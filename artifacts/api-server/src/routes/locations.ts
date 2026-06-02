@@ -5,7 +5,7 @@ import {
   menusTable, menuRatingsTable, gameSessionsTable, gameVotesTable,
   usersTable, messagesTable,
 } from "@workspace/db/schema";
-import { eq, desc, avg, and, gte, sql } from "drizzle-orm";
+import { eq, desc, and, gte, sql, inArray } from "drizzle-orm";
 import {
   CreateLocationBody, UpdateLocationBody, GetLocationParams,
   UpdateLocationParams, DeleteLocationParams,
@@ -32,18 +32,28 @@ async function getCampusId(): Promise<number | null> {
 
 // Helper to ensure managers have names
 async function enrichLocationsWithManager(locations: any[]) {
-  return Promise.all(locations.map(async (loc) => {
-    if (loc.managerId) {
-      try {
-        const [mgr] = await db.select({ displayName: usersTable.displayName })
-          .from(usersTable).where(eq(usersTable.id, loc.managerId));
-        if (mgr) return { ...loc, managerName: mgr.displayName || "Assigned" };
-      } catch (err) {
-        console.error(`[locations] Failed to enrich manager for loc ${loc.id}:`, err);
-      }
-    }
-    return loc;
-  }));
+  const managerIds = Array.from(
+    new Set(locations.map((loc) => loc.managerId).filter((id): id is number => typeof id === "number")),
+  );
+
+  if (managerIds.length === 0) return locations;
+
+  try {
+    const managers = await db
+      .select({ id: usersTable.id, displayName: usersTable.displayName })
+      .from(usersTable)
+      .where(inArray(usersTable.id, managerIds));
+
+    const managerById = new Map(managers.map((mgr) => [mgr.id, mgr.displayName || "Assigned"]));
+    return locations.map((loc) =>
+      loc.managerId && managerById.has(loc.managerId)
+        ? { ...loc, managerName: managerById.get(loc.managerId) }
+        : loc,
+    );
+  } catch (err) {
+    console.error("[locations] Failed to enrich manager names:", err);
+    return locations;
+  }
 }
 
 // 🔐 PIN check middleware for location writes
@@ -53,7 +63,7 @@ const requirePin = (req: any, res: any, next: any) => {
   const pin = pinHeader || authHeader;
   const expectedPin = process.env.VITE_ADMIN_PIN || "1234";
   if (!pin || pin.trim() !== expectedPin.trim()) {
-    console.warn(`[locations] Unauthorized write attempt. Received PIN: [${pin}], Expected: [${expectedPin}]`);
+    console.warn("[locations] Unauthorized write attempt.");
     return res.status(401).json({ error: "Unauthorized — valid admin PIN required" });
   }
   next();
@@ -73,7 +83,6 @@ router.get("/locations", async (_req, res) => {
 
 router.post("/locations", requirePin, async (req, res) => {
   try {
-    console.log("[locations] Create request body:", JSON.stringify(req.body));
     const body = CreateLocationBody.parse(req.body);
     const campusId = await getCampusId();
     if (!campusId) {
@@ -99,7 +108,6 @@ router.post("/locations", requirePin, async (req, res) => {
     };
 
     const created = await db.insert(locationsTable).values(insertObj).returning();
-    console.log("[locations] Successfully created location:", created[0].id);
     const enriched = await enrichLocationsWithManager(created);
     res.status(201).json(enriched[0]);
   } catch (err: any) {
@@ -139,7 +147,6 @@ router.put("/locations/:locationId", requirePin, async (req, res) => {
       .returning();
 
     if (!updated.length) { res.status(404).json({ error: "Location not found" }); return; }
-    console.log("[locations] Successfully updated location:", locationId);
     const enriched = await enrichLocationsWithManager(updated);
     res.json(enriched[0]);
   } catch (err: any) {
