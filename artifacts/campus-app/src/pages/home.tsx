@@ -167,17 +167,21 @@ function makeEventMarker(event: NearbyEvent) {
 }
 
 // ── Map center updater — uses setView (sync) to avoid rAF animation NaN bug ─
-function MapCenterUpdater({ center, zoom }: { center: [number, number]; zoom: number }) {
+function MapCenterUpdater({ center, zoom, trigger }: { center: [number, number]; zoom: number; trigger?: number }) {
   const map = useMap();
   const didSet = useRef(false);
+  const prevTrigger = useRef(trigger);
+
   useEffect(() => {
-    if (didSet.current) return;
     if (isNaN(center[0]) || isNaN(center[1])) return;
-    try {
-      map.setView(center, zoom, { animate: false });
-      didSet.current = true;
-    } catch {}
-  }, [center, zoom, map]);
+    if (!didSet.current || (trigger !== undefined && trigger !== prevTrigger.current)) {
+      try {
+        map.setView(center, zoom, { animate: true });
+        didSet.current = true;
+        prevTrigger.current = trigger;
+      } catch {}
+    }
+  }, [center, zoom, map, trigger]);
   return null;
 }
 
@@ -1819,6 +1823,7 @@ export default function HomePage() {
   const [selectedLocation, setSelectedLocation] = useState<CampusLocation | null>(null);
   const [locationCenter, setLocationCenter] = useState<[number, number] | null>(null);
   const [composeLocationOverride, setComposeLocationOverride] = useState<{ lat: number; lng: number; name: string } | null>(null);
+  const [centerTrigger, setCenterTrigger] = useState(0);
 
   // ── Unified app state ──
   const [activeTab, setActiveTab] = useState<"map" | "chats" | "shops" | "bulletin">("map");
@@ -2021,7 +2026,7 @@ export default function HomePage() {
           </button>
 
           <button
-            onClick={() => { forceUpdate(); fetchAll(); }}
+            onClick={() => { forceUpdate(); fetchAll(); setCenterTrigger(c => c + 1); }}
             className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all border bg-secondary text-foreground border-border hover:bg-secondary/80 active:scale-95"
             title="איפוס מיקום"
           >
@@ -2055,10 +2060,10 @@ export default function HomePage() {
             attribution=""
           />
           {pos && !isNaN(pos.lat) && !isNaN(pos.lng) && (
-            <MapCenterUpdater center={[pos.lat, pos.lng]} zoom={17} />
+            <MapCenterUpdater center={[pos.lat, pos.lng]} zoom={17} trigger={centerTrigger} />
           )}
           {!pos && locationCenter && (
-            <MapCenterUpdater center={locationCenter} zoom={16} />
+            <MapCenterUpdater center={locationCenter} zoom={16} trigger={centerTrigger} />
           )}
           <MapSizeInvalidator deps={[activeTab, feedOpen, !!selectedLocation, compose]} />
 
