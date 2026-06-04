@@ -1,0 +1,3 @@
+## 2024-06-04 - Accessible Notification Bell (Focus Indicators & ARIA)
+**Learning:** Found that `campus-app` icon-only buttons lacked standard ARIA labels, `aria-expanded` and visible focus states when navigating via keyboard (tabbing). Radix UI dialogs often don't enforce these on trigger buttons inherently unless they are properly annotated. Screen readers couldn't identify the main notification bell, and keyboard users didn't know when the bell was focused.
+**Action:** Adding explicit semantic `aria-label`s, `aria-expanded` for stateful buttons, and `focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring` on interactive elements to ensure a fully accessible interactive cycle.
