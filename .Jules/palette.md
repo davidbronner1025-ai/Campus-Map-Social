@@ -1,0 +1,3 @@
+## 2024-05-14 - Keyboard accessibility and ARIA labels in NotificationBell
+**Learning:** React components (like NotificationBell) frequently miss keyboard focus states and explicit ARIA labels on icon-only buttons, reducing accessibility for keyboard and screen reader users. The app's design system uses specific Tailwind classes (`focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring`) to indicate focus consistently.
+**Action:** When adding new interactive elements (especially icon-only buttons), ensure semantic `aria-label`s are provided, and apply the standardized `focus-visible` Tailwind classes to ensure proper visual feedback for keyboard navigation.
