@@ -4,17 +4,9 @@ import { messagesTable, messageReactionsTable, messageRepliesTable, usersTable }
 import { eq, and, desc, sql } from "drizzle-orm";
 import { requireAuth } from "./users";
 import { createNotification } from "../lib/notify";
+import { haversine } from "../lib/utils";
 
 const router: IRouter = Router();
-
-// Haversine distance (meters)
-function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 // GET /messages/nearby?lat=&lng=&radius= (default 300m)
 router.get("/messages/nearby", requireAuth, async (req: Request, res: Response) => {

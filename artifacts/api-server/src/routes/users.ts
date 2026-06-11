@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { usersTable, messagesTable, eventRsvpsTable, issueReportsTable } from "@workspace/db/schema";
 import { eq, and, ne, isNotNull, gte, sql } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth";
+import { getDistanceSql } from "../lib/utils";
 
 const router: IRouter = Router();
 
@@ -80,13 +81,7 @@ router.get("/users/nearby", requireAuth, async (req: Request, res: Response) => 
 
   const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
 
-  const haversine = sql`(
-    6371000 * acos(
-      cos(radians(${lat})) * cos(radians(${usersTable.lat})) *
-      cos(radians(${usersTable.lng}) - radians(${lng})) +
-      sin(radians(${lat})) * sin(radians(${usersTable.lat}))
-    )
-  )`;
+  const distanceSql = getDistanceSql(lat, lng, usersTable.lat, usersTable.lng);
 
   const rows = await db
     .select({
@@ -107,7 +102,7 @@ router.get("/users/nearby", requireAuth, async (req: Request, res: Response) => 
         eq(usersTable.visibility, "campus"),
         isNotNull(usersTable.lat),
         isNotNull(usersTable.lng),
-        sql`${haversine} < ${radius}`
+        sql`${distanceSql} < ${radius}`
       )
     );
 
