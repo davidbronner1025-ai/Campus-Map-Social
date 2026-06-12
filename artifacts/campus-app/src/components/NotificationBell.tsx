@@ -19,12 +19,12 @@ function timeAgo(dateStr: string): string {
 
 function getNotifIcon(type: AppNotification["type"]) {
   switch (type) {
-    case "reaction": return <ThumbsUp className="w-4 h-4 text-yellow-400" />;
-    case "reply": return <MessageCircle className="w-4 h-4 text-blue-400" />;
-    case "event_join": return <Calendar className="w-4 h-4 text-green-400" />;
-    case "nearby_event": return <MapPin className="w-4 h-4 text-purple-400" />;
-    case "chat_message": return <MessageCircle className="w-4 h-4 text-indigo-400" />;
-    default: return <Bell className="w-4 h-4 text-muted-foreground" />;
+    case "reaction": return <ThumbsUp aria-hidden="true" className="w-4 h-4 text-yellow-400" />;
+    case "reply": return <MessageCircle aria-hidden="true" className="w-4 h-4 text-blue-400" />;
+    case "event_join": return <Calendar aria-hidden="true" className="w-4 h-4 text-green-400" />;
+    case "nearby_event": return <MapPin aria-hidden="true" className="w-4 h-4 text-purple-400" />;
+    case "chat_message": return <MessageCircle aria-hidden="true" className="w-4 h-4 text-indigo-400" />;
+    default: return <Bell aria-hidden="true" className="w-4 h-4 text-muted-foreground" />;
   }
 }
 
@@ -82,10 +82,16 @@ export default function NotificationBell() {
 
   return (
     <div className="relative">
-      <button onClick={handleOpen} className="p-2 rounded-xl hover:bg-secondary transition-colors relative">
-        <Bell className="w-4 h-4 text-muted-foreground" />
+      <button
+        onClick={handleOpen}
+        className="p-2 rounded-xl hover:bg-secondary transition-colors relative focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        aria-label={`Notifications, ${unreadCount} unread`}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+      >
+        <Bell aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
         {unreadCount > 0 && (
-          <div className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+          <div aria-hidden="true" className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-0.5">
             {unreadCount > 99 ? "99+" : unreadCount}
           </div>
         )}
@@ -105,18 +111,26 @@ export default function NotificationBell() {
               exit={{ opacity: 0, y: -8, scale: 0.95 }}
               transition={{ duration: 0.15 }}
               className="absolute right-0 top-full mt-2 z-50 w-[320px] max-h-[420px] bg-card border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              role="dialog"
+              aria-label="Notifications"
             >
               <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                 <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
                 <div className="flex items-center gap-1">
                   {unreadCount > 0 && (
                     <button onClick={handleMarkAllRead}
-                      className="p-1.5 rounded-lg hover:bg-secondary transition-colors" title="Mark all read">
-                      <CheckCheck className="w-3.5 h-3.5 text-muted-foreground" />
+                      className="p-1.5 rounded-lg hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      title="Mark all read"
+                      aria-label="Mark all notifications as read"
+                    >
+                      <CheckCheck aria-hidden="true" className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
                   )}
-                  <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
-                    <X className="w-3.5 h-3.5 text-muted-foreground" />
+                  <button onClick={() => setOpen(false)}
+                    className="p-1.5 rounded-lg hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    aria-label="Close notifications"
+                  >
+                    <X aria-hidden="true" className="w-3.5 h-3.5 text-muted-foreground" />
                   </button>
                 </div>
               </div>
@@ -124,24 +138,26 @@ export default function NotificationBell() {
               <div className="flex-1 overflow-y-auto">
                 {notifs.length === 0 && (
                   <div className="text-center py-10">
-                    <Bell className="w-8 h-8 mx-auto mb-2 text-muted-foreground opacity-30" />
+                    <Bell aria-hidden="true" className="w-8 h-8 mx-auto mb-2 text-muted-foreground opacity-30" />
                     <p className="text-xs text-muted-foreground">No notifications yet</p>
                   </div>
                 )}
                 {notifs.map(n => (
                   <button key={n.id} onClick={() => handleTap(n)}
-                    className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/50 ${!n.read ? "bg-primary/5" : ""}`}>
+                    className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/50 ${!n.read ? "bg-primary/5" : ""} focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring`}
+                    aria-label={`${n.content}, ${timeAgo(n.createdAt)}${!n.read ? ', unread' : ''}`}
+                  >
                     <div className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
                       {getNotifIcon(n.type)}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div aria-hidden="true" className="flex-1 min-w-0">
                       <p className={`text-xs leading-relaxed ${!n.read ? "text-foreground font-medium" : "text-muted-foreground"}`}>
                         {n.content}
                       </p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">{timeAgo(n.createdAt)}</p>
                     </div>
                     {!n.read && (
-                      <div className="mt-2 w-2 h-2 rounded-full bg-primary flex-shrink-0" />
+                      <div aria-hidden="true" className="mt-2 w-2 h-2 rounded-full bg-primary flex-shrink-0" />
                     )}
                   </button>
                 ))}
